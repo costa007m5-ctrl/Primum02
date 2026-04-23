@@ -18,6 +18,7 @@ interface MovieDetailsModalProps {
   isFavorite: boolean;
   streamingProviders?: any[];
   onRequestMovie?: (movie: Movie) => void;
+  rank?: number;
 }
 
 const getProvider = (movie: Movie, streamingProviders?: any[]) => {
@@ -131,7 +132,8 @@ const MovieDetailsModal = React.memo(({
   isAddedToMyList,
   isFavorite,
   streamingProviders,
-  onRequestMovie
+  onRequestMovie,
+  rank
 }: MovieDetailsModalProps) => {
   const [isMuted, setIsMuted] = useState(true);
   const [showVideo, setShowVideo] = useState(false);
@@ -423,6 +425,14 @@ const MovieDetailsModal = React.memo(({
               transition={{ delay: 0.3, duration: 0.8 }}
               className="space-y-2 md:space-y-6"
             >
+              {rank && (
+                <div className="flex items-center gap-2 bg-red-600/30 backdrop-blur-md border border-red-600/50 px-2 py-1 md:px-4 md:py-2 rounded-lg md:rounded-2xl w-fit shadow-2xl">
+                   <div className="bg-red-600 text-white w-5 h-5 md:w-8 md:h-8 rounded-full flex items-center justify-center text-[10px] md:text-sm font-black italic shadow-lg">
+                      #{rank}
+                   </div>
+                   <span className="text-white text-[8px] md:text-sm font-black uppercase tracking-widest italic drop-shadow-lg">TOP 10 HOJE</span>
+                </div>
+              )}
               <div className="flex items-center gap-3 md:gap-6">
                 <span className="text-green-500 font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[8px] md:text-xs drop-shadow-[0_0_10px_rgba(34,197,94,0.5)] italic">{matchPercentage}% Match</span>
                 <span className="text-gray-400 font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[8px] md:text-xs italic">{year}</span>

@@ -220,7 +220,7 @@ const HomeView = React.memo(({
         </div>
       )}
 
-      <div className="pb-4 mt-[-40px] md:mt-[-140px] relative z-20 space-y-4 md:space-y-6">
+      <div className="pb-4 mt-[-40px] md:mt-[-100px] relative z-20 space-y-3 md:space-y-4">
         <StreamingHub 
           onSelectProvider={(p: any) => navigate(`/provider/${p}`)} 
           streamingProviders={streamingProviders}
@@ -247,9 +247,9 @@ const HomeView = React.memo(({
         )}
 
         {/* 🚀 CATEGORIES CAROUSEL SYSTEM NA TELA INICIAL */}
-        <section className="space-y-4 md:space-y-6 group pt-4 md:pt-8 px-4 md:px-12">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xl md:text-3xl font-black uppercase italic tracking-tighter text-white">Explorar por Gênero</h3>
+        <section className="space-y-3 md:space-y-4 group pt-2 md:pt-4 px-4 md:px-12">
+          <div className="flex items-center justify-between mb-1">
+            <h3 className="text-xl md:text-2xl font-black uppercase italic tracking-tighter text-white">Explorar por Gênero</h3>
           </div>
           
           <div className="flex overflow-x-auto no-scrollbar gap-4 md:gap-6 pb-6 snap-x -mx-4 px-4 md:mx-0 md:px-0">
@@ -1061,7 +1061,9 @@ const MovieDetailRouteWrapper = ({
   streamingProviders,
   onRequestMovie,
   watchHistory,
-  onWatchParty
+  onWatchParty,
+  top10Movies = [],
+  top10Series = []
 }: any) => {
   const { movieId } = useParams();
   const navigate = useNavigate();
@@ -1122,6 +1124,15 @@ const MovieDetailRouteWrapper = ({
       last_position: watchHistory[base.id] || base.last_position || 0
     };
   }, [localMovie, tmdbMovie, watchHistory]);
+
+  const movieRank = useMemo(() => {
+    if (!movie) return undefined;
+    const movieIndex = top10Movies.findIndex((m: any) => m.id === movie.id);
+    if (movieIndex !== -1) return movieIndex + 1;
+    const seriesIndex = top10Series.findIndex((m: any) => m.id === movie.id);
+    if (seriesIndex !== -1) return seriesIndex + 1;
+    return undefined;
+  }, [movie, top10Movies, top10Series]);
   
   if (notFound) {
     return (
@@ -1157,6 +1168,7 @@ const MovieDetailRouteWrapper = ({
       isFavorite={favoriteIds.has(movie.id)}
       streamingProviders={streamingProviders}
       onRequestMovie={onRequestMovie}
+      rank={movieRank}
     />
   );
 };
@@ -1679,7 +1691,7 @@ export default function App() {
         description: `Coleção oficial do TMDb: ${collectionName}.`,
         movies: movies.sort((a, b) => (a.release_year || 0) - (b.release_year || 0)),
         poster: theme?.poster || movies[0].collection_poster_path || movies[0].poster_path,
-        backdrop: theme?.backdrop || movies[0].backdrop_path,
+        backdrop: theme?.backdrop || movies[0].collection_backdrop_path || movies[0].backdrop_path,
         logo: movies[0].collection_logo_path,
         tmdb_collection_id: parseInt(id)
       });
@@ -2751,6 +2763,7 @@ export default function App() {
         }
 
         const posterPath = collection.poster_path ? `https://image.tmdb.org/t/p/original${collection.poster_path}` : firstMovie.collection_poster_path;
+        const backdropPath = collection.backdrop_path ? `https://image.tmdb.org/t/p/original${collection.backdrop_path}` : firstMovie.collection_backdrop_path;
 
         // Atualizar todos os filmes desta coleção
         for (const movie of moviesInColl) {
@@ -2758,7 +2771,8 @@ export default function App() {
             ...movie,
             collection_name: collection.name || movie.collection_name,
             collection_logo_path: logoPath,
-            collection_poster_path: posterPath
+            collection_poster_path: posterPath,
+            collection_backdrop_path: backdropPath
           } as Movie, true);
         }
 
@@ -3981,6 +3995,8 @@ export default function App() {
                 streamingProviders={streamingProviders}
                 onRequestMovie={handleRequestMovie}
                 onWatchParty={(m: Movie) => setWatchPartyMovie(m)}
+                top10Movies={top10Movies}
+                top10Series={top10Series}
               />
             } />
             <Route path="/watch/:movieId" element={

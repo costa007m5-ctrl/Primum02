@@ -40,6 +40,7 @@ export interface Movie {
   collection_name?: string;
   collection_poster_path?: string;
   collection_logo_path?: string;
+  collection_backdrop_path?: string;
 }
 
 export interface StreamingProvider {

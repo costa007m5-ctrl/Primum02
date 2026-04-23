@@ -29,9 +29,21 @@
 @layer base {
   html, body {
     @apply overflow-x-hidden w-full relative;
+    /* Reduce root font size slightly on mobile for compactness */
+    font-size: 14px;
+  }
+  @screen md {
+    html, body {
+      font-size: 16px;
+    }
   }
   body {
     @apply bg-[#080808] text-white font-sans antialiased selection:bg-red-600/30;
+  }
+  
+  /* Robustness: prevent layout shifts */
+  img {
+    content-visibility: auto;
   }
 }
 

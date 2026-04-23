@@ -109,9 +109,9 @@ const UniverseView: React.FC<UniverseViewProps> = React.memo(({
               className="flex flex-col items-center"
             >
               {franchise.logo ? (
-                <img src={franchise.logo} className="h-20 md:h-32 object-contain mb-12 animate-pulse" referrerPolicy="no-referrer" />
+                <img src={franchise.logo} className="h-16 md:h-24 object-contain mb-8 animate-pulse" referrerPolicy="no-referrer" />
               ) : (
-                <h1 className="text-4xl md:text-6xl font-black text-white italic uppercase tracking-[0.2em] mb-12">{franchise.name}</h1>
+                <h1 className="text-3xl md:text-5xl font-black text-white italic uppercase tracking-[0.2em] mb-8">{franchise.name}</h1>
               )}
               
               <div className="w-64 h-1 bg-white/5 rounded-full overflow-hidden relative">
@@ -168,15 +168,15 @@ const UniverseView: React.FC<UniverseViewProps> = React.memo(({
         </div>
 
         {/* Global Navigation */}
-        <nav className="sticky top-0 left-0 right-0 z-[250] px-4 md:px-12 py-6 flex items-center justify-between backdrop-blur-3xl bg-black/40 border-b border-white/5">
+        <nav className="sticky top-0 left-0 right-0 z-[250] px-4 md:px-12 py-3 md:py-4 flex items-center justify-between backdrop-blur-3xl bg-black/40 border-b border-white/5">
           <motion.button 
-            whileHover={{ scale: 1.05, x: -5 }}
+            whileHover={{ scale: 1.05, x: -3 }}
             whileTap={{ scale: 0.95 }}
             onClick={onClose}
-            className="flex items-center gap-3 px-6 py-3 bg-white/5 rounded-2xl border border-white/10 text-white group"
+            className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-xl border border-white/10 text-white group"
           >
-            <ChevronLeft size={20} className="group-hover:text-red-600 transition-colors" />
-            <span className="font-black uppercase tracking-widest text-[10px] italic hidden sm:block">Multiverso</span>
+            <ChevronLeft size={18} className="group-hover:text-red-600 transition-colors" />
+            <span className="font-black uppercase tracking-widest text-[8px] italic hidden sm:block">Sair</span>
           </motion.button>
 
           <div className="flex flex-col items-center">
@@ -226,30 +226,30 @@ const UniverseView: React.FC<UniverseViewProps> = React.memo(({
               <motion.img 
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 1, delay: 0.5 }}
+                transition={{ duration: 0.7 }}
                 src={franchise.logo} 
-                className="h-20 md:h-48 object-contain mb-8 md:mb-12 drop-shadow-[0_20px_50px_rgba(0,0,0,1)] relative z-10 franchise-logo-glow" 
+                className="h-16 md:h-36 object-contain mb-6 md:mb-10 drop-shadow-[0_15px_40px_rgba(0,0,0,1)] relative z-10" 
                 referrerPolicy="no-referrer"
                 alt={franchise.name}
               />
             ) : (
-              <h1 className="text-4xl md:text-[10rem] font-black italic uppercase tracking-tighter text-white mb-8 md:mb-12 leading-[0.8] drop-shadow-2xl">
+              <h1 className="text-3xl md:text-[8rem] font-black italic uppercase tracking-tighter text-white mb-6 md:mb-10 leading-[0.8] drop-shadow-2xl">
                  {franchise.name}
               </h1>
             )}
 
-            <div className="flex flex-wrap items-center justify-center gap-8 mb-12">
-               <div className="flex items-center gap-3 bg-white/5 px-6 py-3 rounded-full border border-white/10">
-                  <Activity size={16} className="text-red-600" />
-                  <span className="text-xs font-black uppercase tracking-widest">{stats.count} Títulos</span>
+            <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 mb-8 mt-4 md:mt-0">
+               <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/10">
+                  <Activity size={14} className="text-red-600" />
+                  <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">{stats.count} Títulos</span>
                </div>
-               <div className="flex items-center gap-3 bg-white/5 px-6 py-3 rounded-full border border-white/10">
-                  <Clock size={16} className="text-blue-500" />
-                  <span className="text-xs font-black uppercase tracking-widest">{stats.hours}h {stats.minutes}m</span>
+               <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/10">
+                  <Clock size={14} className="text-blue-500" />
+                  <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">{stats.hours}h {stats.minutes}m</span>
                </div>
-               <div className="flex items-center gap-3 bg-white/5 px-6 py-3 rounded-full border border-white/10">
-                  <Star size={16} className="text-yellow-400" fill="#facc15" />
-                  <span className="text-xs font-black uppercase tracking-widest">{stats.avgRating.toFixed(1)} Score</span>
+               <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/10">
+                  <Star size={14} className="text-yellow-400" fill="#facc15" />
+                  <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">{stats.avgRating.toFixed(1)} Score</span>
                </div>
             </div>
 
