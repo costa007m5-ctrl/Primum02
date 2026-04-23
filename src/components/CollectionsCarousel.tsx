@@ -76,7 +76,7 @@ const CollectionsCarousel: React.FC<CollectionsCarouselProps> = ({ franchises })
                {f.logo ? (
                  <img 
                    src={f.logo} 
-                   className="h-12 md:h-24 object-contain max-w-full drop-shadow-[0_0_20px_rgba(0,0,0,0.8)] group-hover/card:scale-105 transition-transform origin-left duration-700" 
+                   className="h-12 md:h-24 object-contain max-w-full drop-shadow-[0_0_20px_rgba(0,0,0,0.8)] group-hover/card:scale-105 transition-transform origin-left duration-700 franchise-logo-glow" 
                    referrerPolicy="no-referrer"
                    alt={f.name}
                  />

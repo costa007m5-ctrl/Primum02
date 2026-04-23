@@ -67,14 +67,14 @@ const FRANCHISES: {
   backdrop?: string,
   logo?: string 
 }[] = [
-  { id: 'marvel', name: 'Marvel', keywords: ['marvel', 'avengers', 'vingadores', 'spider-man', 'spiderman', 'iron man', 'thor', 'captain america', 'capitão américa', 'black panther', 'pantera negra', 'guardians of the galaxy', 'guardiões da galáxia', 'x-men'], color: '#e62429', bg: 'bg-[#0f0f0f]', accent: 'text-red-600', icon: Zap, description: 'O Universo Cinematográfico mais épico da história.', backdrop: 'https://image.tmdb.org/t/p/original/mDf935S7qbZOSo9u3YmBAzY6nU2.jpg' },
-  { id: 'star-wars', name: 'Star Wars', keywords: ['star wars', 'mandalorian', 'obi-wan', 'skywalker', 'jedi', 'sith', 'andor'], color: '#ffe81f', bg: 'bg-black', accent: 'text-yellow-400', icon: Ghost, description: 'Uma galáxia muito, muito distante...', backdrop: 'https://image.tmdb.org/t/p/original/9v8X8tB8bS19K6G2w6N8fXG8gC.jpg' },
-  { id: 'dc', name: 'DC Comics', keywords: ['dc comics', 'batman', 'superman', 'wonder woman', 'mulher maravilha', 'justice league', 'liga da justiça', 'aquaman', 'the flash', 'joker', 'coringa'], color: '#0476f2', bg: 'bg-[#000d1a]', accent: 'text-blue-500', icon: Shield, description: 'Onde nascem as lendas e os deuses caminham.', backdrop: 'https://image.tmdb.org/t/p/original/8Y736u7S99K3NBSmToIdpY2S8uF.jpg' },
-  { id: 'harry-potter', name: 'Harry Potter', keywords: ['harry potter', 'pedra filosofal', 'câmara secreta', 'prisioneiro de azkaban', 'cálice de fogo', 'ordem da fênix', 'enigma do príncipe', 'relíquias da morte', 'animais fantásticos'], color: '#ffd700', bg: 'bg-[#0a0a0c]', accent: 'text-yellow-500', icon: Sparkles, description: 'A magia vive aqui. Entre no mundo bruxo.', backdrop: 'https://image.tmdb.org/t/p/original/ve9P65Tf0JAs1GgM2Y8V4v5N5Wb.jpg' },
-  { id: 'lord-of-the-rings', name: 'Terra Média', keywords: ['senhor dos anéis', 'lord of the rings', 'hobbit', 'sociedade do anel', 'duas torres', 'retorno do rei'], color: '#9d7b3c', bg: 'bg-[#0f0e0d]', accent: 'text-[#d4af37]', icon: History, description: 'A jornada épica de Tolkien pela Terra Média.', backdrop: 'https://image.tmdb.org/t/p/original/lX999O9rKpsS0S6A1d1K3kF9fWb.jpg' },
-  { id: 'fast-furious', name: 'Fast & Furious', keywords: ['velozes e furiosos', 'fast & furious', 'toretto'], color: '#d00', bg: 'bg-[#0a0a0a]', accent: 'text-red-700', icon: Zap, description: 'Velocidade, família e adrenalina pura.', backdrop: 'https://image.tmdb.org/t/p/original/9n2tLpS0STIyuQq9S8fXG8gC.jpg' },
-  { id: 'disney', name: 'Disney Classics', keywords: ['rei leão', 'lion king', 'aladdin', 'pequena sereia', 'bela e a fera', 'cinderela', 'branca de neve', 'pinóquio', 'frozen'], color: '#009dff', bg: 'bg-[#000a1a]', accent: 'text-blue-300', icon: Sparkles, description: 'Onde os sonhos se tornam realidade.', backdrop: 'https://image.tmdb.org/t/p/original/7Ry9S0SSTIyuQq9S8fXG8gC.jpg' },
-  { id: 'pixar', name: 'Pixar', keywords: ['toy story', 'procurando nemo', 'finding nemo', 'monstros s.a', 'carro', 'cars', 'divertida mente', 'inside out', 'coco', 'viva a vida'], color: '#00aae4', bg: 'bg-[#00121a]', accent: 'text-blue-400', icon: Sparkles, description: 'Imaginação sem limites em cada frame.', backdrop: 'https://image.tmdb.org/t/p/original/hY6vshsh0rIn4766u63NBSmToIdp.jpg' },
+  { id: 'marvel', name: 'Marvel', keywords: ['marvel', 'avengers', 'vingadores', 'spider-man', 'spiderman', 'iron man', 'thor', 'captain america', 'capitão américa', 'black panther', 'pantera negra', 'guardians of the galaxy', 'guardiões da galáxia', 'x-men'], color: '#e62429', bg: 'bg-[#0f0f0f]', accent: 'text-red-600', icon: Zap, description: 'O Universo Cinematográfico mais épico da história. Uma saga interligada de heróis lutando pela sobrevivência da humanidade contra ameaças universais.', backdrop: 'https://image.tmdb.org/t/p/original/mDf935S7qbZOSo9u3YmBAzY6nU2.jpg', logo: 'https://upload.wikimedia.org/wikipedia/commons/b/b9/Marvel_Logo.svg' },
+  { id: 'star-wars', name: 'Star Wars', keywords: ['star wars', 'mandalorian', 'obi-wan', 'skywalker', 'jedi', 'sith', 'andor'], color: '#ffe81f', bg: 'bg-black', accent: 'text-yellow-400', icon: Ghost, description: 'Uma galáxia muito, muito distante... Acompanhe a eterna luta entre a Luz e o Lado Sombrio pela liberdade de todos os sistemas estelares.', backdrop: 'https://image.tmdb.org/t/p/original/9v8X8tB8bS19K6G2w6N8fXG8gC.jpg', logo: 'https://upload.wikimedia.org/wikipedia/commons/6/6c/Star_Wars_Logo.svg' },
+  { id: 'dc', name: 'DC Comics', keywords: ['dc comics', 'batman', 'superman', 'wonder woman', 'mulher maravilha', 'justice league', 'liga da justiça', 'aquaman', 'the flash', 'joker', 'coringa'], color: '#0476f2', bg: 'bg-[#000d1a]', accent: 'text-blue-500', icon: Shield, description: 'Onde nascem as lendas e os deuses caminham. De Gotham a Metrópolis, os maiores vigilantes do multiverso protegem a justiça.', backdrop: 'https://image.tmdb.org/t/p/original/8Y736u7S99K3NBSmToIdpY2S8uF.jpg', logo: 'https://upload.wikimedia.org/wikipedia/commons/3/3d/DC_Comics_logo.svg' },
+  { id: 'harry-potter', name: 'Harry Potter', keywords: ['harry potter', 'pedra filosofal', 'câmara secreta', 'prisioneiro de azkaban', 'cálice de fogo', 'ordem da fênix', 'enigma do príncipe', 'relíquias da morte', 'animais fantásticos'], color: '#ffd700', bg: 'bg-[#0a0a0c]', accent: 'text-yellow-500', icon: Sparkles, description: 'A magia vive aqui. Entre no mundo bruxo e descubra os segredos de Hogwarts na batalha definitiva contra o Lorde das Trevas.', backdrop: 'https://image.tmdb.org/t/p/original/ve9P65Tf0JAs1GgM2Y8V4v5N5Wb.jpg', logo: 'https://upload.wikimedia.org/wikipedia/commons/6/6e/Harry_Potter_wordmark.svg' },
+  { id: 'lord-of-the-rings', name: 'Terra Média', keywords: ['senhor dos anéis', 'lord of the rings', 'hobbit', 'sociedade do anel', 'duas torres', 'retorno do rei'], color: '#9d7b3c', bg: 'bg-[#0f0e0d]', accent: 'text-[#d4af37]', icon: History, description: 'A jornada épica de Tolkien pela Terra Média. Três anéis para os Reis-Elfos... e um para o Senhor do Escuro.', backdrop: 'https://image.tmdb.org/t/p/original/lX999O9rKpsS0S6A1d1K3kF9fWb.jpg', logo: 'https://upload.wikimedia.org/wikipedia/commons/2/22/The_Lord_of_the_Rings_logo.svg' },
+  { id: 'fast-furious', name: 'Fast & Furious', keywords: ['velozes e furiosos', 'fast & furious', 'toretto'], color: '#d00', bg: 'bg-[#0a0a0a]', accent: 'text-red-700', icon: Zap, description: 'Velocidade, família e adrenalina pura. Acompanhe Dominic Toretto e sua equipe em missões impossíveis ao redor do mundo.', backdrop: 'https://image.tmdb.org/t/p/original/9n2tLpS0STIyuQq9S8fXG8gC.jpg', logo: 'https://upload.wikimedia.org/wikipedia/commons/a/ab/Fast_%26_Furious_logo.png' },
+  { id: 'disney', name: 'Disney Classics', keywords: ['rei leão', 'lion king', 'aladdin', 'pequena sereia', 'bela e a fera', 'cinderela', 'branca de neve', 'pinóquio', 'frozen'], color: '#009dff', bg: 'bg-[#000a1a]', accent: 'text-blue-300', icon: Sparkles, description: 'Onde os sonhos se tornam realidade. Clássicos atemporais que moldaram gerações em contos de fadas e aventuras mágicas.', backdrop: 'https://image.tmdb.org/t/p/original/7Ry9S0SSTIyuQq9S8fXG8gC.jpg', logo: 'https://upload.wikimedia.org/wikipedia/commons/3/3e/Disney%2B_logo.svg' },
+  { id: 'pixar', name: 'Pixar', keywords: ['toy story', 'procurando nemo', 'finding nemo', 'monstros s.a', 'carro', 'cars', 'divertida mente', 'inside out', 'coco', 'viva a vida'], color: '#00aae4', bg: 'bg-[#00121a]', accent: 'text-blue-400', icon: Sparkles, description: 'Imaginação sem limites em cada frame. Pioneiros na animação digital, contando histórias que tocam o coração de jovens e adultos.', backdrop: 'https://image.tmdb.org/t/p/original/hY6vshsh0rIn4766u63NBSmToIdp.jpg', logo: 'https://upload.wikimedia.org/wikipedia/commons/0/03/Pixar_logo.svg' },
   { id: 'horror', name: 'Terror & Horror', keywords: ['halloween', 'pânico', 'scream', 'invocação do mal', 'conjuring', 'it a coisa', 'sexta-feira 13', 'friday the 13th', 'terror', 'horror', 'sobrenatural'], color: '#ff0000', bg: 'bg-[#050000]', accent: 'text-red-600', icon: Ghost, description: 'Enfrente seus maiores medos.', backdrop: 'https://image.tmdb.org/t/p/original/5mUV0SRAAnT0UuLpAbfHshf6YmF.jpg' },
   { id: 'adventure', name: 'Aventura', keywords: ['aventura', 'adventure', 'exploração', 'journey', 'indiana jones', 'jumanji', 'piratas do caribe'], color: '#22c55e', bg: 'bg-[#061a0f]', accent: 'text-green-500', icon: Map, description: 'Grandes jornadas em terras desconhecidas.', backdrop: 'https://image.tmdb.org/t/p/original/620hn0I9pmS3v0YAs9XvSAnR039.jpg' },
   { id: 'fantasy', name: 'Fantasia', keywords: ['fantasia', 'fantasy', 'magia', 'magic', 'bruxo', 'wizard', 'dragão', 'dragon'], color: '#a855f7', bg: 'bg-[#150a1f]', accent: 'text-purple-500', icon: Sparkles, description: 'Onde o impossível ganha vida.', backdrop: 'https://image.tmdb.org/t/p/original/69Sns8WoETA0q6Zp3p6Wp5hr6In.jpg' },
@@ -2851,9 +2851,25 @@ export default function App() {
 
   const handleRequestMovie = async (movie: Partial<Movie>) => {
     try {
-      const isAlreadyRequested = myMovies.some(m => m.videoUrl === 'REQUESTED' && (m.title === movie.title || m.title === movie.name));
+      const titleLower = (movie.title || movie.name || '').toLowerCase();
+      
+      const alreadyInLibrary = myMovies.some(m => 
+        m.videoUrl !== 'REQUESTED' && 
+        (m.title?.toLowerCase() === titleLower || (m as any).name?.toLowerCase() === titleLower)
+      );
+
+      if (alreadyInLibrary) {
+        alert('Este título já está disponível na plataforma! Procure na busca ou navegue pelas categorias.');
+        return;
+      }
+
+      const isAlreadyRequested = myMovies.some(m => 
+        m.videoUrl === 'REQUESTED' && 
+        (m.title?.toLowerCase() === titleLower || (m as any).name?.toLowerCase() === titleLower)
+      );
+
       if (isAlreadyRequested) {
-        alert('Este título já foi solicitado e está na lista de espera!');
+        alert('Paciência, Jovem Padawan! Este título já foi solicitado e nossa equipe está trabalhando para trazê-lo.');
         return;
       }
 
@@ -2862,7 +2878,7 @@ export default function App() {
         videoUrl: 'REQUESTED',
         is_hidden: true
       });
-      alert('Sua indicação foi enviada aos administradores! Em breve este título pode estar disponível.');
+      alert('Entendido! Sua indicação foi enviada aos comandantes. Fique de olho nas novidades!');
     } catch (err) {
       console.error('Erro ao indicar:', err);
     }

@@ -4,7 +4,7 @@ import {
   ChevronLeft, Play, Info, Sparkles, Zap, Shield, History, Ghost, 
   Star, Calendar, Users, Trophy, Search, Filter, TrendingUp, 
   Clock, CheckCircle2, LayoutGrid, List, ArrowRight, Share2, 
-  Heart, Download, Activity, Globe, Cpu, Rocket
+  Heart, Download, Activity, Globe, Cpu, Rocket, Hash
 } from 'lucide-react';
 import { Movie } from '../types';
 import Row from './Row';
@@ -28,7 +28,7 @@ const UniverseView: React.FC<UniverseViewProps> = React.memo(({
   myListIds,
   favoriteIds
 }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'stats'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'story' | 'stats'>('overview');
   const [isIntroComplete, setIsIntroComplete] = useState(false);
   const [searchInUniverse, setSearchInUniverse] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -86,9 +86,10 @@ const UniverseView: React.FC<UniverseViewProps> = React.memo(({
   }, [franchise.movies, searchInUniverse]);
 
   const TABS = [
-    { id: 'overview', label: 'Visão Geral', icon: Globe },
-    { id: 'timeline', label: 'Linha do Tempo', icon: History },
-    { id: 'stats', label: 'Análise Neural', icon: Cpu },
+    { id: 'overview', label: 'Início', icon: Globe },
+    { id: 'story', label: 'A Saga', icon: Sparkles },
+    { id: 'timeline', label: 'Eventos', icon: History },
+    { id: 'stats', label: 'Dados', icon: Cpu },
   ];
 
   return (
@@ -227,7 +228,7 @@ const UniverseView: React.FC<UniverseViewProps> = React.memo(({
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 1, delay: 0.5 }}
                 src={franchise.logo} 
-                className="h-20 md:h-48 object-contain mb-8 md:mb-12 drop-shadow-[0_20px_50px_rgba(0,0,0,1)] relative z-10" 
+                className="h-20 md:h-48 object-contain mb-8 md:mb-12 drop-shadow-[0_20px_50px_rgba(0,0,0,1)] relative z-10 franchise-logo-glow" 
                 referrerPolicy="no-referrer"
                 alt={franchise.name}
               />
@@ -276,14 +277,32 @@ const UniverseView: React.FC<UniverseViewProps> = React.memo(({
           </motion.div>
         </header>
 
-        {/* Tab Selection */}
-        <div className="sticky top-[80px] z-[240] px-4 md:px-12 mb-12">
+        {/* Tab Selection - Redesigned as a Floating Menu */}
+        <div className="fixed left-0 top-1/2 -translate-y-1/2 z-[240] px-4 md:px-8 hidden lg:block">
+           <div className="flex flex-col gap-4 bg-black/40 backdrop-blur-3xl p-4 rounded-[3rem] border border-white/5 shadow-2xl">
+              {TABS.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`group relative p-5 rounded-full transition-all ${activeTab === tab.id ? 'bg-red-600 text-white shadow-[0_0_30px_rgba(220,38,38,0.4)]' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+                >
+                  <tab.icon size={28} />
+                  <div className="absolute left-full ml-6 px-4 py-2 bg-black/80 backdrop-blur-3xl rounded-xl border border-white/10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
+                     <span className="text-[10px] font-black uppercase tracking-widest">{tab.label}</span>
+                  </div>
+                </button>
+              ))}
+           </div>
+        </div>
+
+        {/* Mobile Tab Selection */}
+        <div className="sticky top-[80px] z-[240] px-4 md:px-12 mb-12 lg:hidden">
            <div className="max-w-2xl mx-auto bg-black/60 backdrop-blur-3xl p-2 rounded-[2.5rem] border border-white/5 flex gap-2">
               {TABS.map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-[2rem] transition-all relative ${activeTab === tab.id ? 'text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                  className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-[2rem] transition-all relative ${activeTab === tab.id ? 'text-white universe-tab-active' : 'text-gray-500 hover:text-gray-300'}`}
                 >
                   {activeTab === tab.id && (
                     <motion.div 
@@ -391,6 +410,83 @@ const UniverseView: React.FC<UniverseViewProps> = React.memo(({
                     myListIds={myListIds} 
                     favoriteIds={favoriteIds} 
                   />
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'story' && (
+              <motion.div 
+                key="tab-story"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="px-6 md:px-12 max-w-5xl mx-auto space-y-24"
+              >
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                  <div className="space-y-8">
+                     <div className="flex items-center gap-4">
+                        <div className="w-12 h-1 bg-red-600"></div>
+                        <span className="text-red-500 font-black uppercase tracking-[0.5em] text-[10px]">A Gênese da Saga</span>
+                     </div>
+                     <h3 className="text-4xl md:text-6xl font-black text-white uppercase italic tracking-tighter leading-tight">
+                        Uma História em <span className={franchise.accent}>Expansão Constante</span>
+                     </h3>
+                     <p className="text-gray-400 text-lg md:text-xl font-medium leading-relaxed italic">
+                        {franchise.description}
+                     </p>
+                     <div className="grid grid-cols-2 gap-8">
+                        <div className="space-y-2">
+                           <span className="text-gray-600 font-black text-[10px] uppercase tracking-widest text-[10px]">Primeiro Lançamento</span>
+                           <p className="text-white font-bold text-xl uppercase italic">{categorizedMovies.chronological[0]?.release_year || '---'}</p>
+                        </div>
+                        <div className="space-y-2">
+                           <span className="text-gray-600 font-black text-[10px] uppercase tracking-widest text-[10px]">Última Atualização</span>
+                           <p className="text-white font-bold text-xl uppercase italic">{categorizedMovies.latest[0]?.release_year || '---'}</p>
+                        </div>
+                     </div>
+                  </div>
+                  <div className="relative group">
+                     <div className="absolute -inset-4 bg-white/5 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                     <div className="relative aspect-video rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl">
+                        <img 
+                          src={franchise.backdrop || featuredMovie?.backdrop_path} 
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" 
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+                        <div className="absolute bottom-8 left-8 flex items-center gap-4 bg-black/60 backdrop-blur-xl px-6 py-3 rounded-2xl border border-white/10">
+                           <Info size={16} className={franchise.accent} />
+                           <span className="text-[10px] font-black uppercase tracking-widest">Snapshot de Arquivo #01</span>
+                        </div>
+                     </div>
+                  </div>
+                </div>
+
+                <div className="bg-white/5 backdrop-blur-3xl p-12 md:p-20 rounded-[4rem] border border-white/5 relative overflow-hidden">
+                   <div className="absolute top-0 right-0 w-64 h-64 bg-red-600/10 blur-[100px] rounded-full"></div>
+                   <div className="relative z-10 space-y-12">
+                      <div className="text-center max-w-3xl mx-auto space-y-4">
+                         <h4 className="text-3xl md:text-5xl font-black text-white uppercase italic tracking-tighter">O Impacto Cultural</h4>
+                         <p className="text-gray-500 font-medium italic">A saga de {franchise.name} não é apenas cinema; é uma revolução visual que redefiniu o gênero e inspirou milhões ao redor do globo.</p>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+                         <div className="space-y-4">
+                            <Hash className={franchise.accent} size={24} />
+                            <h5 className="text-white font-black uppercase italic text-xl">Legado Visual</h5>
+                            <p className="text-gray-600 text-sm leading-relaxed italic">Efeitos práticos e visuais que desafiaram as leis da física em sua época.</p>
+                         </div>
+                         <div className="space-y-4">
+                            <Users className={franchise.accent} size={24} />
+                            <h5 className="text-white font-black uppercase italic text-xl">Comunidade Global</h5>
+                            <p className="text-gray-600 text-sm leading-relaxed italic">Uma "fanbase" dedicada que mantém a chama da saga viva através de gerações.</p>
+                         </div>
+                         <div className="space-y-4">
+                            <Trophy className={franchise.accent} size={24} />
+                            <h5 className="text-white font-black uppercase italic text-xl">Reconhecimento</h5>
+                            <p className="text-gray-600 text-sm leading-relaxed italic">Inúmeros prêmios e recordes de bilheteria que atestam sua grandeza.</p>
+                         </div>
+                      </div>
+                   </div>
                 </div>
               </motion.div>
             )}
