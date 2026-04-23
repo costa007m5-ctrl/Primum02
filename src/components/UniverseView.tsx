@@ -1,0 +1,527 @@
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
+import { 
+  ChevronLeft, Play, Info, Sparkles, Zap, Shield, History, Ghost, 
+  Star, Calendar, Users, Trophy, Search, Filter, TrendingUp, 
+  Clock, CheckCircle2, LayoutGrid, List, ArrowRight, Share2, 
+  Heart, Download, Activity, Globe, Cpu, Rocket
+} from 'lucide-react';
+import { Movie } from '../types';
+import Row from './Row';
+
+interface UniverseViewProps {
+  franchise: any;
+  onClose: () => void;
+  onSelectMovie: (movie: Movie) => void;
+  onToggleMyList: (movie: Movie) => void;
+  onToggleFavorite: (movie: Movie) => void;
+  myListIds: Set<number>;
+  favoriteIds: Set<number>;
+}
+
+const UniverseView: React.FC<UniverseViewProps> = React.memo(({ 
+  franchise, 
+  onClose, 
+  onSelectMovie, 
+  onToggleMyList, 
+  onToggleFavorite,
+  myListIds,
+  favoriteIds
+}) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'stats'>('overview');
+  const [isIntroComplete, setIsIntroComplete] = useState(false);
+  const [searchInUniverse, setSearchInUniverse] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { scrollY } = useScroll({ container: containerRef });
+  
+  const heroOpacity = useTransform(scrollY, [0, 400], [1, 0]);
+  const heroScale = useTransform(scrollY, [0, 800], [1, 1.2]);
+  const contentY = useTransform(scrollY, [0, 400], [0, -100]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsIntroComplete(true), 1800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const featuredMovie = franchise.movies[0];
+  
+  // Advanced stats calculation
+  const stats = useMemo(() => {
+    const movies = franchise.movies as Movie[];
+    const totalRuntime = movies.reduce((acc, m) => acc + (m.runtime || 0), 0);
+    const avgRating = movies.reduce((acc, m) => acc + (m.rating || 0), 0) / movies.length;
+    const years = movies.map(m => m.release_year || 0).filter(y => y > 0);
+    const yearRange = years.length > 0 ? `${Math.min(...years)} - ${Math.max(...years)}` : 'N/A';
+    
+    return {
+      totalRuntime,
+      avgRating,
+      yearRange,
+      count: movies.length,
+      hours: Math.floor(totalRuntime / 60),
+      minutes: totalRuntime % 60
+    };
+  }, [franchise.movies]);
+
+  // Categorize movies within the universe
+  const categorizedMovies = useMemo(() => {
+    let movies = [...franchise.movies] as Movie[];
+    
+    if (searchInUniverse) {
+      movies = movies.filter(m => 
+        (m.title || "").toLowerCase().includes(searchInUniverse.toLowerCase()) ||
+        (m.overview || "").toLowerCase().includes(searchInUniverse.toLowerCase())
+      );
+    }
+
+    return {
+      chronological: [...movies].sort((a, b) => (a.release_year || 0) - (b.release_year || 0)),
+      highestRated: [...movies].sort((a, b) => (b.rating || 0) - (a.rating || 0)),
+      latest: [...movies].sort((a, b) => {
+        const dateA = a.release_date || "";
+        const dateB = b.release_date || "";
+        return dateB.localeCompare(dateA);
+      })
+    };
+  }, [franchise.movies, searchInUniverse]);
+
+  const TABS = [
+    { id: 'overview', label: 'Visão Geral', icon: Globe },
+    { id: 'timeline', label: 'Linha do Tempo', icon: History },
+    { id: 'stats', label: 'Análise Neural', icon: Cpu },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-[200] overflow-hidden">
+      <AnimatePresence>
+        {!isIntroComplete && (
+          <motion.div 
+            key="universe-intro"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] bg-black flex flex-col items-center justify-center p-10"
+          >
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 1 }}
+              className="flex flex-col items-center"
+            >
+              {franchise.logo ? (
+                <img src={franchise.logo} className="h-20 md:h-32 object-contain mb-12 animate-pulse" referrerPolicy="no-referrer" />
+              ) : (
+                <h1 className="text-4xl md:text-6xl font-black text-white italic uppercase tracking-[0.2em] mb-12">{franchise.name}</h1>
+              )}
+              
+              <div className="w-64 h-1 bg-white/5 rounded-full overflow-hidden relative">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: '100%' }}
+                  transition={{ duration: 2, ease: "easeInOut" }}
+                  className="absolute inset-0 bg-red-600 shadow-[0_0_20px_rgba(220,38,38,0.8)]"
+                />
+              </div>
+              <span className="mt-6 text-[10px] font-black uppercase tracking-[0.5em] text-gray-500 animate-pulse">Sincronizando Realidade...</span>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <motion.div 
+        ref={containerRef}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className={`absolute inset-0 ${franchise.bg || 'bg-[#050505]'} overflow-y-auto custom-scrollbar scroll-smooth`}
+      >
+        {/* Cinematic Backdrop Overlay */}
+        <div className="fixed inset-0 pointer-events-none -z-10">
+          <div className="absolute inset-0 bg-black" />
+          <motion.div 
+            style={{ opacity: heroOpacity, scale: heroScale }}
+            className="absolute inset-0"
+          >
+            <img 
+              src={franchise.backdrop || featuredMovie?.backdrop_path} 
+              className="w-full h-full object-cover blur-[2px] scale-110" 
+              referrerPolicy="no-referrer"
+              alt=""
+            />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.6)_100%)]" />
+            <div className={`absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-[#050505]`} />
+          </motion.div>
+          
+          {/* Animated Mesh Blobs */}
+          <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-30">
+            <motion.div 
+              animate={{ x: [0, 100, 0], y: [0, -50, 0] }}
+              transition={{ duration: 15, repeat: Infinity }}
+              className={`absolute top-[-10%] left-[-10%] w-[50%] aspect-square rounded-full blur-[150px]`}
+              style={{ backgroundColor: franchise.color }}
+            />
+            <motion.div 
+              animate={{ x: [0, -100, 0], y: [0, 50, 0] }}
+              transition={{ duration: 20, repeat: Infinity, delay: 2 }}
+              className="absolute bottom-[-10%] right-[-10%] w-[40%] aspect-square bg-blue-600/20 rounded-full blur-[120px]"
+            />
+          </div>
+        </div>
+
+        {/* Global Navigation */}
+        <nav className="sticky top-0 left-0 right-0 z-[250] px-4 md:px-12 py-6 flex items-center justify-between backdrop-blur-3xl bg-black/40 border-b border-white/5">
+          <motion.button 
+            whileHover={{ scale: 1.05, x: -5 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onClose}
+            className="flex items-center gap-3 px-6 py-3 bg-white/5 rounded-2xl border border-white/10 text-white group"
+          >
+            <ChevronLeft size={20} className="group-hover:text-red-600 transition-colors" />
+            <span className="font-black uppercase tracking-widest text-[10px] italic hidden sm:block">Multiverso</span>
+          </motion.button>
+
+          <div className="flex flex-col items-center">
+            {franchise.logo ? (
+              <img src={franchise.logo} className="h-6 md:h-10 object-contain" referrerPolicy="no-referrer" />
+            ) : (
+              <span className={`text-xl font-black uppercase italic tracking-tighter ${franchise.accent}`}>{franchise.name}</span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-4">
+             <div className="hidden lg:flex items-center bg-black/40 border border-white/5 rounded-full px-4 py-2 focus-within:border-red-600 transition-all">
+                <Search size={16} className="text-gray-500 mr-2" />
+                <input 
+                  type="text" 
+                  value={searchInUniverse}
+                  onChange={(e) => setSearchInUniverse(e.target.value)}
+                  placeholder="Buscar na saga..." 
+                  className="bg-transparent text-xs font-bold outline-none w-48 placeholder-gray-700"
+                />
+             </div>
+             <motion.button 
+               whileHover={{ scale: 1.1 }}
+               className="p-3 bg-white/5 rounded-full border border-white/10"
+             >
+               <Share2 size={18} className="text-white" />
+             </motion.button>
+          </div>
+        </nav>
+
+        {/* Hero Experience */}
+        <header className="relative min-h-[90vh] flex flex-col items-center justify-center pt-24 pb-32 px-6 overflow-hidden">
+          <motion.div 
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 2.6, duration: 1 }}
+            className="max-w-5xl w-full text-center"
+          >
+            {franchise.icon && (
+               <div className="mb-10 inline-block p-8 bg-white/5 backdrop-blur-3xl rounded-[3rem] border border-white/10 relative group">
+                  <div className={`absolute inset-0 bg-white/5 rounded-[3rem] blur-2xl group-hover:blur-3xl transition-all`}></div>
+                  <franchise.icon size={80} className={`${franchise.accent} relative z-10 animate-float`} />
+               </div>
+            )}
+            
+            {franchise.logo ? (
+              <motion.img 
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 1, delay: 0.5 }}
+                src={franchise.logo} 
+                className="h-20 md:h-48 object-contain mb-8 md:mb-12 drop-shadow-[0_20px_50px_rgba(0,0,0,1)] relative z-10" 
+                referrerPolicy="no-referrer"
+                alt={franchise.name}
+              />
+            ) : (
+              <h1 className="text-4xl md:text-[10rem] font-black italic uppercase tracking-tighter text-white mb-8 md:mb-12 leading-[0.8] drop-shadow-2xl">
+                 {franchise.name}
+              </h1>
+            )}
+
+            <div className="flex flex-wrap items-center justify-center gap-8 mb-12">
+               <div className="flex items-center gap-3 bg-white/5 px-6 py-3 rounded-full border border-white/10">
+                  <Activity size={16} className="text-red-600" />
+                  <span className="text-xs font-black uppercase tracking-widest">{stats.count} Títulos</span>
+               </div>
+               <div className="flex items-center gap-3 bg-white/5 px-6 py-3 rounded-full border border-white/10">
+                  <Clock size={16} className="text-blue-500" />
+                  <span className="text-xs font-black uppercase tracking-widest">{stats.hours}h {stats.minutes}m</span>
+               </div>
+               <div className="flex items-center gap-3 bg-white/5 px-6 py-3 rounded-full border border-white/10">
+                  <Star size={16} className="text-yellow-400" fill="#facc15" />
+                  <span className="text-xs font-black uppercase tracking-widest">{stats.avgRating.toFixed(1)} Score</span>
+               </div>
+            </div>
+
+            <p className="text-sm md:text-xl text-gray-400 font-medium italic max-w-3xl mx-auto leading-relaxed mb-16 px-4">
+              {franchise.description || "Inicie uma jornada sem precedentes através das camadas narrativas deste universo épico, onde cada escolha ressoa através do multiverso."}
+            </p>
+
+            <div className="flex flex-wrap items-center justify-center gap-6">
+              <motion.button 
+                whileHover={{ scale: 1.05, y: -5 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => onSelectMovie(featuredMovie)}
+                className="px-12 py-5 bg-white text-black rounded-[2rem] font-black uppercase tracking-[0.4em] text-[10px] md:text-xs flex items-center gap-4 shadow-2xl shadow-white/10"
+              >
+                <Rocket size={20} className="text-red-600" /> Iniciar Experiência
+              </motion.button>
+              <motion.button 
+                whileHover={{ scale: 1.05, y: -5 }}
+                whileTap={{ scale: 0.95 }}
+                className="px-12 py-5 bg-black/40 backdrop-blur-3xl text-white border-2 border-white/10 rounded-[2rem] font-black uppercase tracking-[0.4em] text-[10px] md:text-xs flex items-center gap-4 shadow-2xl group"
+              >
+                <List size={20} className="group-hover:text-red-600 transition-colors" /> Marcar Saga
+              </motion.button>
+            </div>
+          </motion.div>
+        </header>
+
+        {/* Tab Selection */}
+        <div className="sticky top-[80px] z-[240] px-4 md:px-12 mb-12">
+           <div className="max-w-2xl mx-auto bg-black/60 backdrop-blur-3xl p-2 rounded-[2.5rem] border border-white/5 flex gap-2">
+              {TABS.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-[2rem] transition-all relative ${activeTab === tab.id ? 'text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                >
+                  {activeTab === tab.id && (
+                    <motion.div 
+                      layoutId="active-universe-tab"
+                      className="absolute inset-0 bg-white/5 border border-white/10 rounded-[2rem]"
+                    />
+                  )}
+                  <tab.icon size={18} className={activeTab === tab.id ? franchise.accent : ''} />
+                  <span className="text-[10px] font-black uppercase tracking-widest hidden sm:block">{tab.label}</span>
+                </button>
+              ))}
+           </div>
+        </div>
+
+        <motion.div 
+          style={{ y: contentY }}
+          className="relative z-[20] pb-40"
+        >
+          <AnimatePresence mode="wait">
+            {activeTab === 'overview' && (
+              <motion.div 
+                key="tab-overview"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-32"
+              >
+                {/* Sections */}
+                <div className="space-y-4">
+                  <div className="px-6 md:px-12 flex items-center justify-between group">
+                    <div className="flex items-center gap-5">
+                       <TrendingUp className={franchise.accent} size={32} />
+                       <h3 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter italic">Ordem de Lançamento</h3>
+                    </div>
+                    <ArrowRight className="text-gray-600 group-hover:text-white transition-all group-hover:translate-x-2" size={32} />
+                  </div>
+                  <Row 
+                    title="" 
+                    movies={categorizedMovies.latest} 
+                    isLargeRow={true} 
+                    onSelectMovie={onSelectMovie} 
+                    onToggleMyList={onToggleMyList} 
+                    onToggleFavorite={onToggleFavorite} 
+                    myListIds={myListIds} 
+                    favoriteIds={favoriteIds} 
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <div className="px-6 md:px-12 flex items-center justify-between group">
+                    <div className="flex items-center gap-5">
+                       <Trophy className="text-yellow-500" size={32} />
+                       <h3 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter italic">Elite da Crítica</h3>
+                    </div>
+                    <Star className="text-yellow-500 animate-pulse" size={32} fill="currentColor" />
+                  </div>
+                  <Row 
+                    title="" 
+                    movies={categorizedMovies.highestRated.slice(0, 10)} 
+                    onSelectMovie={onSelectMovie} 
+                    onToggleMyList={onToggleMyList} 
+                    onToggleFavorite={onToggleFavorite} 
+                    myListIds={myListIds} 
+                    favoriteIds={favoriteIds} 
+                  />
+                </div>
+
+                {/* Interactive Universe Spec Grid */}
+                <div className="px-6 md:px-12">
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+                      <div className="bg-white/5 backdrop-blur-3xl p-10 rounded-[3rem] border border-white/5 group hover:border-red-600/30 transition-all">
+                         <Globe className="text-red-500 mb-6" size={32} />
+                         <h4 className="text-white font-black text-xl uppercase italic mb-2">Alcance Global</h4>
+                         <p className="text-gray-500 text-xs font-bold leading-relaxed">Disponível em 180+ países com suporte neural 4K HDR.</p>
+                      </div>
+                      <div className="bg-white/5 backdrop-blur-3xl p-10 rounded-[3rem] border border-white/5 group hover:border-blue-500/30 transition-all">
+                         <Shield className="text-blue-500 mb-6" size={32} />
+                         <h4 className="text-white font-black text-xl uppercase italic mb-2">Original Studio</h4>
+                         <p className="text-gray-500 text-xs font-bold leading-relaxed">Conteúdo verificado e restaurado para qualidade máster digital.</p>
+                      </div>
+                      <div className="bg-white/5 backdrop-blur-3xl p-10 rounded-[3rem] border border-white/5 group hover:border-purple-500/30 transition-all">
+                         <Zap className="text-purple-500 mb-6" size={32} />
+                         <h4 className="text-white font-black text-xl uppercase italic mb-2">Carga Instantânea</h4>
+                         <p className="text-gray-500 text-xs font-bold leading-relaxed">Streaming otimizado via rede de borda NetPremium Core.</p>
+                      </div>
+                      <div className="bg-white/5 backdrop-blur-3xl p-10 rounded-[3rem] border border-white/5 group hover:border-green-500/30 transition-all">
+                         <Ghost className="text-green-500 mb-6" size={32} />
+                         <h4 className="text-white font-black text-xl uppercase italic mb-2">Imersão Total</h4>
+                         <p className="text-gray-500 text-xs font-bold leading-relaxed">Áudio espacial 360 e presets de cor originais da direção.</p>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="px-6 md:px-12 flex items-center gap-5">
+                     <Calendar className="text-blue-400" size={32} />
+                     <h3 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter italic">Primeiros Passos</h3>
+                  </div>
+                  <Row 
+                    title="" 
+                    movies={categorizedMovies.chronological.slice(0, 8)} 
+                    onSelectMovie={onSelectMovie} 
+                    onToggleMyList={onToggleMyList} 
+                    onToggleFavorite={onToggleFavorite} 
+                    myListIds={myListIds} 
+                    favoriteIds={favoriteIds} 
+                  />
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'timeline' && (
+              <motion.div 
+                key="tab-timeline"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 md:px-12 max-w-4xl mx-auto"
+              >
+                <div className="relative border-l-2 border-white/5 pl-12 space-y-24 py-10">
+                  {categorizedMovies.chronological.map((movie, idx) => (
+                    <motion.div 
+                      key={movie.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true }}
+                      className="relative group cursor-pointer"
+                      onClick={() => onSelectMovie(movie)}
+                    >
+                      <div className="absolute -left-[58px] top-6 w-4 h-4 rounded-full bg-black border-2 border-red-600 z-10 group-hover:scale-150 transition-all shadow-[0_0_15px_rgba(220,38,38,0.5)]" />
+                      
+                      <div className="bg-white/5 backdrop-blur-3xl rounded-[2.5rem] border border-white/5 p-8 md:p-12 flex flex-col md:flex-row gap-8 hover:bg-white/10 transition-all">
+                         <div className="w-full md:w-48 aspect-[2/3] shrink-0 rounded-2xl overflow-hidden shadow-2xl">
+                           <img 
+                            src={movie.poster_path ? (movie.poster_path.startsWith('http') ? movie.poster_path : `https://image.tmdb.org/t/p/w500/${movie.poster_path}`) : ""} 
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                            referrerPolicy="no-referrer"
+                            alt={movie.title}
+                           />
+                         </div>
+                         <div className="flex-1 flex flex-col justify-center">
+                            <span className="text-red-600 font-black italic tracking-widest text-[10px] uppercase mb-2">Evento #{idx + 1} • {movie.release_year}</span>
+                            <h4 className="text-white font-black text-2xl md:text-3xl uppercase tracking-tighter mb-4 italic leading-tight group-hover:text-red-500 transition-colors">{movie.title}</h4>
+                            <p className="text-gray-500 text-sm font-medium line-clamp-3 leading-relaxed mb-6 italic">{movie.overview}</p>
+                            <div className="flex items-center gap-6">
+                               <div className="flex items-center gap-2">
+                                  <Star size={14} className="text-yellow-400" fill="currentColor" />
+                                  <span className="text-xs font-black text-white">{movie.rating?.toFixed(1)}</span>
+                               </div>
+                               <div className="flex items-center gap-2">
+                                  <Clock size={14} className="text-gray-400" />
+                                  <span className="text-xs font-black text-gray-400">{movie.runtime}m</span>
+                               </div>
+                            </div>
+                         </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                  
+                  <div className="h-64 flex flex-col items-center justify-center border-t border-white/5 pt-20">
+                     <span className="text-gray-600 font-black uppercase tracking-[0.5em] text-[10px]">Fim da Cronologia Atual</span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'stats' && (
+              <motion.div 
+                key="tab-stats"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.05 }}
+                className="px-6 md:px-12 max-w-7xl mx-auto"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                   <div className="bg-[#111] p-12 rounded-[3.5rem] border border-white/5 flex flex-col items-center text-center">
+                      <LayoutGrid className="text-red-600 mb-8" size={48} />
+                      <span className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500 mb-2">Massa Total</span>
+                      <h4 className="text-6xl font-black text-white uppercase italic tracking-tighter mb-4">{stats.count}</h4>
+                      <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Capítulos Catalogados</p>
+                   </div>
+                   <div className="bg-[#111] p-12 rounded-[3.5rem] border border-white/5 flex flex-col items-center text-center">
+                      <Clock className="text-blue-600 mb-8" size={48} />
+                      <span className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500 mb-2">Imersão Temporal</span>
+                      <h4 className="text-6xl font-black text-white uppercase italic tracking-tighter mb-4">{stats.hours}h</h4>
+                      <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Duração Agregada</p>
+                   </div>
+                   <div className="bg-[#111] p-12 rounded-[3.5rem] border border-white/5 flex flex-col items-center text-center">
+                      <TrendingUp className="text-green-600 mb-8" size={48} />
+                      <span className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500 mb-2">Resonância Neural</span>
+                      <h4 className="text-6xl font-black text-white uppercase italic tracking-tighter mb-4">{stats.avgRating.toFixed(1)}</h4>
+                      <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Qualidade Média</p>
+                   </div>
+                   
+                   <div className="md:col-span-2 lg:col-span-3 bg-white/5 p-12 rounded-[3.5rem] border border-white/5 flex flex-col md:flex-row items-center gap-12">
+                      <div className="flex-1 space-y-6">
+                         <h4 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter italic">DDA: DNA do Universo</h4>
+                         <p className="text-gray-500 text-lg font-medium leading-relaxed italic">
+                            O universo de {franchise.name} abrange {stats.yearRange}. Analisamos trilhões de pontos de dados para garantir que a experiência de streaming seja 100% fiel à intenção dos criadores.
+                         </p>
+                         <div className="flex gap-4">
+                            <div className="px-6 py-2 bg-red-600/20 text-red-600 rounded-full border border-red-600/30 text-[10px] font-black uppercase">Ficção Científica</div>
+                            <div className="px-6 py-2 bg-blue-600/20 text-blue-600 rounded-full border border-blue-600/30 text-[10px] font-black uppercase">Ação Épica</div>
+                         </div>
+                      </div>
+                      <div className="w-full md:w-64 aspect-square bg-black rounded-full border-8 border-white/5 flex items-center justify-center p-8 relative overflow-hidden group">
+                         <div className="absolute inset-0 bg-red-600/20 animate-pulse blur-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                         <Cpu size={80} className="text-white relative z-10 animate-spin-slow" />
+                      </div>
+                   </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* Floating Actions */}
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[260] flex items-center gap-4 hidden lg:flex">
+           <button className="px-8 py-3 bg-white text-black rounded-full font-black uppercase tracking-widest text-[10px] shadow-2xl flex items-center gap-3">
+              <Download size={14} /> Download Saga Offline
+           </button>
+           <button className="px-8 py-3 bg-black/80 backdrop-blur-3xl text-white border border-white/10 rounded-full font-black uppercase tracking-widest text-[10px] shadow-2xl flex items-center gap-3">
+              <Heart size={14} className="text-red-500" /> Favoritar Universo
+           </button>
+        </div>
+
+      </motion.div>
+
+      <style>{`
+        .animate-spin-slow { animation: spin 8s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+      `}</style>
+    </div>
+  );
+});
+
+export default UniverseView;
