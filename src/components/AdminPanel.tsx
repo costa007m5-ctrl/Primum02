@@ -2071,10 +2071,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           onClick={handleUpdateExistingCollections}
                           disabled={collectionAutomationState?.isScanning}
                           className="flex-1 flex flex-col items-center justify-center gap-2 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-600/20 text-blue-500 font-black italic uppercase text-xs py-6 rounded-3xl transition-all active:scale-95 disabled:opacity-50 group"
-                          title="Atualizar posters e logos de todas as coleções existentes"
+                          title="Atualizar posters, logos e banners de todas as coleções existentes"
                         >
-                          <Database size={20} className="group-hover:scale-110 transition-transform" />
-                          <span>Check-up Coleções</span>
+                          <ImageIcon size={20} className="group-hover:scale-110 transition-transform" />
+                          <span>Reparar Banners</span>
                         </button>
                         
                         {onSyncMissingLogos && (
