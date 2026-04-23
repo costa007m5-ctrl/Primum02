@@ -24,6 +24,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import ContinueWatchingRow from './components/ContinueWatchingRow';
 import NewReleasesRow from './components/NewReleasesRow';
 import CinemaRow from './components/CinemaRow';
+import Top10Row from './components/Top10Row';
+import CircleCollectionsRow from './components/CircleCollectionsRow';
 import AppInfo from './components/AppInfo';
 
 const AdminPanel = React.lazy(() => import('./components/AdminPanel'));
@@ -116,7 +118,8 @@ const HomeView = React.memo(({
   cinemaMovies,
   searchQuery,
   searchResults,
-  categories
+  categories,
+  franchises
 }: any) => {
   const navigate = useNavigate();
   const randomBannerMovie = useMemo(() => {
@@ -222,6 +225,26 @@ const HomeView = React.memo(({
           onSelectProvider={(p: any) => navigate(`/provider/${p}`)} 
           streamingProviders={streamingProviders}
         />
+
+        {franchises && franchises.length > 0 && (
+          <CircleCollectionsRow franchises={franchises} />
+        )}
+
+        {top10Movies.length > 0 && (
+          <Top10Row 
+            title="TOP 10 Filmes de Hoje"
+            movies={top10Movies}
+            onSelectMovie={handleSelectMovie}
+          />
+        )}
+
+        {top10Series.length > 0 && (
+          <Top10Row 
+            title="TOP 10 Séries de Hoje"
+            movies={top10Series}
+            onSelectMovie={handleSelectMovie}
+          />
+        )}
 
         {/* 🚀 CATEGORIES CAROUSEL SYSTEM NA TELA INICIAL */}
         <section className="space-y-4 md:space-y-6 group pt-4 md:pt-8 px-4 md:px-12">
@@ -2696,23 +2719,32 @@ export default function App() {
         const collRes = await tmdb.get(requests.fetchCollection(collId));
         const collection = collRes.data;
 
-        // Como a rota /collection/:id/images na TMDB não retorna logos (apenas posters/backdrops),
-        // buscamos a logo diretamente a partir das imagens do primeiro filme ou série da coleção.
+        // Procurar Logo Oficial da Coleção
         let logoPath = firstMovie.collection_logo_path;
         
         try {
-          const imagesPath = firstMovie.type === 'series' ? requests.tvImages(firstMovie.id) : requests.movieImages(firstMovie.id);
-          const imagesRes = await tmdb.get(imagesPath, { params: { include_image_language: 'pt,en,null' } });
-          const logos = imagesRes.data.logos || [];
+          // 1. Tentar buscar logos da própria coleção (embora a API de coleção seja limitada, algumas retornam)
+          const collImagesRes = await tmdb.get(`/collection/${collId}/images`, { params: { include_image_language: 'pt,en,null' } }).catch(() => null);
+          const collLogos = collImagesRes?.data?.logos || [];
           
-          const logo = logos.find((l: any) => l.iso_639_1 === 'pt') || 
-                       logos.find((l: any) => l.iso_639_1 === 'en') || 
-                       logos[0];
+          let bestLogo = collLogos.find((l: any) => l.iso_639_1 === 'pt') || 
+                         collLogos.find((l: any) => l.iso_639_1 === 'en') || 
+                         collLogos[0];
+
+          // 2. Se não achou na coleção, buscar nos filmes da coleção (geralmente trazem a logo da saga)
+          if (!bestLogo) {
+             const imagesPath = firstMovie.type === 'series' ? requests.tvImages(firstMovie.id) : requests.movieImages(firstMovie.id);
+             const imagesRes = await tmdb.get(imagesPath, { params: { include_image_language: 'pt,en,null' } });
+             const logos = imagesRes.data.logos || [];
+             bestLogo = logos.find((l: any) => l.iso_639_1 === 'pt') || 
+                        logos.find((l: any) => l.iso_639_1 === 'en') || 
+                        logos[0];
+          }
           
-          if (logo) {
-            logoPath = `https://image.tmdb.org/t/p/original${logo.file_path}`;
+          if (bestLogo) {
+            logoPath = `https://image.tmdb.org/t/p/original${bestLogo.file_path}`;
           } else if (firstMovie.logo_path) {
-            logoPath = firstMovie.logo_path; // Fallback para a logo do filme em si
+            logoPath = firstMovie.logo_path;
           }
         } catch (e) {
           console.error("Erro ao buscar logo para a coleção:", e);
@@ -3845,6 +3877,7 @@ export default function App() {
               searchQuery={searchQuery}
               searchResults={searchResults}
               categories={categories}
+              franchises={dynamicFranchises}
             />
           } />
           
