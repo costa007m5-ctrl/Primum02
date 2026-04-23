@@ -74,8 +74,8 @@ const CircleCollectionsRow: React.FC<CircleCollectionsRowProps> = ({ franchises 
                {/* Main Circle */}
                <div className="w-full h-full rounded-full overflow-hidden border-2 border-white/10 group-hover/circle:border-red-600 transition-all duration-500 shadow-xl relative">
                   <img 
-                    src={f.backdrop || 'https://images.unsplash.com/photo-1542204111-970c9220bd5d?auto=format&fit=crop&q=80&w=1000'} 
-                    className="w-full h-full object-cover grayscale-0 opacity-80 group-hover/circle:opacity-100 group-hover/circle:scale-105 transition-all duration-700"
+                    src={f.backdrop || f.poster || 'https://images.unsplash.com/photo-1542204111-970c9220bd5d?auto=format&fit=crop&q=80&w=1000'} 
+                    className="w-full h-full object-cover grayscale-0 opacity-80 group-hover/circle:opacity-100 group-hover/circle:scale-105 transition-all duration-700 active:grayscale"
                     alt={f.name}
                     referrerPolicy="no-referrer"
                   />

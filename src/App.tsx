@@ -2763,7 +2763,7 @@ export default function App() {
         }
 
         const posterPath = collection.poster_path ? `https://image.tmdb.org/t/p/original${collection.poster_path}` : firstMovie.collection_poster_path;
-        const backdropPath = collection.backdrop_path ? `https://image.tmdb.org/t/p/original${collection.backdrop_path}` : firstMovie.collection_backdrop_path;
+        const backdropPath = collection.backdrop_path ? `https://image.tmdb.org/t/p/original${collection.backdrop_path}` : (firstMovie.collection_backdrop_path || firstMovie.backdrop_path);
 
         // Atualizar todos os filmes desta coleção
         for (const movie of moviesInColl) {
