@@ -8,38 +8,54 @@ interface BannerProps {
   onPlay: (movie: Movie, episodeUrl?: string) => void;
   onInfo: (movie: Movie) => void;
   movieOverride?: Movie | null;
+  movies?: Movie[];
 }
 
-const Banner = React.memo(({ onPlay, onInfo, movieOverride }: BannerProps) => {
+const Banner = React.memo(({ onPlay, onInfo, movieOverride, movies = [] }: BannerProps) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [movie, setMovie] = useState<Movie | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
+  // Initial load and rotation setup
   useEffect(() => {
-    setIsLoaded(false);
-    setLogoUrl(null);
-    
     if (movieOverride) {
       setMovie(movieOverride);
       return;
     }
 
-    async function fetchData() {
-      try {
-        const request = await tmdb.get(requests.fetchNetflixOriginals);
-        const randomMovie = request.data.results[
-          Math.floor(Math.random() * request.data.results.length)
-        ];
-        setMovie(randomMovie);
-      } catch (error) {
-        console.error("Erro ao buscar banner:", error);
+    if (movies && movies.length > 0) {
+      setMovie(movies[currentIndex]);
+    } else {
+      async function fetchData() {
+        try {
+          const request = await tmdb.get(requests.fetchNetflixOriginals);
+          const randomItems = request.data.results;
+          setMovie(randomItems[0]);
+        } catch (error) {
+          console.error("Erro ao buscar banner:", error);
+        }
       }
+      fetchData();
     }
-    fetchData();
-  }, [movieOverride]);
+  }, [movieOverride, movies, currentIndex]);
+
+  // Auto-rotation logic
+  useEffect(() => {
+    if (movieOverride || isPaused || !movies || movies.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % Math.min(movies.length, 5)); // Rotate top 5
+    }, 8000); // 8 seconds per slide
+
+    return () => clearInterval(interval);
+  }, [movieOverride, isPaused, movies]);
 
   useEffect(() => {
     if (movie?.id) {
+      setIsLoaded(false);
+      setLogoUrl(null);
       async function fetchLogo() {
         const logo = await getMovieLogo(movie!.id, (movie as any).name ? 'tv' : 'movie');
         setLogoUrl(logo);
@@ -65,13 +81,16 @@ const Banner = React.memo(({ onPlay, onInfo, movieOverride }: BannerProps) => {
   return (
     <header
       className="relative h-[80vh] md:h-[95vh] text-white flex flex-col justify-center overflow-hidden"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
     >
       <AnimatePresence mode="wait">
         <motion.div 
           key={movie.id}
           initial={{ opacity: 0 }}
           animate={{ opacity: isLoaded ? 1 : 0 }}
-          transition={{ duration: 0.3 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.8 }}
           className="absolute inset-0 z-0"
         >
           <img 
@@ -83,6 +102,21 @@ const Banner = React.memo(({ onPlay, onInfo, movieOverride }: BannerProps) => {
           />
         </motion.div>
       </AnimatePresence>
+
+      {/* Slide Indicators */}
+      {movies.length > 1 && !movieOverride && (
+        <div className="absolute bottom-32 md:bottom-40 right-4 md:right-20 z-30 flex items-center gap-3">
+          {movies.slice(0, 5).map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentIndex(i)}
+              className={`h-1 md:h-1.5 transition-all duration-500 rounded-full ${
+                i === currentIndex ? 'w-8 md:w-16 bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.8)]' : 'w-2 md:w-4 bg-white/20 hover:bg-white/40'
+              }`}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Skeleton for Banner Image */}
       {!isLoaded && (

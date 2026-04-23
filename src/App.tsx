@@ -25,7 +25,6 @@ import ContinueWatchingRow from './components/ContinueWatchingRow';
 import NewReleasesRow from './components/NewReleasesRow';
 import CinemaRow from './components/CinemaRow';
 import Top10Row from './components/Top10Row';
-import CircleCollectionsRow from './components/CircleCollectionsRow';
 import AppInfo from './components/AppInfo';
 
 const AdminPanel = React.lazy(() => import('./components/AdminPanel'));
@@ -122,10 +121,38 @@ const HomeView = React.memo(({
   franchises
 }: any) => {
   const navigate = useNavigate();
-  const randomBannerMovie = useMemo(() => {
-    if (myMovies.length === 0) return null;
-    return myMovies[Math.floor(Math.random() * myMovies.length)];
-  }, [myMovies]);
+  
+  const bannerMovies = useMemo(() => {
+    if (myMovies.length === 0) return [];
+    // Combine some new releases, top movies and random ones for the rotating banner
+    const pool = [...newMovies, ...top10Movies, ...myMovies.slice(0, 20)];
+    return [...new Set(pool)].sort(() => 0.5 - Math.random()).slice(0, 10);
+  }, [myMovies, newMovies, top10Movies]);
+
+  const franchiseToMovie = (f: any) => ({
+    ...f,
+    title: f.name,
+    poster_path: f.poster || f.backdrop || f.logo,
+    backdrop_path: f.backdrop || f.poster,
+    logo_path: f.logo,
+    overview: f.description,
+    type: 'franchise',
+    isFranchise: true
+  });
+
+  const franchiseMovies = useMemo(() => {
+    return franchises.map(franchiseToMovie);
+  }, [franchises]);
+
+  const top10Franchises = useMemo(() => {
+    return franchiseMovies.slice(0, 10);
+  }, [franchiseMovies]);
+
+  const animationFranchises = useMemo(() => {
+    return franchiseMovies.filter(f => 
+      f.id === 'disney' || f.id === 'pixar' || f.name.toLowerCase().includes('anime')
+    );
+  }, [franchiseMovies]);
 
   // Optimize and randomize movies per user per session to speed up rendering
   const optimizedGenreMovies = useMemo(() => {
@@ -198,26 +225,17 @@ const HomeView = React.memo(({
       key="home"
       className="animate-fade-in"
     >
-      {randomBannerMovie ? (
+      {bannerMovies.length > 0 ? (
         <Banner 
-          movieOverride={randomBannerMovie}
+          movies={bannerMovies}
           onPlay={(m, url) => handlePlayMovie(m, url)} 
           onInfo={handleSelectMovie}
         />
       ) : (
-        <div className="h-[60vh] flex flex-col items-center justify-center text-white bg-gradient-to-b from-transparent to-[#111] px-4">
-          <div className="w-24 h-24 bg-white/5 rounded-3xl flex items-center justify-center mb-8 border border-white/10 animate-pulse">
-            <Plus size={48} className="text-gray-600" />
-          </div>
-          <h1 className="text-4xl md:text-6xl font-black mb-4 uppercase tracking-tighter italic text-center">Sua lista está vazia</h1>
-          <p className="text-gray-400 mb-8 max-w-md text-center leading-relaxed">Adicione seus filmes favoritos ou conecte seu Google Drive para começar a assistir.</p>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="bg-white text-black px-10 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-gray-200 transition-all shadow-xl hover:scale-105 active:scale-95"
-          >
-            Adicionar Primeiro Filme
-          </button>
-        </div>
+        <Banner 
+          onPlay={(m, url) => handlePlayMovie(m, url)} 
+          onInfo={handleSelectMovie}
+        />
       )}
 
       <div className="pb-4 mt-[-40px] md:mt-[-100px] relative z-20 space-y-3 md:space-y-4">
@@ -227,7 +245,29 @@ const HomeView = React.memo(({
         />
 
         {franchises && franchises.length > 0 && (
-          <CircleCollectionsRow franchises={franchises} />
+          <Row 
+            title="Explorar Sagas"
+            movies={franchiseMovies}
+            onSelectMovie={(f: any) => navigate(`/universe/${f.id}`)}
+            type="landscape"
+          />
+        )}
+
+        {top10Franchises.length > 0 && (
+          <Top10Row 
+            title="Top 10 Sagas Populares"
+            movies={top10Franchises as any}
+            onSelectMovie={(f: any) => navigate(`/universe/${f.id}`)}
+          />
+        )}
+
+        {animationFranchises.length > 0 && (
+          <Row 
+            title="Animações & Universos Mágicos"
+            movies={animationFranchises}
+            onSelectMovie={(f: any) => navigate(`/universe/${f.id}`)}
+            type="standard"
+          />
         )}
 
         {top10Movies.length > 0 && (
