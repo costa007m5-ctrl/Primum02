@@ -483,8 +483,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, ro
             if (isDriveVideo) {
               setDrivePlayMethod('iframe');
               setPlayerStyle('standard');
-            } else if (isKingX) {
-              setPlayerStyle('special');
             } else {
               setPlayerStyle('standard');
             }

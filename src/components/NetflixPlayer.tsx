@@ -307,10 +307,9 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
             if (Hls.isSupported()) {
               const hls = new Hls({
                 enableWorker: true,
-                startPosition: 0,
-                maxBufferLength: 30,
-                maxMaxBufferLength: 60,
-                autoStartLoad: true,
+                capLevelToPlayerSize: true,
+                startLevel: -1,
+                autoStartLoad: false, // Início manual apra evitar engasgos
                 xhrSetup: (xhr) => { 
                   xhr.withCredentials = false;
                 }
@@ -321,6 +320,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 const levels = data.levels.map((l, i) => ({ id: i, height: l.height, bitrate: l.bitrate })).sort((a, b) => b.height - a.height);
                 setQualityLevels(levels);
                 setLoadingProgress(50);
+                hls.startLoad(0);
                 video.play().catch(() => {});
               });
               hls.on(Hls.Events.FRAG_BUFFERED, () => {
@@ -370,10 +370,9 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
             if (Hls.isSupported()) {
               const hls = new Hls({
                 enableWorker: true,
-                startPosition: initialTime,
-                maxBufferLength: 30,
-                maxMaxBufferLength: 60,
-                autoStartLoad: true,
+                capLevelToPlayerSize: true,
+                startLevel: -1,
+                autoStartLoad: false, // Início manual para ser instantâneo e não quebrar rede
                 xhrSetup: (xhr) => { 
                   xhr.withCredentials = false;
                 }
@@ -384,6 +383,8 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 const levels = data.levels.map((l, i) => ({ id: i, height: l.height, bitrate: l.bitrate })).sort((a, b) => b.height - a.height);
                 setQualityLevels(levels);
                 setLoadingProgress(50);
+                hls.startLoad(initialTime);
+                video.currentTime = initialTime;
                 video.play().catch(() => {});
               });
               hls.on(Hls.Events.FRAG_BUFFERED, () => {
@@ -1054,6 +1055,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         className="w-full h-full object-contain"
         autoPlay
         playsInline
+        crossOrigin="anonymous"
         webkit-playsinline="true"
         x-webkit-airplay="allow"
         referrerPolicy="no-referrer"
