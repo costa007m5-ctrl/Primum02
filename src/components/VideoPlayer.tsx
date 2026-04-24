@@ -311,11 +311,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, ro
   useEffect(() => {
     const url = movie.videoUrl || '';
     const isDrive = url.includes('drive.google.com');
+    const isKingXUrl = url.includes('kingx.dev') || url.includes('teradl.kingx.dev');
     const isTera = url.includes('terabox') || url.includes('teradl') || url.includes('kingx');
 
     if (isDrive) {
       setDrivePlayMethod('iframe');
       setPlayerStyle('standard'); // Usar o fluxo padrão que renderiza o iframe no final
+      requestLandscape();
+    } else if (isKingXUrl) {
+      setPlayerStyle('special');
       requestLandscape();
     } else if (isTera) {
       setPlayerStyle('netflix');
@@ -432,7 +436,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, ro
 
   useEffect(() => {
     if (playerStyle === null && isKingX) {
-      setPlayerStyle('netflix');
+      setPlayerStyle('special');
       // Tentar rotacionar imediatamente para KingX
       requestLandscape();
     }
