@@ -128,12 +128,12 @@ const MovieCard = React.memo(({ movie, idx, isLargeRow, isContinueWatching, onSe
       )}
       
       {/* Movie Logo / Title Overlay */}
-      <div className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent transition-opacity duration-300 flex flex-col justify-end p-3 md:p-6 ${type === 'circle' ? 'items-center text-center' : ''}`}>
+      <div className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent transition-opacity duration-300 flex flex-col p-3 md:p-6 ${type === 'circle' ? 'items-center justify-center text-center bg-black/20 group-hover/card:bg-transparent' : 'justify-end'}`}>
         {movie.logo_path ? (
           <img 
             src={movie.logo_path.startsWith('http') ? movie.logo_path : `https://image.tmdb.org/t/p/w500/${movie.logo_path}`} 
             alt={movie.title || movie.name} 
-            className={`${type === 'circle' ? 'h-6 md:h-10' : 'h-8 md:h-14'} object-contain drop-shadow-[0_0_20px_rgba(0,0,0,0.8)] mb-1 opacity-90 group-hover/card:scale-105 transition-transform duration-300`}
+            className={`${type === 'circle' ? 'w-auto h-auto max-w-[80%] max-h-[80%]' : 'h-8 md:h-14'} object-contain drop-shadow-[0_0_20px_rgba(0,0,0,0.8)] mb-1 opacity-90 group-hover/card:scale-105 transition-transform duration-300`}
             referrerPolicy="no-referrer"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';
@@ -143,7 +143,7 @@ const MovieCard = React.memo(({ movie, idx, isLargeRow, isContinueWatching, onSe
           />
         ) : null}
         <h4 
-          className="fallback-title text-white font-black text-[10px] md:text-xl uppercase tracking-tighter italic leading-none truncate drop-shadow-[0_2px_10px_rgba(0,0,0,1)]"
+          className={`fallback-title text-white font-black text-[10px] uppercase tracking-tighter italic leading-none drop-shadow-[0_2px_10px_rgba(0,0,0,1)] ${type === 'circle' ? 'md:text-[14px] text-center' : 'md:text-xl truncate'}`}
           style={{ display: movie.logo_path ? 'none' : 'block' }}
         >
           {movie.title || movie.name}

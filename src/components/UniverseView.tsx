@@ -31,6 +31,8 @@ const UniverseView: React.FC<UniverseViewProps> = React.memo(({
   const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'story' | 'stats'>('overview');
   const [isIntroComplete, setIsIntroComplete] = useState(false);
   const [searchInUniverse, setSearchInUniverse] = useState('');
+  const [bannerIndex, setBannerIndex] = useState(0);
+  const [bannerOrder, setBannerOrder] = useState<'chronological' | 'latest'>('chronological');
   const containerRef = useRef<HTMLDivElement>(null);
   const { scrollY } = useScroll({ container: containerRef });
   
@@ -39,12 +41,48 @@ const UniverseView: React.FC<UniverseViewProps> = React.memo(({
   const contentY = useTransform(scrollY, [0, 400], [0, -100]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsIntroComplete(true), 1800);
+    const timer = setTimeout(() => setIsIntroComplete(true), 2500);
     return () => clearTimeout(timer);
   }, []);
 
-  const featuredMovie = franchise.movies[0];
-  
+  // History Banner rotation
+  useEffect(() => {
+    if (activeTab !== 'overview' || !franchise.movies.length) return;
+    const interval = setInterval(() => {
+      setBannerIndex((prev) => (prev + 1) % Math.min(franchise.movies.length, 10));
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [activeTab, franchise.movies.length]);
+
+  // Categorize movies within the universe
+  const categorizedMovies = useMemo(() => {
+    let movies = [...franchise.movies] as Movie[];
+    
+    if (searchInUniverse) {
+      movies = movies.filter(m => 
+        (m.title || "").toLowerCase().includes(searchInUniverse.toLowerCase()) ||
+        (m.overview || "").toLowerCase().includes(searchInUniverse.toLowerCase())
+      );
+    }
+
+    return {
+      chronological: [...movies].sort((a, b) => {
+        // Usa o ano de lançamento para ordem cronológica. Na vida real, a API precisaria fornecer a cronologia real (ex: Capitã Marvel antes de Homem de Ferro).
+        return (a.release_year || 0) - (b.release_year || 0);
+      }),
+      highestRated: [...movies].sort((a, b) => (b.rating || 0) - (a.rating || 0)),
+      latest: [...movies].sort((a, b) => {
+        const dateA = a.release_date || "";
+        const dateB = b.release_date || "";
+        return dateA.localeCompare(dateB); // Ascending order
+      })
+    };
+  }, [franchise.movies, searchInUniverse]);
+
+  const featuredMovie = bannerOrder === 'chronological' 
+    ? categorizedMovies.chronological[bannerIndex] || categorizedMovies.chronological[0]
+    : categorizedMovies.latest[bannerIndex] || categorizedMovies.latest[0];
+
   // Advanced stats calculation
   const stats = useMemo(() => {
     const movies = franchise.movies as Movie[];
@@ -63,28 +101,6 @@ const UniverseView: React.FC<UniverseViewProps> = React.memo(({
     };
   }, [franchise.movies]);
 
-  // Categorize movies within the universe
-  const categorizedMovies = useMemo(() => {
-    let movies = [...franchise.movies] as Movie[];
-    
-    if (searchInUniverse) {
-      movies = movies.filter(m => 
-        (m.title || "").toLowerCase().includes(searchInUniverse.toLowerCase()) ||
-        (m.overview || "").toLowerCase().includes(searchInUniverse.toLowerCase())
-      );
-    }
-
-    return {
-      chronological: [...movies].sort((a, b) => (a.release_year || 0) - (b.release_year || 0)),
-      highestRated: [...movies].sort((a, b) => (b.rating || 0) - (a.rating || 0)),
-      latest: [...movies].sort((a, b) => {
-        const dateA = a.release_date || "";
-        const dateB = b.release_date || "";
-        return dateB.localeCompare(dateA);
-      })
-    };
-  }, [franchise.movies, searchInUniverse]);
-
   const TABS = [
     { id: 'overview', label: 'Início', icon: Globe },
     { id: 'story', label: 'A Saga', icon: Sparkles },
@@ -100,29 +116,60 @@ const UniverseView: React.FC<UniverseViewProps> = React.memo(({
             key="universe-intro"
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[300] bg-black flex flex-col items-center justify-center p-10"
+            className="fixed inset-0 z-[400] bg-black flex flex-col items-center justify-center p-10 overflow-hidden"
           >
+            {/* Pulsing Background Glow */}
             <motion.div 
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 1 }}
-              className="flex flex-col items-center"
+              animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }}
+              transition={{ duration: 4, repeat: Infinity }}
+              className={`absolute inset-0 blur-[100px] opacity-20`}
+              style={{ background: `radial-gradient(circle, ${franchise.color || '#ff0000'} 0%, transparent 70%)` }}
+            />
+
+            <motion.div 
+              initial={{ scale: 0.5, opacity: 0, y: 50 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={{ 
+                type: "spring",
+                stiffness: 100,
+                damping: 20
+              }}
+              className="flex flex-col items-center relative z-10"
             >
-              {franchise.logo ? (
-                <img src={franchise.logo} className="h-16 md:h-24 object-contain mb-8 animate-pulse" referrerPolicy="no-referrer" />
-              ) : (
-                <h1 className="text-3xl md:text-5xl font-black text-white italic uppercase tracking-[0.2em] mb-8">{franchise.name}</h1>
-              )}
-              
-              <div className="w-64 h-1 bg-white/5 rounded-full overflow-hidden relative">
+              <div className="relative mb-12">
                 <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: '100%' }}
-                  transition={{ duration: 2, ease: "easeInOut" }}
-                  className="absolute inset-0 bg-red-600 shadow-[0_0_20px_rgba(220,38,38,0.8)]"
+                   animate={{ rotate: 360 }}
+                   transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                   className="absolute -inset-12 border-2 border-dashed border-white/5 rounded-full"
                 />
+                {franchise.logo ? (
+                  <motion.img 
+                    initial={{ filter: 'brightness(0)' }}
+                    animate={{ filter: 'brightness(1)' }}
+                    transition={{ duration: 1.5 }}
+                    src={franchise.logo} 
+                    className="h-20 md:h-32 object-contain drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]" 
+                    referrerPolicy="no-referrer" 
+                  />
+                ) : (
+                  <h1 className="text-4xl md:text-6xl font-black text-white italic uppercase tracking-[0.25em] drop-shadow-2xl">{franchise.name}</h1>
+                )}
               </div>
-              <span className="mt-6 text-[10px] font-black uppercase tracking-[0.5em] text-gray-500 animate-pulse">Sincronizando Realidade...</span>
+              
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-48 h-1 bg-white/5 rounded-full overflow-hidden relative">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: '100%' }}
+                    transition={{ duration: 2.2, ease: "easeInOut" }}
+                    className="absolute inset-0 bg-red-600 shadow-[0_0_20px_rgba(220,38,38,1)]"
+                  />
+                </div>
+                <div className="flex items-center gap-3">
+                   <div className="w-1.5 h-1.5 bg-red-600 rounded-full animate-ping" />
+                   <span className="text-[9px] font-black uppercase tracking-[0.6em] text-white/50">Carregando Multiverso</span>
+                </div>
+              </div>
             </motion.div>
           </motion.div>
         )}
@@ -137,19 +184,26 @@ const UniverseView: React.FC<UniverseViewProps> = React.memo(({
         {/* Cinematic Backdrop Overlay */}
         <div className="fixed inset-0 pointer-events-none -z-10">
           <div className="absolute inset-0 bg-black" />
-          <motion.div 
-            style={{ opacity: heroOpacity, scale: heroScale }}
-            className="absolute inset-0"
-          >
-            <img 
-              src={franchise.backdrop || featuredMovie?.backdrop_path} 
-              className="w-full h-full object-cover blur-[2px] scale-110" 
-              referrerPolicy="no-referrer"
-              alt=""
-            />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.6)_100%)]" />
-            <div className={`absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-[#050505]`} />
-          </motion.div>
+          <AnimatePresence mode="wait">
+            <motion.div 
+              key={`bg-${featuredMovie?.id || 'default'}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 2 }}
+              style={{ scale: heroScale }}
+              className="absolute inset-0"
+            >
+              <img 
+                src={franchise.backdrop || featuredMovie?.backdrop_path || featuredMovie?.poster_path} 
+                className="w-full h-full object-cover blur-[2px] scale-110" 
+                referrerPolicy="no-referrer"
+                alt=""
+              />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.6)_100%)]" />
+              <div className={`absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-[#050505]`} />
+            </motion.div>
+          </AnimatePresence>
           
           {/* Animated Mesh Blobs */}
           <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-30">
@@ -238,7 +292,7 @@ const UniverseView: React.FC<UniverseViewProps> = React.memo(({
               </h1>
             )}
 
-            <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 mb-8 mt-4 md:mt-0">
+            <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 mt-4 md:mt-0">
                <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/10">
                   <Activity size={14} className="text-red-600" />
                   <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">{stats.count} Títulos</span>
@@ -253,9 +307,81 @@ const UniverseView: React.FC<UniverseViewProps> = React.memo(({
                </div>
             </div>
 
-            <p className="text-sm md:text-xl text-gray-400 font-medium italic max-w-3xl mx-auto leading-relaxed mb-16 px-4">
-              {franchise.description || "Inicie uma jornada sem precedentes através das camadas narrativas deste universo épico, onde cada escolha ressoa através do multiverso."}
-            </p>
+            {franchise.movies.length > 1 && (
+              <div className="mt-8 mb-8 bg-black/40 p-4 md:p-8 rounded-[2rem] border border-white/5 backdrop-blur-md max-w-5xl mx-auto relative z-10 w-full shadow-2xl">
+                <div className="flex flex-col xl:flex-row items-center gap-8">
+                   {/* Movie Poster Carousel Effect */}
+                   <div className="w-48 xl:w-64 aspect-[2/3] shrink-0 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.8)] border border-white/10 relative cursor-pointer" onClick={() => onSelectMovie(featuredMovie)}>
+                     <AnimatePresence mode="wait">
+                       <motion.img 
+                         key={`poster-${featuredMovie?.id}`}
+                         initial={{ opacity: 0, scale: 1.1 }}
+                         animate={{ opacity: 1, scale: 1 }}
+                         exit={{ opacity: 0, scale: 0.9 }}
+                         transition={{ duration: 0.5 }}
+                         src={featuredMovie?.poster_path?.startsWith('http') ? featuredMovie?.poster_path : `https://image.tmdb.org/t/p/w500/${featuredMovie?.poster_path}`}
+                         className="w-full h-full object-cover"
+                         referrerPolicy="no-referrer"
+                         alt={featuredMovie?.title}
+                       />
+                     </AnimatePresence>
+                   </div>
+                   
+                   <div className="flex-1 flex flex-col justify-center text-left w-full">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full mb-6 gap-4">
+                         <div className="flex items-center gap-3">
+                            <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+                            <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em] text-red-500 italic">
+                              Em Destaque
+                            </span>
+                         </div>
+                         <div className="flex bg-white/5 rounded-full p-1 border border-white/10 self-start sm:self-auto">
+                            <button 
+                              onClick={() => { setBannerOrder('chronological'); setBannerIndex(0); }}
+                              className={`text-[8px] md:text-[10px] uppercase font-black tracking-widest px-4 py-1.5 rounded-full transition-all ${bannerOrder === 'chronological' ? 'bg-red-600 text-white' : 'text-gray-500 hover:text-white'}`}
+                            >
+                              Cronologia
+                            </button>
+                            <button 
+                              onClick={() => { setBannerOrder('latest'); setBannerIndex(0); }}
+                              className={`text-[8px] md:text-[10px] uppercase font-black tracking-widest px-4 py-1.5 rounded-full transition-all ${bannerOrder === 'latest' ? 'bg-red-600 text-white' : 'text-gray-500 hover:text-white'}`}
+                            >
+                              Lançamento
+                            </button>
+                         </div>
+                      </div>
+                      
+                      <h3 className="text-2xl md:text-4xl font-black text-white italic drop-shadow-lg leading-tight mb-4">
+                        <span className="text-red-600 mr-2">{bannerIndex + 1}.</span> 
+                        {featuredMovie?.title || featuredMovie?.name} 
+                        <span className="text-gray-500 text-xl md:text-2xl ml-2">({featuredMovie?.release_year})</span>
+                      </h3>
+
+                      <p className="text-sm md:text-base text-gray-400 font-medium italic leading-relaxed mb-8 line-clamp-3 md:line-clamp-4">
+                        {featuredMovie?.overview || franchise.description || "Inicie uma jornada sem precedentes através das camadas narrativas deste universo épico."}
+                      </p>
+
+                      <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
+                        {(bannerOrder === 'chronological' ? categorizedMovies.chronological : categorizedMovies.latest).slice(0, 10).map((_: any, i: number) => (
+                          <button 
+                            key={`dot-${i}`} 
+                            onClick={() => setBannerIndex(i)}
+                            className={`h-1.5 rounded-full transition-all duration-500 cursor-pointer ${i === bannerIndex ? 'w-8 md:w-12 bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.8)]' : 'w-2 bg-white/20 hover:bg-white/40'}`} 
+                          />
+                        ))}
+                      </div>
+                   </div>
+                </div>
+              </div>
+            )}
+
+            {franchise.movies.length <= 1 && (
+              <div className="mt-8 mb-8">
+                <p className="text-sm md:text-xl text-gray-400 font-medium italic max-w-3xl mx-auto leading-relaxed mb-8 px-4 text-center">
+                  {featuredMovie?.overview || franchise.description || "Inicie uma jornada sem precedentes através das camadas narrativas deste universo épico."}
+                </p>
+              </div>
+            )}
 
             <div className="flex flex-wrap items-center justify-center gap-6">
               <motion.button 
@@ -277,41 +403,24 @@ const UniverseView: React.FC<UniverseViewProps> = React.memo(({
           </motion.div>
         </header>
 
-        {/* Tab Selection - Redesigned as a Floating Menu */}
-        <div className="fixed left-0 top-1/2 -translate-y-1/2 z-[240] px-4 md:px-8 hidden lg:block">
-           <div className="flex flex-col gap-4 bg-black/40 backdrop-blur-3xl p-4 rounded-[3rem] border border-white/5 shadow-2xl">
+        {/* Floating Tab Dock */}
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] w-[95%] sm:w-auto sm:min-w-[400px]">
+           <div className="bg-black/80 backdrop-blur-3xl p-1.5 md:p-2 rounded-full border border-white/10 flex gap-1 md:gap-2 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
               {TABS.map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`group relative p-5 rounded-full transition-all ${activeTab === tab.id ? 'bg-red-600 text-white shadow-[0_0_30px_rgba(220,38,38,0.4)]' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-                >
-                  <tab.icon size={28} />
-                  <div className="absolute left-full ml-6 px-4 py-2 bg-black/80 backdrop-blur-3xl rounded-xl border border-white/10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
-                     <span className="text-[10px] font-black uppercase tracking-widest">{tab.label}</span>
-                  </div>
-                </button>
-              ))}
-           </div>
-        </div>
-
-        {/* Mobile Tab Selection */}
-        <div className="sticky top-[80px] z-[240] px-4 md:px-12 mb-12 lg:hidden">
-           <div className="max-w-2xl mx-auto bg-black/60 backdrop-blur-3xl p-2 rounded-[2.5rem] border border-white/5 flex gap-2">
-              {TABS.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-[2rem] transition-all relative ${activeTab === tab.id ? 'text-white universe-tab-active' : 'text-gray-500 hover:text-gray-300'}`}
+                  className={`flex-1 sm:flex-none px-3 sm:px-6 py-3 rounded-full transition-all relative group flex items-center justify-center gap-2 ${activeTab === tab.id ? 'text-white' : 'text-gray-500 hover:text-white'}`}
                 >
                   {activeTab === tab.id && (
-                    <motion.div 
-                      layoutId="active-universe-tab"
-                      className="absolute inset-0 bg-white/5 border border-white/10 rounded-[2rem]"
-                    />
+                     <motion.div 
+                        layoutId="active-universe-tab"
+                        className="absolute inset-0 bg-red-600 rounded-full"
+                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                     />
                   )}
-                  <tab.icon size={18} className={activeTab === tab.id ? franchise.accent : ''} />
-                  <span className="text-[10px] font-black uppercase tracking-widest hidden sm:block">{tab.label}</span>
+                  <tab.icon size={16} className={`relative z-10 ${activeTab === tab.id ? 'text-white' : 'group-hover:text-red-400 transition-colors'}`} />
+                  <span className="text-[10px] md:text-xs font-black uppercase tracking-widest relative z-10 hidden sm:block">{tab.label}</span>
                 </button>
               ))}
            </div>
@@ -334,10 +443,27 @@ const UniverseView: React.FC<UniverseViewProps> = React.memo(({
                 <div className="space-y-4">
                   <div className="px-6 md:px-12 flex items-center justify-between group">
                     <div className="flex items-center gap-5">
-                       <TrendingUp className={franchise.accent} size={32} />
-                       <h3 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter italic">Ordem de Lançamento</h3>
+                       <History className="text-blue-500" size={32} />
+                       <h3 className="text-2xl md:text-4xl font-black text-white uppercase tracking-tighter italic">Ordem Cronológica (História)</h3>
                     </div>
-                    <ArrowRight className="text-gray-600 group-hover:text-white transition-all group-hover:translate-x-2" size={32} />
+                  </div>
+                  <Row 
+                    title="" 
+                    movies={categorizedMovies.chronological} 
+                    onSelectMovie={onSelectMovie} 
+                    onToggleMyList={onToggleMyList} 
+                    onToggleFavorite={onToggleFavorite} 
+                    myListIds={myListIds} 
+                    favoriteIds={favoriteIds} 
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <div className="px-6 md:px-12 flex items-center justify-between group">
+                    <div className="flex items-center gap-5">
+                       <Globe className="text-red-500" size={32} />
+                       <h3 className="text-2xl md:text-4xl font-black text-white uppercase tracking-tighter italic">Ordem de Lançamento</h3>
+                    </div>
                   </div>
                   <Row 
                     title="" 

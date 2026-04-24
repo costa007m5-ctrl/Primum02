@@ -26,6 +26,7 @@ import NewReleasesRow from './components/NewReleasesRow';
 import CinemaRow from './components/CinemaRow';
 import Top10Row from './components/Top10Row';
 import AppInfo from './components/AppInfo';
+import UniverseView from './components/UniverseView';
 
 const AdminPanel = React.lazy(() => import('./components/AdminPanel'));
 const ProfileDashboard = React.lazy(() => import('./components/ProfileDashboard'));
@@ -246,10 +247,10 @@ const HomeView = React.memo(({
 
         {franchises && franchises.length > 0 && (
           <Row 
-            title="Explorar Sagas"
+            title="Sagas & Coleções"
             movies={franchiseMovies}
             onSelectMovie={(f: any) => navigate(`/universe/${f.id}`)}
-            type="landscape"
+            type="circle"
           />
         )}
 
@@ -489,41 +490,31 @@ const UniverseTabView = React.memo(({
                     <div className="flex items-center justify-between mb-8 px-4 md:px-8">
                         <div className="flex items-center gap-3">
                             <Sparkles className="text-yellow-500" size={16} />
-                            <h3 className="text-white font-black uppercase tracking-[0.2em] text-[9px] md:text-xs italic">Sagas em Destaque</h3>
-                        </div>
-                        <div className="flex gap-2">
-                           <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></div>
-                           <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest italic tracking-[0.2em]">Live Multiverse</span>
+                            <h3 className="text-white font-black uppercase tracking-[0.2em] text-[9px] md:text-xs italic">Destaques do Multiverso</h3>
                         </div>
                     </div>
                     
-                    <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 px-4 md:px-8 no-scrollbar snap-x">
+                    <div className="flex gap-3 md:gap-5 overflow-x-auto pb-4 px-4 md:px-8 no-scrollbar snap-x">
                         {promotedFranchises.map((franchise: any) => (
                           <motion.div 
                             key={`promoted-${franchise.id}`}
-                            whileHover={{ scale: 1.03, y: -4 }}
+                            whileHover={{ scale: 1.05, y: -4 }}
                             whileTap={{ scale: 0.98 }}
-                            className="relative min-w-[280px] md:min-w-[550px] h-36 md:h-64 rounded-[2rem] md:rounded-[3.5rem] overflow-hidden border border-white/5 cursor-pointer snap-center shadow-2xl shrink-0 group/card bg-[#0a0a0a]"
+                            className="relative flex-none w-[90px] md:w-[140px] aspect-[2/3] rounded-[1rem] md:rounded-[1.5rem] overflow-hidden border border-white/5 cursor-pointer snap-center shadow-2xl group/card bg-[#0a0a0a]"
                             onClick={() => navigate(`/universe/${franchise.id}`)}
                           >
-                             <img src={franchise.backdrop} className="w-full h-full object-cover opacity-40 group-hover/card:opacity-60 transition-all duration-700 group-hover/card:scale-110" referrerPolicy="no-referrer" />
-                             <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent" />
+                             <img src={franchise.poster || franchise.backdrop} className="w-full h-full object-cover opacity-60 group-hover/card:opacity-100 transition-all duration-700 group-hover/card:scale-110" referrerPolicy="no-referrer" />
+                             <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black via-black/80 to-transparent" />
                              
-                             {/* Glossy Overlay */}
-                             <div className="absolute inset-0 bg-white/5 opacity-0 group-hover/card:opacity-100 transition-opacity pointer-events-none" />
-
-                             <div className="absolute inset-0 flex flex-col justify-center px-8 md:px-14">
+                             <div className="absolute inset-0 flex flex-col justify-end p-2 md:p-3">
                                 {franchise.logo ? (
-                                  <img src={franchise.logo} className="h-10 md:h-20 object-contain mb-4 drop-shadow-[0_15px_40px_rgba(0,0,0,0.9)]" referrerPolicy="no-referrer" />
+                                  <img src={franchise.logo} className="h-4 md:h-8 object-contain mb-1 md:mb-2 drop-shadow-2xl mx-auto" referrerPolicy="no-referrer" />
                                 ) : (
-                                  <h4 className="text-xl md:text-4xl font-black text-white italic uppercase tracking-tighter mb-4">{franchise.name}</h4>
+                                  <h4 className="text-[8px] md:text-xs font-black text-white italic uppercase tracking-tighter mb-1 md:mb-2 text-center leading-tight">{franchise.name}</h4>
                                 )}
-                                <div className="flex items-center gap-4">
-                                   <div className="px-3 py-1 bg-white/5 backdrop-blur-xl border border-white/10 rounded-full">
-                                      <span className="text-[8px] md:text-[10px] font-black text-white/50 uppercase tracking-widest">{franchise.movies.length} Títulos</span>
-                                   </div>
-                                   <div className="flex items-center gap-3">
-                                      <span className="text-[8px] md:text-[10px] font-black text-red-600 uppercase tracking-widest italic group-hover:tracking-[0.2em] transition-all">Explorar Nexus</span>
+                                <div className="flex items-center justify-center">
+                                   <div className="px-1.5 py-0.5 bg-white/5 backdrop-blur-xl border border-white/10 rounded-full">
+                                      <span className="text-[5px] md:text-[6px] font-black text-white/40 uppercase tracking-widest leading-none">{franchise.movies.length} Títulos</span>
                                    </div>
                                 </div>
                              </div>
@@ -536,6 +527,84 @@ const UniverseTabView = React.memo(({
 
             {/* Category Carousels */}
             <div className="space-y-16 pb-20">
+              {/* TOP 10 SAGAS (Portrait Row) */}
+              {searchTerm === '' && activeFilter === 'All' && (
+                <div className="pl-6 md:pl-12">
+                   <div className="flex items-center gap-3 mb-6">
+                      <div className="w-1.5 h-6 bg-red-600 rounded-full shadow-[0_0_10px_rgba(220,38,38,0.5)]" />
+                      <h3 className="text-xl md:text-3xl font-black text-white italic tracking-widest uppercase">Top 10 Sagas do Momento</h3>
+                   </div>
+                   <div className="flex overflow-x-auto no-scrollbar gap-12 md:gap-16 pb-8 snap-x px-8">
+                     {promotedFranchises.slice(0, 10).map((franchise: any, idx: number) => (
+                       <motion.div
+                         key={`top10-saga-${franchise.id}`}
+                         whileHover={{ y: -8 }}
+                         className="relative flex-none w-[110px] md:w-[160px] aspect-[2/3] cursor-pointer group/card snap-center"
+                         onClick={() => navigate(`/universe/${franchise.id}`)}
+                       >
+                          <div className="absolute -left-8 md:-left-12 bottom-0 z-0 pointer-events-none">
+                            <span className="text-[8rem] md:text-[14rem] font-black leading-none italic select-none
+                              bg-gradient-to-t from-gray-800 to-white/20 bg-clip-text text-transparent
+                              transition-all duration-700 group-hover/card:from-red-900 group-hover/card:to-red-500
+                              inline-block"
+                            >
+                              {idx + 1}
+                            </span>
+                          </div>
+                          
+                          <div className="w-full h-full rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden border border-white/10 group-hover/card:border-red-600 transition-all duration-500 shadow-2xl relative z-10 bg-black">
+                            <img 
+                              src={franchise.poster || franchise.backdrop} 
+                              className="w-full h-full object-cover opacity-80 group-hover/card:opacity-100 group-hover/card:scale-105 transition-all duration-700"
+                              alt={franchise.name}
+                              referrerPolicy="no-referrer"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+                            {franchise.logo && (
+                              <img src={franchise.logo} className="absolute bottom-6 left-4 right-4 h-6 md:h-10 mx-auto object-contain z-20 drop-shadow-2xl" referrerPolicy="no-referrer" />
+                            )}
+                          </div>
+                       </motion.div>
+                     ))}
+                   </div>
+                </div>
+              )}
+
+              {/* ACTION & ANIMATION SPECIALS */}
+              {searchTerm === '' && activeFilter === 'All' && (
+                <div className="pl-6 md:pl-12">
+                   <div className="flex items-center gap-3 mb-6">
+                      <div className="w-1.5 h-6 bg-yellow-500 rounded-full" />
+                      <h3 className="text-xl md:text-3xl font-black text-white italic tracking-widest uppercase">Animações & Infantis</h3>
+                   </div>
+                   <div className="flex overflow-x-auto no-scrollbar gap-6 pb-8 snap-x">
+                     {franchises.filter((f: any) => 
+                        f.id === 'disney' || f.id === 'pixar' || f.name.toLowerCase().includes('anime') || f.name.toLowerCase().includes('animation')
+                     ).map((franchise: any) => (
+                        <motion.div
+                          key={`anim-${franchise.id}`}
+                          whileHover={{ scale: 1.05 }}
+                          className="relative group cursor-pointer flex-none w-[110px] md:w-[160px] snap-center"
+                          onClick={() => navigate(`/universe/${franchise.id}`)}
+                        >
+                          <div className="aspect-[2/3] rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden border border-white/5 relative bg-[#0a0a0a] transition-all group-hover:border-red-600/50 shadow-2xl">
+                            <img src={franchise.poster || franchise.backdrop} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-700" referrerPolicy="no-referrer" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
+                            <div className="absolute bottom-6 left-4 right-4 text-center">
+                              {franchise.logo ? (
+                                <img src={franchise.logo} className="h-6 md:h-10 mx-auto object-contain mb-2" referrerPolicy="no-referrer" />
+                              ) : (
+                                <h4 className="text-white font-black italic uppercase text-sm md:text-lg leading-none mb-2">{franchise.name}</h4>
+                              )}
+                              <span className="text-white/40 font-bold text-[8px] md:text-[10px] uppercase tracking-widest leading-none">{franchise.movies.length} Filmes</span>
+                            </div>
+                          </div>
+                        </motion.div>
+                     ))}
+                   </div>
+                </div>
+              )}
+
               {Object.entries(
                 filteredFranchises.reduce((acc: Record<string, any[]>, f: any) => {
                   let mainCategory = 'Outros';
@@ -565,35 +634,35 @@ const UniverseTabView = React.memo(({
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: idx * 0.05 }}
                         whileHover={{ scale: 1.05 }}
-                        className="relative group cursor-pointer flex-none w-[280px] md:w-[400px] snap-center"
+                        className="relative group cursor-pointer flex-none w-[110px] md:w-[160px] snap-center"
                         onClick={() => navigate(`/universe/${franchise.id}`)}
                       >
-                        <div className="aspect-[16/9] rounded-[2rem] overflow-hidden border border-white/5 relative bg-[#0a0a0a] transition-all group-hover:border-red-600/50 shadow-2xl">
+                        <div className="aspect-[2/3] rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden border border-white/5 relative bg-[#0a0a0a] transition-all group-hover:border-red-600/50 shadow-2xl">
                           <img 
-                            src={franchise.backdrop || franchise.poster} 
+                            src={franchise.poster || franchise.backdrop} 
                             alt={franchise.name} 
                             className="w-full h-full object-cover transition-all duration-1000 opacity-60 group-hover:opacity-100 group-hover:scale-110"
                             referrerPolicy="no-referrer"
                           />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+                          <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black via-black/80 to-transparent" />
                           
-                          <div className="absolute top-4 right-4 p-2 bg-black/40 backdrop-blur-xl rounded-full border border-white/5 opacity-0 group-hover:opacity-100 transition-all">
+                          <div className="absolute top-4 right-4 p-2 bg-black/40 backdrop-blur-xl rounded-full border border-white/5 opacity-0 group-hover:opacity-100 transition-all z-10">
                              {franchise.icon && <franchise.icon size={16} className={franchise.accent} />}
                           </div>
    
-                          <div className="absolute bottom-6 left-6 right-6">
+                          <div className="absolute bottom-6 left-4 right-4 text-center">
                             {franchise.logo ? (
                               <img 
                                 src={franchise.logo} 
                                 alt={franchise.name} 
-                                className="h-8 md:h-12 object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.9)] mb-2 group-hover:scale-105 transition-transform origin-left" 
+                                className="h-6 md:h-10 mx-auto object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.9)] mb-2 group-hover:scale-105 transition-transform" 
                                 referrerPolicy="no-referrer"
                               />
                             ) : (
-                              <h4 className="text-white font-black italic uppercase text-lg md:text-xl leading-none mb-2 drop-shadow-2xl">{franchise.name}</h4>
+                              <h4 className="text-white font-black italic uppercase text-sm md:text-lg leading-none mb-2 drop-shadow-2xl">{franchise.name}</h4>
                             )}
-                            <div className="flex items-center gap-4">
-                               <span className="text-white/60 font-bold text-[10px] uppercase tracking-widest">{franchise.movies.length} Títulos</span>
+                            <div className="flex items-center justify-center gap-4">
+                               <span className="text-white/60 font-bold text-[8px] md:text-[10px] uppercase tracking-widest">{franchise.movies.length} Títulos</span>
                             </div>
                           </div>
                         </div>
@@ -624,104 +693,15 @@ const UniverseTabView = React.memo(({
             </div>
           </motion.div>
         ) : (
-          <motion.div
-            key="universe-saga"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -30 }}
-            className="pb-40"
-          >
-            {/* Dynamic Identity Background based on Franchise Name Hash */}
-            {(() => {
-              const hash = activeFranchise.name.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
-              const gradients = [
-                'from-red-600/30', 'from-blue-600/30', 'from-emerald-600/30', 
-                'from-purple-600/30', 'from-yellow-600/30', 'from-cyan-600/30'
-              ];
-              const themeColor = gradients[hash % gradients.length];
-              
-              return (
-                <div className="relative h-[60vh] md:h-[80vh] w-full mb-12 md:mb-20">
-                  <div className="absolute inset-0">
-                    <img src={activeFranchise.backdrop || activeFranchise.poster} alt={activeFranchise.name} className="w-full h-full object-cover opacity-60" referrerPolicy="no-referrer" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/70 to-transparent" />
-                    <div className={`absolute inset-0 bg-gradient-to-t ${themeColor} via-transparent to-transparent mix-blend-overlay`} />
-                    <div className={`absolute inset-0 bg-gradient-to-b ${themeColor} via-transparent to-[#050505] opacity-50`} />
-                  </div>
-                  
-                  <button 
-                    onClick={() => navigate('/universe')}
-                    className="absolute top-24 left-6 md:left-12 z-50 p-4 bg-white/5 hover:bg-white/10 rounded-full backdrop-blur-xl border border-white/10 transition-all group"
-                  >
-                    <ArrowLeft size={24} className="text-white group-hover:-translate-x-1 transition-transform" />
-                  </button>
-    
-                  <div className="absolute inset-0 flex flex-col items-center justify-center p-6 md:p-12 z-10 pointer-events-none pt-24">
-                    {activeFranchise.logo ? (
-                      <img src={activeFranchise.logo} alt={activeFranchise.name} className="h-32 md:h-64 object-contain mb-8 drop-shadow-[0_20px_50px_rgba(0,0,0,0.9)] animate-fade-in" referrerPolicy="no-referrer" />
-                    ) : (
-                      <h1 className="text-5xl md:text-[6rem] font-black text-white italic uppercase tracking-tighter mb-8 drop-shadow-2xl text-center">{activeFranchise.name}</h1>
-                    )}
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="px-6 py-2 bg-white/10 backdrop-blur-lg border border-white/20 rounded-full">
-                        <span className="text-white font-black uppercase tracking-[0.3em] text-[10px] md:text-sm">Multiverso Expandido</span>
-                      </div>
-                      <span className="text-white/60 font-bold uppercase tracking-widest text-[10px] md:text-xs text-center border-t border-white/10 pt-4 w-48 mx-auto">{activeFranchise.movies.length} Arquivos Originais</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Movies Grid */}
-            <div className="px-6 md:px-12 max-w-7xl mx-auto relative z-20">
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-8">
-                {activeFranchise.movies.map((movie: any, idx: number) => (
-                  <motion.div
-                    key={movie.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="relative cursor-pointer group rounded-2xl md:rounded-[2rem] overflow-hidden aspect-[2/3] bg-[#111] border border-white/5 hover:border-white/20 transition-all shadow-2xl"
-                    onClick={() => handleSelectMovie(movie)}
-                  >
-                    <img 
-                      src={movie.poster_path?.startsWith('http') ? movie.poster_path : `https://image.tmdb.org/t/p/w500/${movie.poster_path}`} 
-                      alt={movie.title || movie.name}
-                      className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700" 
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300" />
-                    
-                    <div className="absolute top-3 left-3 px-2 py-1 bg-black/60 backdrop-blur-md rounded-md border border-white/10 z-10">
-                      <span className="text-white font-black italic text-[10px]">{movie.release_year || movie.release_date?.split('-')[0] || 'TBA'}</span>
-                    </div>
-
-                    {/* Collection Logo Brand Header */}
-                    {activeFranchise.logo && (
-                       <div className="absolute top-0 right-0 p-3 pt-4 pr-4 bg-gradient-to-bl from-black/80 to-transparent opacity-80 group-hover:opacity-100 transition-opacity">
-                         <img src={activeFranchise.logo} className="h-4 md:h-6 object-contain" referrerPolicy="no-referrer" />
-                       </div>
-                    )}
-
-                    <div className="absolute bottom-0 left-0 w-full p-4 translate-y-4 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300 flex justify-between items-end z-10">
-                      <p className="text-white font-black italic text-sm leading-tight uppercase tracking-tighter w-2/3 truncate">{movie.title || movie.name}</p>
-                      
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleMyList(movie);
-                        }}
-                        className={`p-2 md:p-3 rounded-xl transition-all ${myListIds.has(movie.id) ? 'bg-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.5)]' : 'bg-white/10 text-white backdrop-blur-md border border-white/20 hover:bg-white/20'}`}
-                      >
-                        <Plus size={16} className={myListIds.has(movie.id) ? 'rotate-45' : ''} />
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </motion.div>
+          <UniverseView
+            franchise={activeFranchise}
+            onSelectMovie={handleSelectMovie}
+            onBack={() => navigate('/universe')}
+            onToggleMyList={toggleMyList}
+            onToggleFavorite={toggleFavorite}
+            myListIds={myListIds}
+            favoriteIds={favoriteIds}
+          />
         )}
       </AnimatePresence>
     </motion.div>
