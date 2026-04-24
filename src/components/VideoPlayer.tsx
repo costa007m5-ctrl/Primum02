@@ -219,8 +219,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, ro
           const params = new URLSearchParams(hash);
           const vUrl = params.get('video_url');
           const sUrl = params.get('subtitle_url');
-          if (vUrl) setExtractedVideoUrl(decodeURIComponent(vUrl));
-          if (sUrl) setExtractedSubtitleUrl(decodeURIComponent(sUrl));
+          if (vUrl) setExtractedVideoUrl(vUrl);
+          if (sUrl) setExtractedSubtitleUrl(sUrl);
         }
       } catch (e) {
         console.error("Erro ao extrair URLs do KingX:", e);
@@ -319,7 +319,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, ro
       setPlayerStyle('standard'); // Usar o fluxo padrão que renderiza o iframe no final
       requestLandscape();
     } else if (isKingXUrl) {
-      setPlayerStyle('special');
+      setPlayerStyle('netflix');
       requestLandscape();
     } else if (isTera) {
       setPlayerStyle('netflix');
@@ -436,7 +436,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, ro
 
   useEffect(() => {
     if (playerStyle === null && isKingX) {
-      setPlayerStyle('special');
+      setPlayerStyle('netflix');
       // Tentar rotacionar imediatamente para KingX
       requestLandscape();
     }
@@ -483,6 +483,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, ro
             if (isDriveVideo) {
               setDrivePlayMethod('iframe');
               setPlayerStyle('standard');
+            } else if (isKingX) {
+              setPlayerStyle('special');
             } else {
               setPlayerStyle('standard');
             }

@@ -72,9 +72,13 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         if (s) sToPlay = s;
       }
       
-      // Second pass for double encoding
-      if (vToPlay.includes('%')) vToPlay = decodeURIComponent(vToPlay);
-      if (sToPlay && sToPlay.includes('%')) sToPlay = decodeURIComponent(sToPlay);
+      // Second pass for double encoding (safe)
+      try {
+        if (vToPlay.includes('%')) vToPlay = decodeURIComponent(vToPlay);
+        if (sToPlay && sToPlay.includes('%')) sToPlay = decodeURIComponent(sToPlay);
+      } catch(e) {
+        // Ignorar se falhar ao decodificar (pode já estar decodificado ou ter '%' legítimos)
+      }
       
     } catch (e) {
       console.warn("URL Extraction failed", e);
@@ -303,20 +307,10 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
             if (Hls.isSupported()) {
               const hls = new Hls({
                 enableWorker: true,
-                lowLatencyMode: true,
                 startPosition: 0,
-                maxBufferLength: 10,
-                maxMaxBufferLength: 30,
-                maxBufferSize: 30 * 1024 * 1024,
-                backBufferLength: 10,
+                maxBufferLength: 30,
+                maxMaxBufferLength: 60,
                 autoStartLoad: true,
-                startLevel: 0,
-                abrEwmaFastLive: 1,
-                abrEwmaSlowLive: 3,
-                fragLoadingMaxRetry: 10,
-                manifestLoadingMaxRetry: 10,
-                manifestLoadingRetryDelay: 500,
-                levelLoadingMaxRetry: 10,
                 xhrSetup: (xhr) => { 
                   xhr.withCredentials = false;
                 }
@@ -376,20 +370,10 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
             if (Hls.isSupported()) {
               const hls = new Hls({
                 enableWorker: true,
-                lowLatencyMode: true,
                 startPosition: initialTime,
-                maxBufferLength: 10,
-                maxMaxBufferLength: 30,
-                maxBufferSize: 30 * 1024 * 1024,
-                backBufferLength: 10,
+                maxBufferLength: 30,
+                maxMaxBufferLength: 60,
                 autoStartLoad: true,
-                startLevel: 0,
-                abrEwmaFastLive: 1,
-                abrEwmaSlowLive: 3,
-                fragLoadingMaxRetry: 10,
-                manifestLoadingMaxRetry: 10,
-                manifestLoadingRetryDelay: 500,
-                levelLoadingMaxRetry: 10,
                 xhrSetup: (xhr) => { 
                   xhr.withCredentials = false;
                 }
@@ -1251,7 +1235,18 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 >
                   Iniciar Manualmente
                 </button>
-                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest italic animate-pulse">Servidor Instável? Tente recarregar ou aguarde 10s</p>
+                {onSwitchPlayer && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSwitchPlayer();
+                    }}
+                    className="mt-2 bg-blue-600/20 text-blue-500 border border-blue-600/30 px-8 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] italic hover:bg-blue-600 hover:text-white transition-all w-full flex justify-center items-center gap-2"
+                  >
+                    <span>Abrir Player Nativo (Rápido)</span>
+                  </button>
+                )}
+                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest italic animate-pulse mt-2">Servidor Instável? Tente o Player Nativo</p>
               </motion.div>
             )}
           </motion.div>
@@ -1318,6 +1313,14 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-4 md:gap-6">
+            {onSwitchPlayer && (
+              <button 
+                onClick={onSwitchPlayer}
+                className="hidden md:flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full backdrop-blur-md text-xs font-bold transition-all border border-white/20"
+              >
+                <span>Player Nativo</span>
+              </button>
+            )}
             {roomId && (
                <div className="hidden md:flex items-center gap-3 bg-white/5 border border-white/5 px-4 py-2 rounded-full">
                   <Users size={16} className="text-red-600" />
@@ -1481,9 +1484,9 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                   <p className="text-[10px] text-gray-500 uppercase tracking-widest font-black mb-3">Player</p>
                   <button 
                     onClick={onSwitchPlayer}
-                    className="w-full py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-bold transition-all border border-white/5"
+                    className="w-full py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-bold transition-all border border-white/5 flex items-center justify-center gap-2"
                   >
-                    Trocar Player
+                    <span>Trocar para Player Nativo</span>
                   </button>
                 </div>
               </div>
