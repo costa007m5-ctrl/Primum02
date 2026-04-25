@@ -1,0 +1,12 @@
+.local
+.upm
+.cache
+.migration-backup
+.replit
+.replitignore
+attached_assets
+artifacts/api-server
+artifacts/mockup-sandbox
+node_modules
+**/node_modules
+**/dist
