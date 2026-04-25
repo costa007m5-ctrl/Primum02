@@ -131,6 +131,8 @@ export interface AppSettings {
   autoplay_next: boolean;
   show_logos: boolean;
   subscription_plan?: 'hub' | 'plus' | 'max';
+  subscription_status?: 'active' | 'expired' | 'pending';
+  subscription_expires_at?: string;
   google_drive_token?: string;
   google_drive_accounts?: GoogleDriveAccount[];
   category_backdrops?: Record<number, string>; // ID do gênero -> Backdrop URL

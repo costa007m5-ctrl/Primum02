@@ -3777,10 +3777,78 @@ export default function App() {
     return () => document.removeEventListener('open-plans', handleOpenPlans);
   }, []);
 
+  useEffect(() => {
+    if (appSettings && !isAdmin) {
+      if (appSettings.subscription_status === 'active' && appSettings.subscription_expires_at) {
+        const expires = new Date(appSettings.subscription_expires_at);
+        if (expires < new Date()) {
+          // Expirado!
+          updateAppSettings({ subscription_status: 'expired' });
+          setIsPlansScreenOpen(true);
+        }
+      } else {
+        // Não tem assinatura ativa
+        setIsPlansScreenOpen(true);
+      }
+    }
+  }, [appSettings, isAdmin]);
+
   const handleUpdatePlan = async (plan: 'hub' | 'plus' | 'max') => {
-    await updateAppSettings({ subscription_plan: plan });
-    setIsPlansScreenOpen(false);
+    const prices = { hub: 15.90, plus: 25.90, max: 35.90 };
+    const titles = { hub: 'Netprime Hub', plus: 'Netprime Plus', max: 'Netprime Max' };
+    
+    try {
+      const response = await fetch('/api/payments/create-preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: titles[plan],
+          price: prices[plan],
+          planId: plan,
+          userId: user?.id,
+          email: user?.email
+        })
+      });
+
+      const data = await response.json();
+      if (data.init_point) {
+        window.location.href = data.init_point;
+      } else {
+        await updateAppSettings({ subscription_plan: plan });
+        setIsPlansScreenOpen(false);
+      }
+    } catch (error) {
+      console.error('Erro ao chamar Mercado Pago:', error);
+      await updateAppSettings({ subscription_plan: plan });
+      setIsPlansScreenOpen(false);
+    }
   };
+
+  useEffect(() => {
+    const checkPaymentSuccess = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const paymentStatus = params.get('payment');
+      const planId = params.get('plan');
+      
+      if (paymentStatus === 'success' && planId) {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+        await updateAppSettings({ 
+          subscription_plan: planId as any,
+          subscription_status: 'active',
+          subscription_expires_at: expiresAt.toISOString()
+        });
+        setIsPlansScreenOpen(false);
+        // Limpar URL após aprovação para não ficar acionando
+        window.history.replaceState({}, document.title, window.location.pathname);
+        alert(`Obrigado! Seu pagamento foi processado e seu plano foi atualizado para ${planId.toUpperCase()}.`);
+      } else if (paymentStatus === 'failure') {
+        alert('Houve um problema com seu pagamento no Mercado Pago. Tente novamente.');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    };
+    checkPaymentSuccess();
+  }, [profile]); // run when profile loads and appSettings are ready
 
   if (loading || showIntro) {
     return (
@@ -3826,7 +3894,25 @@ export default function App() {
     return <Login initialMode={initialLoginMode} movies={myMovies} />;
   }
 
-  if (!profile) {
+  if (isPlansScreenOpen && !isAdmin) {
+    return (
+      <ThemeContext.Provider value={{ 
+        theme: currentTheme, 
+        setTheme: setCurrentTheme,
+        providerData
+      }}>
+        <div className={`bg-[#111] min-h-screen w-full font-sans selection:bg-red-600 selection:text-white ${currentTheme !== 'default' ? 'theme-active theme-' + currentTheme.toLowerCase().replace(/[^a-z]/g, '') : ''}`}>
+          <PlansScreen 
+            appSettings={appSettings} 
+            onClose={() => setIsPlansScreenOpen(false)} 
+            onUpdatePlan={handleUpdatePlan} 
+          />
+        </div>
+      </ThemeContext.Provider>
+    );
+  }
+
+  if (!profile && !isAdmin) {
     return <ProfileSelection onSelect={handleSelectProfile} appSettings={appSettings} />;
   }
 
@@ -4230,14 +4316,6 @@ export default function App() {
           </div>
         )}
       </div>
-
-      {isPlansScreenOpen && (
-        <PlansScreen 
-          appSettings={appSettings} 
-          onClose={() => setIsPlansScreenOpen(false)} 
-          onUpdatePlan={handleUpdatePlan} 
-        />
-      )}
 
       <footer className="text-gray-500 text-center py-10 border-t border-gray-800 text-sm mt-10">
         <p>&copy; 2026 Netflix Clone. Desenvolvido para fins educacionais.</p>

@@ -5,12 +5,19 @@ import axios from 'axios';
 import dotenv from 'dotenv';
 import http from 'http';
 import { Server } from 'socket.io';
+import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { createClient } from '@supabase/supabase-js';
 
 dotenv.config();
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
+  
+  // Initialize Supabase Admin strictly for backend operations
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  const supabaseAdmin = supabaseUrl && supabaseServiceKey ? createClient(supabaseUrl, supabaseServiceKey) : null;
   const httpServer = http.createServer(app);
   const io = new Server(httpServer, {
     cors: { origin: "*" }
@@ -115,6 +122,112 @@ async function startServer() {
     );
     
     next();
+  });
+
+  // Mercado Pago endpoints
+  app.post('/api/payments/create-preference', async (req, res) => {
+    const { title, price, planId, userId, email } = req.body;
+    
+    if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) {
+      return res.status(500).json({ error: 'MERCADO_PAGO_ACCESS_TOKEN não configurado.' });
+    }
+
+    try {
+      const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN });
+      const preference = new Preference(client);
+
+      const APP_URL = process.env.APP_URL || (process.env.NODE_ENV === 'production' ? `https://${req.get('host')}` : `http://localhost:${PORT}`);
+
+      const response = await preference.create({
+        body: {
+          items: [
+            {
+              id: planId,
+              title: title,
+              quantity: 1,
+              unit_price: Number(price),
+              currency_id: 'BRL',
+            }
+          ],
+          payer: {
+            email: email || 'test@test.com'
+          },
+          back_urls: {
+            success: `${APP_URL}/menu?payment=success&plan=${planId}`,
+            failure: `${APP_URL}/menu?payment=failure`,
+            pending: `${APP_URL}/menu?payment=pending`
+          },
+          auto_return: 'approved',
+          external_reference: `${userId}_${planId}_${Date.now()}`,
+          payment_methods: {
+            excluded_payment_methods: [],
+            excluded_payment_types: [],
+            installments: 1
+          }
+        }
+      });
+
+      res.json({ id: response.id, init_point: response.init_point });
+    } catch (error: any) {
+      console.error('Erro ao criar preferência do Mercado Pago:', error);
+      res.status(500).json({ error: 'Erro ao conectar com Mercado Pago.', details: error.message });
+    }
+  });
+
+  app.post('/api/payments/webhook', async (req, res) => {
+    const paymentId = req.query.id || req.body?.data?.id;
+    const type = req.query.topic || req.body?.type;
+    
+    // Na prática, em produção você checaria o signature do webhook pra garantir que vem do MP
+    
+    if (type === 'payment' && paymentId) {
+      try {
+        if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) {
+             return res.status(200).send('Webhook ignored: no token');
+        }
+
+        // Você precisaria fazer um GET no payment para conferir o status e liberar no banco
+        // Utilizando o external_reference para achar o plano e usuario
+        const response = await axios.get(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+          headers: { Authorization: `Bearer ${process.env.MERCADO_PAGO_ACCESS_TOKEN}` }
+        });
+        
+        const payment = response.data;
+        if (payment.status === 'approved') {
+          // Extrair info do external_reference e atualizar o Supabase
+          const extRef = payment.external_reference; // ex: userId_planId_timestamp
+          if (extRef) {
+            const [userId, planId] = extRef.split('_');
+            console.log(`Pagamento Aprovado! Liberar plano ${planId} para user ${userId}`);
+            
+            // Aqui seria a integração com Supabase:
+            if (supabaseAdmin) {
+              const expiresAt = new Date();
+              expiresAt.setDate(expiresAt.getDate() + 30);
+              const { error } = await supabaseAdmin
+                .from('app_settings')
+                .update({ 
+                  subscription_plan: planId, 
+                  subscription_status: 'active',
+                  subscription_expires_at: expiresAt.toISOString()
+                })
+                .eq('user_id', userId);
+                
+              if (error) {
+                console.error("Erro ao atualizar status de assinatura no DB:", error);
+              } else {
+                console.log(`Assinatura ativa e estendida por 30 dias para o usuario ${userId}`);
+              }
+            } else {
+              console.warn("SUPABASE_SERVICE_ROLE_KEY não configurada. Atualização do banco de dados ignorada no webhook.");
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Erro no processamento do webhook MP:', error);
+      }
+    }
+    res.status(200).send('OK');
   });
 
   // Rota para enviar notificações via OneSignal

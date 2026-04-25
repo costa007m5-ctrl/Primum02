@@ -101,12 +101,14 @@ export default function PlansScreen({ appSettings, onClose, onUpdatePlan }: Plan
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-red-900/40 via-black to-black"></div>
       
       <div className="relative w-full max-w-7xl max-h-screen overflow-y-auto no-scrollbar pb-10">
-        <button 
-          onClick={onClose}
-          className="fixed top-6 right-6 z-50 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full backdrop-blur-md transition-colors"
-        >
-          <X size={24} />
-        </button>
+        {appSettings?.subscription_status === 'active' && (
+          <button 
+            onClick={onClose}
+            className="fixed top-6 right-6 z-50 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full backdrop-blur-md transition-colors"
+          >
+            <X size={24} />
+          </button>
+        )}
 
         <div className="mt-12 text-center mb-12">
           <h1 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter italic mb-4">
@@ -187,6 +189,9 @@ export default function PlansScreen({ appSettings, onClose, onUpdatePlan }: Plan
                       'Escolher Plano'
                     )}
                   </button>
+                  <p className="text-[10px] text-center mt-3 text-white/40 flex items-center justify-center gap-1">
+                    Via Mercado Pago (Pix, Cartão, Boleto)
+                  </p>
                 </div>
               </motion.div>
             );
