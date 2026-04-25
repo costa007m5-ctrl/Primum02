@@ -3907,6 +3907,7 @@ export default function App() {
             onClose={() => setIsPlansScreenOpen(false)} 
             onUpdatePlan={handleUpdatePlan} 
             userEmail={user?.email}
+            onLogout={handleLogout}
           />
         </div>
       </ThemeContext.Provider>

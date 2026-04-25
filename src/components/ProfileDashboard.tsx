@@ -5,7 +5,7 @@ import {
   Play, ChevronRight, Clock, Award, HardDrive, Crown,
   Trash2, Search, Film, Tv, Sliders, Type, Bell, Monitor,
   Palette, UserCircle, Edit3, Lock, LogOut, CheckCircle2, AlertCircle, Heart,
-  Save, X, Smartphone, List, Download, Sparkles
+  Save, X, Smartphone, List, Download, Sparkles, Users, Copy
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -214,13 +214,7 @@ export default function ProfileDashboard({
           return (
             <button 
               key={item.id}
-              onClick={() => {
-                if (item.id === 'plan') {
-                  document.dispatchEvent(new CustomEvent('open-plans'));
-                } else {
-                  setActiveSubTab(item.id as any);
-                }
-              }}
+              onClick={() => setActiveSubTab(item.id as any)}
               className={`flex-1 flex items-center justify-center gap-3 px-6 py-4 text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap rounded-xl ${isActive ? 'text-white bg-red-600 shadow-lg shadow-red-600/30' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
             >
               <Icon size={16} className={isActive ? 'text-white' : ''} /> <span className="hidden sm:inline">{item.label}</span>
@@ -544,6 +538,86 @@ export default function ProfileDashboard({
                  </div>
               </div>
             </div>
+          )}
+
+          {/* TAB: PLAN & REFERRALS */}
+          {activeSubTab === 'plan' && (
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+               {/* Current Plan Info */}
+               <div className="bg-white/5 p-8 rounded-[2rem] border border-white/10 backdrop-blur-xl relative overflow-hidden">
+                 <div className="absolute top-0 right-0 w-32 h-32 bg-red-600/20 blur-3xl -mr-10 -mt-10 rounded-full"></div>
+                 <h3 className="text-xl font-black uppercase italic tracking-tighter text-white flex items-center gap-3 mb-8">
+                   <Crown className="text-red-600" /> Assinatura e Faturamento
+                 </h3>
+                 
+                 <div className="space-y-6 relative z-10">
+                   <div>
+                     <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">Plano Atual</p>
+                     <p className="text-3xl font-black text-white uppercase italic tracking-tighter">
+                       {appSettings?.subscription_plan === 'hub' ? 'NETPLAY HUB' : appSettings?.subscription_plan === 'plus' ? 'NETPLAY PLUS' : 'NETPLAY MAX'}
+                     </p>
+                   </div>
+                   <div>
+                     <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">Status</p>
+                     <p className={`text-sm font-black uppercase tracking-widest ${appSettings?.subscription_status === 'active' ? 'text-green-500' : 'text-red-500'}`}>
+                       {appSettings?.subscription_status === 'active' ? 'Ativo' : 'Inativo / Pendente'}
+                     </p>
+                   </div>
+                   <div>
+                     <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">Próximo Vencimento</p>
+                     <p className="text-white font-medium">
+                       {appSettings?.subscription_expires_at ? new Date(appSettings.subscription_expires_at).toLocaleDateString('pt-BR') : 'Nenhum faturamento programado.'}
+                     </p>
+                   </div>
+                   
+                   <button 
+                     onClick={() => document.dispatchEvent(new CustomEvent('open-plans'))}
+                     className="w-full mt-6 py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black uppercase tracking-widest text-xs transition-colors"
+                   >
+                     Alterar Plano ou Renovar
+                   </button>
+                 </div>
+               </div>
+
+               {/* Referral System */}
+               <div className="bg-gradient-to-br from-red-600/10 to-purple-600/10 p-8 rounded-[2rem] border border-red-500/20 backdrop-blur-xl relative overflow-hidden flex flex-col justify-between">
+                 <div className="absolute top-0 right-0 w-64 h-64 bg-red-600/10 blur-[80px] -mr-20 -mt-20 rounded-full"></div>
+                 <div>
+                   <h3 className="text-xl font-black uppercase italic tracking-tighter text-white flex items-center gap-3 mb-4">
+                     <Users className="text-red-500" /> Sistema de Indicação
+                   </h3>
+                   <p className="text-gray-300 text-sm font-medium mb-6">
+                     Ganhe <strong className="text-green-400">R$ 3,00</strong> de desconto na sua próxima fatura a cada indicação confirmada ou <strong className="text-purple-400">1 Mês Grátis</strong> a cada 5 amigos que assinarem usando seu link.
+                   </p>
+                   
+                   <div className="bg-black/50 border border-white/5 p-4 rounded-xl mb-6">
+                     <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-2">Seu Link Exclusivo</p>
+                     <div className="flex items-center gap-2">
+                       <code className="flex-1 text-xs text-red-400 truncate bg-white/5 p-2 rounded truncate block">
+                         https://app.netprime.com/invite/{profile?.id?.substring(0, 8) || 'user'}
+                       </code>
+                       <button onClick={() => {
+                         navigator.clipboard.writeText(`https://app.netprime.com/invite/${profile?.id?.substring(0, 8) || 'user'}`);
+                         alert('Link copiado!');
+                       }} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors">
+                         <Copy size={16} />
+                       </button>
+                     </div>
+                   </div>
+                 </div>
+                 
+                 <div className="grid grid-cols-2 gap-4">
+                   <div className="bg-white/5 rounded-xl block p-4 text-center border border-white/5">
+                     <p className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-1">Indicações</p>
+                     <p className="text-2xl text-white font-black">0</p>
+                   </div>
+                   <div className="bg-white/5 rounded-xl block p-4 text-center border border-white/5">
+                     <p className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-1">Créditos</p>
+                     <p className="text-2xl text-green-400 font-black">R$ 0</p>
+                   </div>
+                 </div>
+               </div>
+             </div>
           )}
 
           {/* TAB: STATS / ANALYTICS DETAIL */}

@@ -192,7 +192,7 @@ async function startServer() {
   });
 
   app.post('/api/payments/create-payment', async (req, res) => {
-    const { title, price, planId, userId, email, method, payer } = req.body;
+    const { title, price, planId, userId, email, method, payer, token, installments, payment_method_id, issuer_id } = req.body;
     
     if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) {
       return res.status(500).json({ error: 'MERCADO_PAGO_ACCESS_TOKEN não configurado.' });
@@ -206,21 +206,21 @@ async function startServer() {
         body: {
           transaction_amount: Number(price),
           description: title,
-          payment_method_id: method,
+          payment_method_id: method || payment_method_id,
+          token: token,
+          installments: installments || 1,
+          issuer_id: issuer_id,
           external_reference: `${userId}_${planId}_${Date.now()}`,
           payer: {
-            email: email,
-            first_name: payer.first_name,
-            last_name: payer.last_name,
-            identification: payer.identification,
-            address: payer.address
+            ...payer,
+            email: email || payer?.email || 'user@example.com'
           }
         }
       });
 
       res.json(response);
     } catch (error: any) {
-      console.error('Erro ao criar pagamento (Pix/Boleto) do Mercado Pago:', error);
+      console.error('Erro ao criar pagamento (Pix/Boleto/Cartão) do Mercado Pago:', error);
       res.status(500).json({ error: 'Erro ao criar pagamento direto.', details: error.message });
     }
   });

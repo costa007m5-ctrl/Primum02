@@ -11,13 +11,14 @@ interface PlansScreenProps {
   userEmail?: string;
 }
 
-export default function PlansScreen({ appSettings, onClose, onUpdatePlan, userEmail }: PlansScreenProps) {
+export default function PlansScreen({ appSettings, onClose, onUpdatePlan, userEmail, onLogout }: PlansScreenProps & { onLogout?: () => void }) {
   const currentPlan = appSettings?.subscription_plan || 'hub';
+  const hasActivePlan = appSettings?.subscription_status === 'active';
   const [loadingPlan, setLoadingPlan] = useState<'hub' | 'plus' | 'max' | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
 
   const handleSelectPlan = async (plan: 'hub' | 'plus' | 'max') => {
-    if (plan === currentPlan) return;
+    if (hasActivePlan && plan === currentPlan) return;
     const planConfig = plans.find(p => p.id === plan);
     if (planConfig) {
       setCheckoutPlan(planConfig);
@@ -46,6 +47,25 @@ export default function PlansScreen({ appSettings, onClose, onUpdatePlan, userEm
           window.location.href = data.init_point;
         }
         return data; // Return reference for credit card flow if needed
+      } else if (method === 'credit_card') {
+        const response = await fetch('/api/payments/create-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: checkoutPlan.name,
+            price: checkoutPlan.priceValue,
+            planId: checkoutPlan.id,
+            userId: appSettings?.user_id,
+            email: userEmail || payer.payer?.email || 'user@example.com',
+            method: payer.payment_method_id,
+            token: payer.token,
+            installments: payer.installments,
+            issuer_id: payer.issuer_id,
+            payer: payer.payer
+          })
+        });
+        const data = await response.json();
+        return data;
       } else {
         const response = await fetch('/api/payments/create-payment', {
           method: 'POST',
@@ -149,7 +169,15 @@ export default function PlansScreen({ appSettings, onClose, onUpdatePlan, userEm
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-red-900/40 via-black to-black"></div>
       
       <div className="relative w-full max-w-7xl max-h-screen overflow-y-auto no-scrollbar pb-10">
-        {appSettings?.subscription_status === 'active' && (
+        {onLogout && !hasActivePlan && (
+          <button 
+            onClick={onLogout}
+            className="fixed top-6 left-6 z-50 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full font-bold text-sm backdrop-blur-md transition-colors"
+          >
+            Voltar para Login
+          </button>
+        )}
+        {hasActivePlan && (
           <button 
             onClick={onClose}
             className="fixed top-6 right-6 z-50 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full backdrop-blur-md transition-colors"
@@ -169,7 +197,7 @@ export default function PlansScreen({ appSettings, onClose, onUpdatePlan, userEm
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 px-4">
           {plans.map((plan) => {
-            const isCurrent = currentPlan === plan.id;
+            const isCurrent = hasActivePlan && currentPlan === plan.id;
             const isMax = plan.id === 'max';
             return (
               <motion.div
@@ -209,7 +237,7 @@ export default function PlansScreen({ appSettings, onClose, onUpdatePlan, userEm
                       </div>
                     ))}
                     {plan.notIncluded.map((feature, idx) => (
-                      <div key={idx} className="flex items-start gap-3 opacity-40 grayscale">
+                      <div key={`not-${idx}`} className="flex items-start gap-3 opacity-40 grayscale">
                         <div className="mt-0.5 rounded-full p-1 bg-white/5">
                           <X size={14} className="text-white" />
                         </div>

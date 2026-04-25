@@ -1,6 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, QrCode, CreditCard, FileText, CheckCircle2, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { initMercadoPago } from '@mercadopago/sdk-react';
+import { supabase } from '../lib/supabase';
+
+if (import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY) {
+  initMercadoPago(import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY);
+}
 
 interface PaymentCheckoutModalProps {
   planTitle: string;
@@ -14,6 +20,7 @@ export default function PaymentCheckoutModal({ planTitle, planPrice, planId, onC
   const [method, setMethod] = useState<'pix' | 'bolbradesco' | 'credit_card'>('pix');
   const [loading, setLoading] = useState(false);
   const [successData, setSuccessData] = useState<any>(null);
+  const [userEmail, setUserEmail] = useState<string>('');
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -28,11 +35,30 @@ export default function PaymentCheckoutModal({ planTitle, planPrice, planId, onC
     state: ''
   });
 
+  useEffect(() => {
+    const fetchBillingInfo = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserEmail(user.email || '');
+      }
+      if (user?.user_metadata?.billing_info) {
+        setFormData(prev => ({ ...prev, ...user.user_metadata.billing_info }));
+      }
+    };
+    fetchBillingInfo();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (method === 'credit_card') return; // CardPayment handles its own submisison
     setLoading(true);
 
     try {
+      // Save billing info to user_metadata
+      await supabase.auth.updateUser({
+        data: { billing_info: formData }
+      });
+
       const payer = {
         first_name: formData.firstName,
         last_name: formData.lastName,
@@ -139,63 +165,73 @@ export default function PaymentCheckoutModal({ planTitle, planPrice, planId, onC
           </div>
 
           <AnimatePresence>
-            {method !== 'credit_card' && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden space-y-4 pt-4 border-t border-white/5">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Dados de Pagamento</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Nome</label>
-                    <input required type="text" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-red-600" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Sobrenome</label>
-                    <input required type="text" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-red-600" />
-                  </div>
+            <motion.div key="common-fields" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden space-y-4 pt-4 border-t border-white/5">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Dados de Pagamento</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Nome</label>
+                  <input required type="text" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-red-600" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">CPF</label>
-                    <input required type="text" placeholder="000.000.000-00" value={formData.cpf} onChange={e => setFormData({...formData, cpf: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-red-600" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Celular</label>
-                    <input required type="text" placeholder="(11) 90000-0000" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-red-600" />
-                  </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Sobrenome</label>
+                  <input required type="text" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-red-600" />
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">CPF</label>
+                  <input required type="text" placeholder="000.000.000-00" value={formData.cpf} onChange={e => setFormData({...formData, cpf: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-red-600" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Celular</label>
+                  <input required type="text" placeholder="(11) 90000-0000" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-red-600" />
+                </div>
+              </div>
 
-                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-6 mb-2">Endereço (Boleto)</p>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-1">
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">CEP</label>
-                    <input required={method === 'bolbradesco'} type="text" value={formData.zipCode} onChange={e => setFormData({...formData, zipCode: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-red-600" />
+              {method === 'bolbradesco' && (
+                <>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-6 mb-2">Endereço (Boleto)</p>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="col-span-1">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">CEP</label>
+                      <input required={method === 'bolbradesco'} type="text" value={formData.zipCode} onChange={e => setFormData({...formData, zipCode: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-red-600" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Rua</label>
+                      <input required={method === 'bolbradesco'} type="text" value={formData.streetName} onChange={e => setFormData({...formData, streetName: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-red-600" />
+                    </div>
+                    <div className="col-span-1">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Número</label>
+                      <input required={method === 'bolbradesco'} type="text" value={formData.streetNumber} onChange={e => setFormData({...formData, streetNumber: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-red-600" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Bairro</label>
+                      <input required={method === 'bolbradesco'} type="text" value={formData.neighborhood} onChange={e => setFormData({...formData, neighborhood: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-red-600" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Cidade</label>
+                      <input required={method === 'bolbradesco'} type="text" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-red-600" />
+                    </div>
+                    <div className="col-span-1">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">UF</label>
+                      <input required={method === 'bolbradesco'} type="text" placeholder="SP" maxLength={2} value={formData.state} onChange={e => setFormData({...formData, state: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-red-600 uppercase" />
+                    </div>
                   </div>
-                  <div className="col-span-2">
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Rua</label>
-                    <input required={method === 'bolbradesco'} type="text" value={formData.streetName} onChange={e => setFormData({...formData, streetName: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-red-600" />
-                  </div>
-                  <div className="col-span-1">
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Número</label>
-                    <input required={method === 'bolbradesco'} type="text" value={formData.streetNumber} onChange={e => setFormData({...formData, streetNumber: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-red-600" />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Bairro</label>
-                    <input required={method === 'bolbradesco'} type="text" value={formData.neighborhood} onChange={e => setFormData({...formData, neighborhood: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-red-600" />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Cidade</label>
-                    <input required={method === 'bolbradesco'} type="text" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-red-600" />
-                  </div>
-                  <div className="col-span-1">
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">UF</label>
-                    <input required={method === 'bolbradesco'} type="text" placeholder="SP" maxLength={2} value={formData.state} onChange={e => setFormData({...formData, state: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-red-600 uppercase" />
-                  </div>
+                </>
+              )}
+            </motion.div>
+
+            {method === 'credit_card' && (
+              <motion.div key="cc-fields" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden pt-4 mt-4">
+                <div className="bg-white/5 p-6 rounded-2xl border border-white/10 text-center">
+                  <p className="text-sm font-bold text-gray-300">Você será redirecionado para o ambiente seguro do Mercado Pago.</p>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
           <button type="submit" disabled={loading} className="w-full py-4 mt-8 bg-red-600 hover:bg-red-700 disabled:bg-red-900 disabled:text-white/50 text-white rounded-xl font-black uppercase tracking-widest text-sm transition-colors flex items-center justify-center gap-2">
-            {loading ? <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : (method === 'credit_card' ? 'Ir para Pagamento Seguro' : 'Gerar Pagamento')}
+            {loading ? <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : method === 'credit_card' ? 'Ir para o Checkout' : 'Gerar Pagamento'}
           </button>
         </form>
       </motion.div>
