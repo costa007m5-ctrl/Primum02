@@ -197,6 +197,21 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     }
   }, [roomId, isHost, movieId]);
 
+  // Configuração inicial quando liga o componente
+  useEffect(() => {
+    if (videoRef.current) {
+      // Ativa Picture-in-Picture automático para Chromium (ex: quando o app fica em segundo plano/muda de aba)
+      try {
+        if ('autoPictureInPicture' in videoRef.current) {
+          (videoRef.current as any).autoPictureInPicture = true;
+        }
+        (videoRef.current as any).disablePictureInPicture = false;
+      } catch (e) {
+         console.warn("PiP feature check:", e);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     const handleVisibilityChange = async () => {
       if (!videoRef.current) return;
@@ -206,16 +221,26 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
           // Quando a aba/app ficar oculta, tentar ativar o PiP
           // Apenas se o vídeo estiver tocando
           if (!videoRef.current.paused && document.pictureInPictureEnabled) {
-            await videoRef.current.requestPictureInPicture();
+            // Em navegadores que suportam autoPictureInPicture, isso já será tratado nativamente.
+            // Aqui estamos apenas tentando forçar caso seja possível nativamente.
+            // Ignoraremos o erro de permissão.
+            if (!(videoRef.current as any).autoPictureInPicture) {
+                await videoRef.current.requestPictureInPicture();
+            }
           }
         } else {
           // Quando voltar para a aba, sair do PiP se estiver ativo
+          // Para navegadores com autoPictureInPicture nativo, ele geralmente sai automaticamente,
+          // Então verificaremos.
           if (document.pictureInPictureElement) {
-            await document.exitPictureInPicture();
+             await document.exitPictureInPicture();
           }
         }
-      } catch (error) {
-        console.warn('Erro ao processar Picture-in-Picture:', error);
+      } catch (error: any) {
+        // Ignora erro de "user gesture required" (comportamento nativo bloqueado)
+        if (error.name !== 'NotAllowedError') {
+           console.warn('Erro ao processar Picture-in-Picture:', error);
+        }
       }
     };
 
@@ -698,6 +723,19 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       } catch (e) {
         console.warn("Orientation lock not supported", e);
       }
+      
+      // Median.co / GoNative fallback for WebView orientation lock
+      try {
+        if (typeof window !== 'undefined') {
+          if ((window as any).median) {
+            (window as any).median.screen.setOrientation({orientation: 'landscape'});
+          } else if ((window as any).gonative) {
+            (window as any).gonative.screen.setOrientation({orientation: 'landscape'});
+          } else {
+            window.location.href = 'median://screen/setOrientation?orientation=landscape';
+          }
+        }
+      } catch(e) {}
     };
     lockOrientation();
 
@@ -712,6 +750,19 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
           }
         } catch (e) {}
       }
+      
+      // Median.co / GoNative fallback for WebView orientation unlock
+      try {
+        if (typeof window !== 'undefined') {
+          if ((window as any).median) {
+            (window as any).median.screen.setOrientation({orientation: 'unlocked'});
+          } else if ((window as any).gonative) {
+            (window as any).gonative.screen.setOrientation({orientation: 'unlocked'});
+          } else {
+            window.location.href = 'median://screen/setOrientation?orientation=unlocked';
+          }
+        }
+      } catch(e) {}
     };
   }, [autoRotate]);
 
@@ -798,6 +849,22 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         if (isHost && socketRef.current && roomId) {
           socketRef.current.emit('sync-playback', { roomId, playing: true, currentTime: video.currentTime });
         }
+        
+        // When play is pressed, lock to landscape
+        try {
+          if (screen.orientation && (screen.orientation as any).lock) {
+            (screen.orientation as any).lock('landscape').catch(() => {});
+          }
+          if (typeof window !== 'undefined') {
+            if ((window as any).median) {
+              (window as any).median.screen.setOrientation({orientation: 'landscape'});
+            } else if ((window as any).gonative) {
+              (window as any).gonative.screen.setOrientation({orientation: 'landscape'});
+            } else {
+              window.location.href = 'median://screen/setOrientation?orientation=landscape';
+            }
+          }
+        } catch(e) {}
       } else {
         video.pause();
         if (isHost && socketRef.current && roomId) {
@@ -848,10 +915,18 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
 
   const togglePiP = async () => {
     try {
+      const video = videoRef.current as any;
+      if (!video) return;
+
       if (document.pictureInPictureElement) {
         await document.exitPictureInPicture();
-      } else if (document.pictureInPictureEnabled && videoRef.current) {
-        await videoRef.current.requestPictureInPicture();
+      } else if (document.pictureInPictureEnabled) {
+        await video.requestPictureInPicture();
+      } else if (video.webkitSupportsPresentationMode && typeof video.webkitSetPresentationMode === "function") {
+        // Fallback para Safari (iOS/Mac)
+        const currentMode = video.webkitPresentationMode;
+        const newMode = currentMode === "picture-in-picture" ? "inline" : "picture-in-picture";
+        video.webkitSetPresentationMode(newMode);
       }
     } catch (error) {
       console.error("PiP error:", error);
@@ -867,6 +942,15 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         (screen.orientation as any).lock('landscape').catch(() => {});
       }
     }
+    
+    // Median.co WebView fallback fullscreen
+    try {
+      if (!isFullscreen) {
+         window.location.href = 'median://screen/fullScreen';
+      } else {
+         window.location.href = 'median://screen/normalScreen';
+      }
+    } catch(e) {}
   };
 
   const toggleSubtitles = () => {
@@ -1116,6 +1200,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         crossOrigin="anonymous"
         webkit-playsinline="true"
         x-webkit-airplay="allow"
+        disablePictureInPicture={false}
         referrerPolicy="no-referrer"
         onClick={handleContainerClick}
         onDoubleClick={(e) => {
@@ -1290,6 +1375,20 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                     setLoadingProgress(100);
                     setShowLogoOverlay(false);
                     if (videoRef.current) videoRef.current.play().catch(() => {});
+                    try {
+                      if (screen.orientation && (screen.orientation as any).lock) {
+                        (screen.orientation as any).lock('landscape').catch(() => {});
+                      }
+                      if (typeof window !== 'undefined') {
+                        if ((window as any).median) {
+                          (window as any).median.screen.setOrientation({orientation: 'landscape'});
+                        } else if ((window as any).gonative) {
+                          (window as any).gonative.screen.setOrientation({orientation: 'landscape'});
+                        } else {
+                          window.location.href = 'median://screen/setOrientation?orientation=landscape';
+                        }
+                      }
+                    } catch(e) {}
                   }}
                   className="bg-red-600/20 text-red-500 border border-red-600/30 px-8 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] italic hover:bg-red-600 hover:text-white transition-all"
                 >
