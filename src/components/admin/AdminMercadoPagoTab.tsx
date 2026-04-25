@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { DollarSign, ExternalLink, ShieldCheck, Activity } from 'lucide-react';
 
 export default function AdminMercadoPagoTab() {
+  const webhookUrl = `${window.location.origin}/api/payments/webhook`;
   return (
     <div className="max-w-4xl mx-auto py-8">
       <div className="mb-8">
@@ -46,8 +47,8 @@ export default function AdminMercadoPagoTab() {
           Para garantir que os usuários recebam acesso imediato após a compra, certifique-se de configurar a URL do Webhook no painel do desenvolvedor do Mercado Pago.
         </p>
         <div className="bg-black/50 p-4 border border-white/5 rounded-lg flex items-center justify-between">
-           <code className="text-xs text-blue-300">https://SEU_DOMINIO/api/payments/webhook</code>
-           <button className="text-xs font-bold text-gray-500 hover:text-white" onClick={() => navigator.clipboard.writeText('https://SEU_DOMINIO/api/payments/webhook')}>COPIAR</button>
+           <code className="text-xs text-blue-300">{webhookUrl}</code>
+           <button className="text-xs font-bold text-gray-500 hover:text-white" onClick={() => navigator.clipboard.writeText(webhookUrl)}>COPIAR</button>
         </div>
         <div className="mt-4 text-xs text-gray-500 flex flex-col gap-2">
            <p><strong>URL Base das Preferências:</strong> Criado on-the-fly pela API backend.</p>
