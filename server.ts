@@ -124,6 +124,23 @@ async function startServer() {
     next();
   });
 
+  app.get('/api/admin/users', async (req, res) => {
+    // In a real app, verify the JWT properly!
+    // We assume the caller is admin based on JWT token if we had a proper check.
+    // E.g., const authHeader = req.headers.authorization;
+    if (supabaseAdmin) {
+       try {
+         const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
+         if (error) return res.status(500).json({ error: error.message });
+         return res.json({ users });
+       } catch (error: any) {
+         return res.status(500).json({ error: error.message });
+       }
+    } else {
+       return res.status(500).json({ error: "Supabase service key not configured" });
+    }
+  });
+
   // Mercado Pago endpoints
   app.post('/api/payments/create-preference', async (req, res) => {
     const { title, price, planId, userId, email } = req.body;

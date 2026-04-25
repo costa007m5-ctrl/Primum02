@@ -3077,7 +3077,7 @@ export default function App() {
     const checkAdmin = async () => {
        if (user) {
           // Hardlock para o email principal caso a tabela ainda não exista
-          if (user.email === 'streamingbrasil2021@gmail.com') {
+          if (user.email === 'costachristopher31@gmail.com') {
              setIsAdmin(true);
              return;
           }

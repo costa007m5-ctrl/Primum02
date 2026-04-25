@@ -6,11 +6,13 @@ import {
   Cloud, Link as LinkIcon, ExternalLink, Play, Check, X, Save,
   ArrowUpDown, Download, Settings, Database, Plus, Upload,
   Sparkles, Calendar, Shield, Copy, Star, Send, Image as ImageIcon,
-  Activity, Users, Heart
+  Activity, Users, Heart, DollarSign
 } from 'lucide-react';
 import { Movie, ScannerState, ReScannerState, StreamingProvider } from '../types';
 import { supabase } from '../lib/supabase';
 import tmdb, { requests, getMovieLogo } from '../services/tmdb';
+import AdminUsersTab from './admin/AdminUsersTab';
+import AdminMercadoPagoTab from './admin/AdminMercadoPagoTab';
 
 interface AdminPanelProps {
   movies: Movie[];
@@ -37,7 +39,7 @@ interface AdminPanelProps {
   onUpdateCategoryImage?: (categoryId: number, backdrop: string) => Promise<void>;
 }
 
-type AdminTab = 'dashboard' | 'all' | 'drive' | 'kingx' | 'others' | 'pending' | 'providers' | 'app' | 'duplicates' | 'collections' | 'supabase' | 'requests' | 'genres';
+type AdminTab = 'dashboard' | 'all' | 'drive' | 'kingx' | 'others' | 'pending' | 'providers' | 'app' | 'duplicates' | 'collections' | 'supabase' | 'requests' | 'genres' | 'users' | 'mercadopago';
 
 const AdminPanel: React.FC<AdminPanelProps> = ({
   movies,
@@ -1403,6 +1405,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <p className="hidden md:block text-[10px] text-gray-500 font-black uppercase tracking-widest mb-4 px-4">Categorias</p>
             {[
               { id: 'dashboard', label: 'Dashboard', icon: Activity },
+              { id: 'users', label: 'Usuários/Assin.', icon: Users },
+              { id: 'mercadopago', label: 'Mercado Pago', icon: DollarSign },
               { id: 'all', label: 'Todos', icon: Database },
               { id: 'drive', label: 'Drive', icon: Cloud }, // Shortened for mobile
               { id: 'kingx', label: 'KingX', icon: ExternalLink },
@@ -1829,6 +1833,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
               </div>
+            ) : activeTab === 'users' ? (
+              <AdminUsersTab />
+            ) : activeTab === 'mercadopago' ? (
+              <AdminMercadoPagoTab />
             ) : activeTab === 'supabase' ? (
               <div className="space-y-6 md:space-y-12 pb-12">
                 <section className="bg-white/5 p-6 md:p-12 rounded-[1.5rem] md:rounded-[3rem] border border-white/10 backdrop-blur-3xl relative overflow-hidden group">
