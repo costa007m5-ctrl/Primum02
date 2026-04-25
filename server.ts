@@ -94,7 +94,12 @@ async function startServer() {
     });
   });
 
-  app.use(express.json());
+  app.use((req, res, next) => {
+    if (req.body !== undefined) {
+      return next();
+    }
+    express.json()(req, res, next);
+  });
 
   // Middleware de Segurança e HTTPS
   app.use((req, res, next) => {

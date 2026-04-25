@@ -7,23 +7,33 @@ import { createClient } from '@supabase/supabase-js';
 dotenv.config();
 
 const app = express();
-app.use(express.json());
+app.use((req, res, next) => {
+  if (req.body !== undefined) {
+    return next();
+  }
+  express.json()(req, res, next);
+});
 
 const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/['"]/g, '').trim();
 const supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').replace(/['"]/g, '').trim();
 const supabaseAdmin = supabaseUrl && supabaseServiceKey ? createClient(supabaseUrl, supabaseServiceKey) : null;
 
-app.get('/api/debug-env', (req, res) => {
+const router = express.Router();
+
+router.get('/debug-env', (req, res) => {
   res.json({
     hasUrl: !!process.env.SUPABASE_URL || !!process.env.VITE_SUPABASE_URL,
     hasKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
     hasMPToken: !!process.env.MERCADO_PAGO_ACCESS_TOKEN || !!process.env.MERCADOPAGO_ACCESS_TOKEN,
     NODE_ENV: process.env.NODE_ENV,
-    host: req.headers.host
+    host: req.headers.host,
+    url: req.url,
+    path: req.path,
+    originalUrl: req.originalUrl
   });
 });
 
-app.get('/api/admin/users', async (req, res) => {
+router.get('/admin/users', async (req, res) => {
   if (supabaseAdmin) {
      try {
        const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
@@ -37,7 +47,7 @@ app.get('/api/admin/users', async (req, res) => {
   }
 });
 
-app.post('/api/admin/updatesettings', async (req, res) => {
+router.post('/admin/updatesettings', async (req, res) => {
   if (!supabaseAdmin) return res.status(500).json({ error: "Supabase service key not configured" });
   const { userId, plan, status, expiresAt } = req.body;
   
@@ -82,7 +92,7 @@ app.post('/api/admin/updatesettings', async (req, res) => {
   }
 });
 
-app.get('/api/referrals', async (req, res) => {
+router.get('/referrals', async (req, res) => {
   const { userId } = req.query;
   if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin not configured" });
   if (!userId) return res.status(400).json({ error: "userId required" });
@@ -112,7 +122,7 @@ app.get('/api/referrals', async (req, res) => {
   }
 });
 
-app.post('/api/referrals/redeem', async (req, res) => {
+router.post('/referrals/redeem', async (req, res) => {
   if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin not configured" });
   const { userId, count, credits, freeMonths } = req.body;
   try {
@@ -135,7 +145,7 @@ app.post('/api/referrals/redeem', async (req, res) => {
   }
 });
 
-app.get('/api/admin/referrals/requests', async (req, res) => {
+router.get('/admin/referrals/requests', async (req, res) => {
   if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin not configured" });
   try {
     const { data, error } = await supabaseAdmin.from('referral_requests').select('*').order('created_at', { ascending: false });
@@ -146,7 +156,7 @@ app.get('/api/admin/referrals/requests', async (req, res) => {
   }
 });
 
-app.post('/api/admin/referrals/approve', async (req, res) => {
+router.post('/admin/referrals/approve', async (req, res) => {
   if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin not configured" });
   const { requestId, status } = req.body;
   try {
@@ -158,7 +168,7 @@ app.post('/api/admin/referrals/approve', async (req, res) => {
   }
 });
 
-app.post('/api/payments/create-preference', async (req, res) => {
+router.post('/payments/create-preference', async (req, res) => {
   const { title, price, planId, userId, email } = req.body;
   const mpToken = (process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN || '').replace(/['"]/g, '').trim();
   if (!mpToken) return res.status(500).json({ error: 'MERCADO_PAGO_ACCESS_TOKEN não configurado.' });
@@ -188,7 +198,7 @@ app.post('/api/payments/create-preference', async (req, res) => {
   }
 });
 
-app.post('/api/payments/create-payment', async (req, res) => {
+router.post('/payments/create-payment', async (req, res) => {
   const { title, price, planId, userId, email, method, payer, token, installments, payment_method_id, issuer_id } = req.body;
   const mpToken = (process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN || '').replace(/['"]/g, '').trim();
   if (!mpToken) return res.status(500).json({ error: 'MERCADO_PAGO_ACCESS_TOKEN não configurado.' });
@@ -216,7 +226,7 @@ app.post('/api/payments/create-payment', async (req, res) => {
   }
 });
 
-app.post('/api/payments/webhook', async (req, res) => {
+router.post('/payments/webhook', async (req, res) => {
   const paymentId = req.query.id || req.body?.data?.id;
   const type = req.query.topic || req.body?.type;
   if (type === 'payment' && paymentId) {
@@ -245,8 +255,7 @@ app.post('/api/payments/webhook', async (req, res) => {
   res.status(200).send('OK');
 });
 
-// Notifications
-app.post('/api/notifications/send', async (req, res) => {
+router.post('/notifications/send', async (req, res) => {
   const { title, message, imageUrl, data } = req.body;
   const appId = process.env.VITE_ONESIGNAL_APP_ID || '581f23c1-2b57-4646-8780-6cd2ccbba30e';
   const restApiKey = process.env.ONESIGNAL_REST_API_KEY;
@@ -267,7 +276,7 @@ app.post('/api/notifications/send', async (req, res) => {
   }
 });
 
-app.post('/api/terabox/convert', async (req, res) => {
+router.post('/terabox/convert', async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL do TeraBox é obrigatória.' });
 
@@ -289,6 +298,13 @@ app.post('/api/terabox/convert', async (req, res) => {
   } catch (error: any) {
     res.status(500).json({ error: 'Erro TeraBox' });
   }
+});
+
+app.use('/api', router);
+app.use('/', router);
+
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found in express', url: req.url, originalUrl: req.originalUrl, path: req.path });
 });
 
 export default app;
