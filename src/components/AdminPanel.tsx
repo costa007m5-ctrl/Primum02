@@ -6,7 +6,7 @@ import {
   Cloud, Link as LinkIcon, ExternalLink, Play, Check, X, Save,
   ArrowUpDown, Download, Settings, Database, Plus, Upload,
   Sparkles, Calendar, Shield, Copy, Star, Send, Image as ImageIcon,
-  Activity, Users, Heart, DollarSign
+  Activity, Users, Heart, DollarSign, Server
 } from 'lucide-react';
 import { Movie, ScannerState, ReScannerState, StreamingProvider } from '../types';
 import { supabase } from '../lib/supabase';
@@ -14,6 +14,7 @@ import tmdb, { requests, getMovieLogo } from '../services/tmdb';
 import AdminUsersTab from './admin/AdminUsersTab';
 import AdminMercadoPagoTab from './admin/AdminMercadoPagoTab';
 import AdminReferralsTab from './admin/AdminReferralsTab';
+import { AdminAPIsTab } from './admin/AdminAPIsTab';
 
 interface AdminPanelProps {
   movies: Movie[];
@@ -40,7 +41,7 @@ interface AdminPanelProps {
   onUpdateCategoryImage?: (categoryId: number, backdrop: string) => Promise<void>;
 }
 
-type AdminTab = 'dashboard' | 'all' | 'drive' | 'kingx' | 'others' | 'pending' | 'providers' | 'app' | 'duplicates' | 'collections' | 'supabase' | 'requests' | 'genres' | 'users' | 'mercadopago';
+type AdminTab = 'dashboard' | 'all' | 'drive' | 'kingx' | 'others' | 'pending' | 'providers' | 'app' | 'duplicates' | 'collections' | 'supabase' | 'requests' | 'genres' | 'users' | 'mercadopago' | 'referrals' | 'apis';
 
 const AdminPanel: React.FC<AdminPanelProps> = ({
   movies,
@@ -1406,6 +1407,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <p className="hidden md:block text-[10px] text-gray-500 font-black uppercase tracking-widest mb-4 px-4">Categorias</p>
             {[
               { id: 'dashboard', label: 'Dashboard', icon: Activity },
+              { id: 'apis', label: 'APIs (Status)', icon: Server },
               { id: 'users', label: 'Usuários/Assin.', icon: Users },
               { id: 'mercadopago', label: 'Mercado Pago', icon: DollarSign },
               { id: 'referrals', label: 'Resgates', icon: Database }, // Using Database temporarily or we can use another icon if imported
@@ -1841,6 +1843,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <AdminMercadoPagoTab />
             ) : activeTab === 'referrals' ? (
               <AdminReferralsTab />
+            ) : activeTab === 'apis' ? (
+              <AdminAPIsTab />
             ) : activeTab === 'supabase' ? (
               <div className="space-y-6 md:space-y-12 pb-12">
                 <section className="bg-white/5 p-6 md:p-12 rounded-[1.5rem] md:rounded-[3rem] border border-white/10 backdrop-blur-3xl relative overflow-hidden group">

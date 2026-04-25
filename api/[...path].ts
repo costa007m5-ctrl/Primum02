@@ -177,6 +177,7 @@ app.post('/api/payments/create-preference', async (req, res) => {
         },
         auto_return: 'approved',
         external_reference: `${userId}_${planId}_${Date.now()}`,
+        notification_url: `${APP_URL}/api/payments/webhook`,
         payment_methods: { excluded_payment_methods: [], excluded_payment_types: [], installments: 1 }
       }
     });
@@ -194,6 +195,7 @@ app.post('/api/payments/create-payment', async (req, res) => {
   try {
     const client = new MercadoPagoConfig({ accessToken: mpToken });
     const payment = new Payment(client);
+    const APP_URL = process.env.APP_URL || `https://${req.headers.host}`;
     const response = await payment.create({
       body: {
         transaction_amount: Number(price),
@@ -203,6 +205,7 @@ app.post('/api/payments/create-payment', async (req, res) => {
         installments: installments || 1,
         issuer_id: issuer_id,
         external_reference: `${userId}_${planId}_${Date.now()}`,
+        notification_url: `${APP_URL}/api/payments/webhook`,
         payer: { ...payer, email: email || payer?.email || 'user@example.com' }
       },
       requestOptions: { idempotencyKey: `${userId}_${planId}_${Date.now()}_${Math.random()}` }

@@ -124,6 +124,16 @@ async function startServer() {
     next();
   });
 
+  app.get('/api/debug-env', (req, res) => {
+    res.json({
+      hasUrl: !!process.env.SUPABASE_URL || !!process.env.VITE_SUPABASE_URL,
+      hasKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      hasMPToken: !!process.env.MERCADO_PAGO_ACCESS_TOKEN || !!process.env.MERCADOPAGO_ACCESS_TOKEN,
+      NODE_ENV: process.env.NODE_ENV,
+      host: req.headers.host
+    });
+  });
+
   app.get('/api/admin/users', async (req, res) => {
     // In a real app, verify the JWT properly!
     // We assume the caller is admin based on JWT token if we had a proper check.
@@ -301,6 +311,7 @@ async function startServer() {
           },
           auto_return: 'approved',
           external_reference: `${userId}_${planId}_${Date.now()}`,
+          notification_url: `${APP_URL}/api/payments/webhook`,
           payment_methods: {
             excluded_payment_methods: [],
             excluded_payment_types: [],
@@ -327,6 +338,7 @@ async function startServer() {
     try {
       const client = new MercadoPagoConfig({ accessToken: mpToken });
       const payment = new Payment(client);
+      const APP_URL = process.env.APP_URL || (process.env.NODE_ENV === 'production' ? `https://${req.get('host')}` : `http://localhost:${PORT}`);
 
       const response = await payment.create({
         body: {
@@ -337,6 +349,7 @@ async function startServer() {
           installments: installments || 1,
           issuer_id: issuer_id,
           external_reference: `${userId}_${planId}_${Date.now()}`,
+          notification_url: `${APP_URL}/api/payments/webhook`,
           payer: {
             ...payer,
             email: email || payer?.email || 'user@example.com'
