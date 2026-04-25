@@ -1,10 +1,6 @@
 {
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/index"
-    },
-    {
       "source": "/((?!api/|assets/|favicon.ico|manifest.json|OneSignalSDKWorker.js|OneSignalSDKUpdaterWorker.js).*)",
       "destination": "/index.html"
     }

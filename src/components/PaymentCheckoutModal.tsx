@@ -85,6 +85,8 @@ export default function PaymentCheckoutModal({ planTitle, planPrice, planId, onC
         setSuccessData(data);
       } else if (data?.transaction_details?.external_resource_url) {
         setSuccessData(data);
+      } else if (data?.init_point) {
+        setSuccessData(data);
       } else if (method !== 'credit_card') {
         throw new Error('Resposta inválida do servidor');
       }
@@ -104,6 +106,7 @@ export default function PaymentCheckoutModal({ planTitle, planPrice, planId, onC
   if (successData) {
     const pixData = successData.point_of_interaction?.transaction_data;
     const boletoUrl = successData.transaction_details?.external_resource_url;
+    const initPoint = successData.init_point;
 
     return (
       <div className="fixed inset-0 z-[6000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -113,7 +116,9 @@ export default function PaymentCheckoutModal({ planTitle, planPrice, planId, onC
           
           <CheckCircle2 size={64} className="text-green-500 mx-auto mb-6 relative z-10" />
           <h2 className="text-2xl font-black uppercase italic tracking-tighter mb-2 relative z-10">Pedido Gerado!</h2>
-          <p className="text-sm font-bold text-gray-400 mb-8 relative z-10">Efetue o pagamento para liberar seu {planTitle}.</p>
+          <p className="text-sm font-bold text-gray-400 mb-8 relative z-10">
+            {initPoint ? `Continue para o Mercado Pago para liberar o seu ${planTitle}.` : `Efetue o pagamento para liberar seu ${planTitle}.`}
+          </p>
 
           {pixData && (
             <div className="space-y-6 relative z-10">
@@ -137,6 +142,15 @@ export default function PaymentCheckoutModal({ planTitle, planPrice, planId, onC
               <a href={boletoUrl} target="_blank" rel="noreferrer" className="block w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black uppercase tracking-widest text-[10px] transition-colors">
                 Imprimir / Ver Boleto
               </a>
+            </div>
+          )}
+
+          {initPoint && (
+            <div className="space-y-6 relative z-10">
+               <a href={initPoint} target="_blank" rel="noreferrer" className="block w-full py-4 bg-[#009EE3] hover:bg-[#0089C5] text-white rounded-xl font-black uppercase tracking-widest text-[10px] transition-colors">
+                 Pagar com Mercado Pago
+               </a>
+               <p className="text-xs text-gray-400">Caso a nova aba não tenha aberto automaticamente, clique no botão acima.</p>
             </div>
           )}
 

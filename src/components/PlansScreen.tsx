@@ -43,7 +43,8 @@ export default function PlansScreen({ appSettings, onClose, onUpdatePlan, userEm
         });
         const data = await response.json();
         if (data.init_point) {
-          window.location.href = data.init_point;
+          // Utiliza window.open para funcionar dentro de Iframes (AI Studio) e abrevia bloqueios
+          window.open(data.init_point, '_blank');
         }
         return data; // Return reference for credit card flow if needed
       } else if (method === 'credit_card') {
