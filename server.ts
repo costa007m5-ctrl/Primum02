@@ -15,8 +15,8 @@ async function startServer() {
   const PORT = 3000;
   
   // Initialize Supabase Admin strictly for backend operations
-  const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/['"]/g, '').trim();
+  const supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').replace(/['"]/g, '').trim();
   const supabaseAdmin = supabaseUrl && supabaseServiceKey ? createClient(supabaseUrl, supabaseServiceKey) : null;
   const httpServer = http.createServer(app);
   const io = new Server(httpServer, {
@@ -279,7 +279,7 @@ async function startServer() {
   app.post('/api/payments/create-preference', async (req, res) => {
     const { title, price, planId, userId, email } = req.body;
     
-    const mpToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN;
+    const mpToken = (process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN || '').replace(/['"]/g, '').trim();
     if (!mpToken) {
       return res.status(500).json({ error: 'MERCADO_PAGO_ACCESS_TOKEN não configurado.' });
     }
@@ -330,7 +330,7 @@ async function startServer() {
   app.post('/api/payments/create-payment', async (req, res) => {
     const { title, price, planId, userId, email, method, payer, token, installments, payment_method_id, issuer_id } = req.body;
     
-    const mpToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN;
+    const mpToken = (process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN || '').replace(/['"]/g, '').trim();
     if (!mpToken) {
       return res.status(500).json({ error: 'MERCADO_PAGO_ACCESS_TOKEN não configurado.' });
     }
@@ -373,7 +373,7 @@ async function startServer() {
     
     if (type === 'payment' && paymentId) {
       try {
-        const mpToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN;
+        const mpToken = (process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN || '').replace(/['"]/g, '').trim();
         if (!mpToken) {
              return res.status(200).send('Webhook ignored: no token');
         }
