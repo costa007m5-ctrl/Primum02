@@ -50,7 +50,6 @@ export default function PaymentCheckoutModal({ planTitle, planPrice, planId, onC
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (method === 'credit_card') return; // CardPayment handles its own submisison
     setLoading(true);
 
     try {

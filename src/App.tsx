@@ -3856,13 +3856,12 @@ export default function App() {
       if (data.init_point) {
         window.location.href = data.init_point;
       } else {
-        await updateAppSettings({ subscription_plan: plan });
-        setIsPlansScreenOpen(false);
+        console.error('Mercado Pago Error:', data);
+        alert(`Erro Mercado Pago: ${data.error || 'Desconhecido'}`);
       }
     } catch (error) {
       console.error('Erro ao chamar Mercado Pago:', error);
-      await updateAppSettings({ subscription_plan: plan });
-      setIsPlansScreenOpen(false);
+      alert('Houve um erro ao processar o pagamento. Tente novamente mais tarde.');
     }
   };
 

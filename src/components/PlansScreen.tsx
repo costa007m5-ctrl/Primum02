@@ -42,11 +42,10 @@ export default function PlansScreen({ appSettings, onClose, onUpdatePlan, userEm
           })
         });
         const data = await response.json();
-        if (data.init_point) {
-          // Utiliza window.open para funcionar dentro de Iframes (AI Studio) e abrevia bloqueios
-          window.open(data.init_point, '_blank');
+        if (!data.init_point) {
+          alert(`Erro gerando pagamento: ${data.error || 'Desconhecido'}`);
         }
-        return data; // Return reference for credit card flow if needed
+        return data; // Return data so the checkout modal can show the link
       } else if (method === 'credit_card') {
         const response = await fetch('/api/payments/create-payment', {
           method: 'POST',

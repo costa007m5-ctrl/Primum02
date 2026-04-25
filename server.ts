@@ -323,7 +323,7 @@ async function startServer() {
       res.json({ id: response.id, init_point: response.init_point });
     } catch (error: any) {
       console.error('Erro ao criar preferência do Mercado Pago:', error);
-      res.status(500).json({ error: 'Erro ao conectar com Mercado Pago.', details: error.message });
+      res.status(500).json({ error: error.message || 'Erro ao conectar com Mercado Pago.', details: error });
     }
   });
 

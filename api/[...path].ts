@@ -184,7 +184,7 @@ app.post('/api/payments/create-preference', async (req, res) => {
     res.json({ id: response.id, init_point: response.init_point });
   } catch (error: any) {
     console.error('Erro MP:', error);
-    res.status(500).json({ error: 'Erro MP', details: error.message });
+    res.status(500).json({ error: error.message || 'Erro criando preferência MP', details: error });
   }
 });
 
