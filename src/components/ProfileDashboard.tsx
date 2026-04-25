@@ -105,7 +105,8 @@ export default function ProfileDashboard({
     return Math.round(totalSize);
   }, [downloads]);
 
-  const [referralStats, setReferralStats] = useState({ count: 0, credits: 0, freeMonths: 0 });
+  const [referralStats, setReferralStats] = useState({ count: 0, credits: 0, freeMonths: 0, pending: null as any });
+  const [redeeming, setRedeeming] = useState(false);
 
   useEffect(() => {
     if (activeSubTab === 'plan' && appSettings?.user_id) {
@@ -113,12 +114,35 @@ export default function ProfileDashboard({
         .then(res => res.json())
         .then(data => {
           if (!data.error) {
-            setReferralStats({ count: data.count, credits: data.credits, freeMonths: data.freeMonths });
+            setReferralStats({ count: data.count, credits: data.credits, freeMonths: data.freeMonths, pending: data.pending });
           }
         })
         .catch(err => console.error("Erro ao buscar indicações:", err));
     }
   }, [activeSubTab, appSettings?.user_id]);
+
+  const handleRedeem = async () => {
+    if (!appSettings?.user_id) return;
+    setRedeeming(true);
+    try {
+      const res = await fetch('/api/referrals/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: appSettings.user_id,
+          count: referralStats.count,
+          credits: referralStats.credits,
+          freeMonths: referralStats.freeMonths
+        })
+      });
+      if (!res.ok) throw new Error('Falha ao resgatar');
+      alert('Resgate solicitado com sucesso! A administração irá processar em breve.');
+      setReferralStats(prev => ({ ...prev, pending: { status: 'pending' } }));
+    } catch (e: any) {
+      alert('Erro: ' + e.message);
+    }
+    setRedeeming(false);
+  };
 
   // Sync local state if appSettings changes from outside
   useEffect(() => {
@@ -637,6 +661,20 @@ export default function ProfileDashboard({
                      </p>
                    </div>
                  </div>
+
+                 {referralStats.pending ? (
+                   <div className="mt-4 bg-yellow-500/20 text-yellow-500 text-sm font-bold p-4 text-center rounded-xl border border-yellow-500/20 uppercase tracking-widest">
+                      Resgate Solicitado ({referralStats.pending.status})
+                   </div>
+                 ) : (
+                   <button 
+                     onClick={handleRedeem}
+                     disabled={referralStats.count === 0 || redeeming}
+                     className="mt-4 w-full bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-black uppercase tracking-widest py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(220,38,38,0.4)]"
+                   >
+                     {redeeming ? 'Processando...' : 'Resgatar Benefícios'}
+                   </button>
+                 )}
                </div>
              </div>
           )}

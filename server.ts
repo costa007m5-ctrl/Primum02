@@ -156,9 +156,66 @@ async function startServer() {
       const credits = count * 3;
       const freeMonths = Math.floor(count / 5);
 
-      return res.json({ count, credits, freeMonths });
+      // Check for pending requests
+      const { data: pendingReq } = await supabaseAdmin
+        .from('referral_requests')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'pending');
+
+      return res.json({ count, credits, freeMonths, pending: pendingReq?.length ? pendingReq[0] : null });
     } catch (error: any) {
+      if (error.code === '42P01') {
+        // Table doesn't exist
+        return res.json({ count: 0, credits: 0, freeMonths: 0, pending: null, error: 'Table referral_requests missing' });
+      }
       return res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/referrals/redeem', async (req, res) => {
+    if (!supabaseAdmin) return res.status(500).json({ error: "Supabase service key not configured" });
+    const { userId, count, credits, freeMonths } = req.body;
+    try {
+      const { data: { user }, error: uErr } = await supabaseAdmin.auth.admin.getUserById(userId);
+      if (uErr) throw uErr;
+
+      const { error } = await supabaseAdmin.from('referral_requests').insert({
+        user_id: userId,
+        email: user.email,
+        whatsapp: user.user_metadata?.whatsapp || '',
+        referral_count: count,
+        credits,
+        free_months: freeMonths,
+        status: 'pending'
+      });
+      if (error) throw error;
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/admin/referrals/requests', async (req, res) => {
+    if (!supabaseAdmin) return res.status(500).json({ error: "Supabase service key not configured" });
+    try {
+      const { data, error } = await supabaseAdmin.from('referral_requests').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      return res.json({ requests: data });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/admin/referrals/approve', async (req, res) => {
+    if (!supabaseAdmin) return res.status(500).json({ error: "Supabase service key not configured" });
+    const { requestId, status } = req.body;
+    try {
+      const { error } = await supabaseAdmin.from('referral_requests').update({ status }).eq('id', requestId);
+      if (error) throw error;
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
     }
   });
 

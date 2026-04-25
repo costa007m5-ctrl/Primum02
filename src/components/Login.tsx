@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { AlertCircle, Loader2, Sparkles, ShieldCheck, Mail, Lock, Eye, EyeOff, Play, ChevronLeft, Check, RefreshCcw } from 'lucide-react';
+import { AlertCircle, Loader2, Sparkles, ShieldCheck, Mail, Lock, Eye, EyeOff, Play, ChevronLeft, Check, RefreshCcw, Smartphone } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface LoginProps {
@@ -13,6 +13,7 @@ const Login: React.FC<LoginProps> = ({ initialMode = 'login', movies = [] }) => 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +75,7 @@ const Login: React.FC<LoginProps> = ({ initialMode = 'login', movies = [] }) => 
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/menu`,
-            data: { referred_by: referralCode || null }
+            data: { referred_by: referralCode || null, whatsapp }
           }
         });
         if (error) throw error;
@@ -469,6 +470,20 @@ const Login: React.FC<LoginProps> = ({ initialMode = 'login', movies = [] }) => 
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
+                  
+                  {mode === 'signup' && (
+                    <div className="relative group">
+                      <Smartphone className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400/50 group-focus-within:text-red-600 transition-all duration-300" size={18} />
+                      <input
+                        type="tel"
+                        placeholder="WhatsApp (com DDD)"
+                        value={whatsapp}
+                        onChange={(e) => setWhatsapp(e.target.value)}
+                        className="w-full bg-glass-premium text-white rounded-[1.5rem] pl-14 pr-6 py-5 outline-none border border-white/5 focus:border-red-600/50 transition-all font-bold italic text-sm shadow-xl placeholder:text-white/20"
+                        required
+                      />
+                    </div>
+                  )}
                 </div>
                 
                 <motion.button

@@ -15,6 +15,7 @@ export default function AdminUsersTab() {
   const [users, setUsers] = useState<any[]>([]);
   const [settings, setSettings] = useState<Record<string, AppSettings>>({});
   const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editData, setEditData] = useState<{ plan: string, status: string, daysToAdd: number }>({ plan: 'hub', status: 'active', daysToAdd: 30 });
@@ -62,10 +63,18 @@ export default function AdminUsersTab() {
                  email: u.email,
                  created_at: u.created_at,
                  profiles: profilesMap[u.id] || [],
-                 referred_by: u.user_metadata?.referred_by
+                 referred_by: u.user_metadata?.referred_by,
+                 whatsapp: u.user_metadata?.whatsapp
              }));
              setUsers(mappedUsers || []);
+             setApiError(null);
           } else {
+             const errData = await res.json().catch(() => ({}));
+             if (errData.error?.includes('service key not configured')) {
+               setApiError('Aviso: SUPABASE_SERVICE_ROLE_KEY não está configurada no backend. Apenas clientes com plano ativo/inativo estão visíveis, sendo identificados pelo ID, e com dados limitados.');
+             } else {
+               setApiError(`Erro na API: ${errData.error || 'Desconhecido'}`);
+             }
              const fakeUsers = settingsData.map(s => ({
                 id: s.user_id,
                 email: 'ID: ' + s.user_id.substring(0,8),
@@ -75,6 +84,7 @@ export default function AdminUsersTab() {
              setUsers(fakeUsers);
           }
         } catch {
+             setApiError('Não foi possível conectar à API do admin local (/api/admin/users). Certifique-se de que o backend express está rodando.');
              const fakeUsers = settingsData.map(s => ({
                 id: s.user_id,
                 email: 'ID: ' + s.user_id.substring(0,8),
@@ -147,6 +157,12 @@ export default function AdminUsersTab() {
 
   return (
     <div>
+      {apiError && (
+        <div className="mb-6 p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/10 text-yellow-300 text-sm">
+          <strong>Aviso de Sistema:</strong> {apiError}<br/>
+          <em>Para visualizar a lista completa de usuários (incluindo número de WhatsApp e clientes sem plano) você deve configurar a chave SUPABASE_SERVICE_ROLE_KEY no ambiente (AI Studio ou Vercel/Netlify). Se não colocar a chave, você verá apenas IDs mascarados.</em>
+        </div>
+      )}
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black italic uppercase tracking-tighter">Assinantes</h2>
@@ -189,9 +205,16 @@ export default function AdminUsersTab() {
                 return (
                   <tr key={u.id} className="border-t border-white/5 hover:bg-white/5">
                     <td className="p-4">
-                      <div className="font-bold">{u.email}</div>
+                      <div className="font-bold flex items-center gap-2">
+                        {u.email}
+                      </div>
+                      {u.whatsapp && (
+                        <div className="text-[10px] text-blue-400 mt-1 font-bold uppercase tracking-widest inline-block mr-2">
+                          Wa: {u.whatsapp}
+                        </div>
+                      )}
                       {u.profiles && u.profiles.length > 0 && (
-                        <div className="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">
+                        <div className="text-[10px] text-gray-400 mt-1 uppercase tracking-widest inline-block mr-2">
                           Perfis: {u.profiles.join(', ')}
                         </div>
                       )}

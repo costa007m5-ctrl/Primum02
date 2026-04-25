@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase';
 import tmdb, { requests, getMovieLogo } from '../services/tmdb';
 import AdminUsersTab from './admin/AdminUsersTab';
 import AdminMercadoPagoTab from './admin/AdminMercadoPagoTab';
+import AdminReferralsTab from './admin/AdminReferralsTab';
 
 interface AdminPanelProps {
   movies: Movie[];
@@ -1407,6 +1408,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               { id: 'dashboard', label: 'Dashboard', icon: Activity },
               { id: 'users', label: 'Usuários/Assin.', icon: Users },
               { id: 'mercadopago', label: 'Mercado Pago', icon: DollarSign },
+              { id: 'referrals', label: 'Resgates', icon: Database }, // Using Database temporarily or we can use another icon if imported
               { id: 'all', label: 'Todos', icon: Database },
               { id: 'drive', label: 'Drive', icon: Cloud }, // Shortened for mobile
               { id: 'kingx', label: 'KingX', icon: ExternalLink },
@@ -1837,6 +1839,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <AdminUsersTab />
             ) : activeTab === 'mercadopago' ? (
               <AdminMercadoPagoTab />
+            ) : activeTab === 'referrals' ? (
+              <AdminReferralsTab />
             ) : activeTab === 'supabase' ? (
               <div className="space-y-6 md:space-y-12 pb-12">
                 <section className="bg-white/5 p-6 md:p-12 rounded-[1.5rem] md:rounded-[3rem] border border-white/10 backdrop-blur-3xl relative overflow-hidden group">

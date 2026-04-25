@@ -81,14 +81,68 @@ app.get('/api/referrals', async (req, res) => {
     const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
     if (error) throw error;
 
-    // Filter users who were referred by this userId
     const userList = users as any[];
     const referredUsers = userList.filter(u => u.user_metadata?.referred_by === userId);
     const count = referredUsers.length;
     const credits = count * 3;
     const freeMonths = Math.floor(count / 5);
 
-    res.json({ count, credits, freeMonths });
+    const { data: pendingReq } = await supabaseAdmin
+      .from('referral_requests')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'pending');
+
+    res.json({ count, credits, freeMonths, pending: pendingReq?.length ? pendingReq[0] : null });
+  } catch (err: any) {
+    if (err.code === '42P01') {
+       return res.json({ count: 0, credits: 0, freeMonths: 0, pending: null, error: 'Table referral_requests missing' });
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/referrals/redeem', async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin not configured" });
+  const { userId, count, credits, freeMonths } = req.body;
+  try {
+    const { data: { user }, error: uErr } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (uErr) throw uErr;
+
+    const { error } = await supabaseAdmin.from('referral_requests').insert({
+      user_id: userId,
+      email: user.email,
+      whatsapp: user.user_metadata?.whatsapp || '',
+      referral_count: count,
+      credits,
+      free_months: freeMonths,
+      status: 'pending'
+    });
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/referrals/requests', async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin not configured" });
+  try {
+    const { data, error } = await supabaseAdmin.from('referral_requests').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json({ requests: data });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/referrals/approve', async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin not configured" });
+  const { requestId, status } = req.body;
+  try {
+    const { error } = await supabaseAdmin.from('referral_requests').update({ status }).eq('id', requestId);
+    if (error) throw error;
+    res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
