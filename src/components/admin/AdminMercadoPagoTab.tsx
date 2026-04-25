@@ -22,8 +22,9 @@ export default function AdminMercadoPagoTab() {
           <div className="flex items-center gap-2 text-green-400 font-bold mb-2">
             <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div> API Conectada
           </div>
-          <p className="text-xs text-gray-500 mt-4 leading-relaxed">
-            Seus tokens de acesso estão configurados nas variáveis de ambiente. O webhook de pagamentos está ativo em <code>/api/payments/webhook</code>.
+          <p className="text-xs text-gray-500 mt-4 leading-relaxed flex flex-col gap-2">
+            <span><strong>Access Token:</strong> Configurado no servidor (.env). O webhook de pagamentos está ativo em <code>/api/payments/webhook</code>.</span>
+            <span><strong>Public Key:</strong> <code>{import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY || 'Não configurada (opcional para checkouts Pro)'}</code></span>
           </p>
         </div>
         

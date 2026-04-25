@@ -3848,7 +3848,7 @@ export default function App() {
       }
     };
     checkPaymentSuccess();
-  }, [profile]); // run when profile loads and appSettings are ready
+  }, [user]); // run when user is authenticated, independently of profile
 
   if (loading || showIntro) {
     return (
@@ -3906,6 +3906,7 @@ export default function App() {
             appSettings={appSettings} 
             onClose={() => setIsPlansScreenOpen(false)} 
             onUpdatePlan={handleUpdatePlan} 
+            userEmail={user?.email}
           />
         </div>
       </ThemeContext.Provider>

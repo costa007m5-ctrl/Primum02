@@ -5,7 +5,7 @@ import axios from 'axios';
 import dotenv from 'dotenv';
 import http from 'http';
 import { Server } from 'socket.io';
-import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import { createClient } from '@supabase/supabase-js';
 
 dotenv.config();
@@ -188,6 +188,40 @@ async function startServer() {
     } catch (error: any) {
       console.error('Erro ao criar preferência do Mercado Pago:', error);
       res.status(500).json({ error: 'Erro ao conectar com Mercado Pago.', details: error.message });
+    }
+  });
+
+  app.post('/api/payments/create-payment', async (req, res) => {
+    const { title, price, planId, userId, email, method, payer } = req.body;
+    
+    if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) {
+      return res.status(500).json({ error: 'MERCADO_PAGO_ACCESS_TOKEN não configurado.' });
+    }
+
+    try {
+      const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN });
+      const payment = new Payment(client);
+
+      const response = await payment.create({
+        body: {
+          transaction_amount: Number(price),
+          description: title,
+          payment_method_id: method,
+          external_reference: `${userId}_${planId}_${Date.now()}`,
+          payer: {
+            email: email,
+            first_name: payer.first_name,
+            last_name: payer.last_name,
+            identification: payer.identification,
+            address: payer.address
+          }
+        }
+      });
+
+      res.json(response);
+    } catch (error: any) {
+      console.error('Erro ao criar pagamento (Pix/Boleto) do Mercado Pago:', error);
+      res.status(500).json({ error: 'Erro ao criar pagamento direto.', details: error.message });
     }
   });
 

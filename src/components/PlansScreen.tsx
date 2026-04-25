@@ -2,22 +2,67 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Check, X, Shield, Zap, Sparkles, Star, Users, Smartphone, Tv, Laptop, Crown, MessageCircle } from 'lucide-react';
 import { AppSettings } from '../types';
+import PaymentCheckoutModal from './PaymentCheckoutModal';
 
 interface PlansScreenProps {
   appSettings: AppSettings | null;
   onClose: () => void;
   onUpdatePlan: (plan: 'hub' | 'plus' | 'max') => Promise<void>;
+  userEmail?: string;
 }
 
-export default function PlansScreen({ appSettings, onClose, onUpdatePlan }: PlansScreenProps) {
+export default function PlansScreen({ appSettings, onClose, onUpdatePlan, userEmail }: PlansScreenProps) {
   const currentPlan = appSettings?.subscription_plan || 'hub';
   const [loadingPlan, setLoadingPlan] = useState<'hub' | 'plus' | 'max' | null>(null);
+  const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
 
   const handleSelectPlan = async (plan: 'hub' | 'plus' | 'max') => {
     if (plan === currentPlan) return;
-    setLoadingPlan(plan);
+    const planConfig = plans.find(p => p.id === plan);
+    if (planConfig) {
+      setCheckoutPlan(planConfig);
+    }
+  };
+
+  const handleCreatePayment = async (method: string, payer: any) => {
+    if (!checkoutPlan) return;
+    
+    setLoadingPlan(checkoutPlan.id as any);
     try {
-      await onUpdatePlan(plan);
+      if (method === 'preference') {
+        const response = await fetch('/api/payments/create-preference', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: checkoutPlan.name,
+            price: checkoutPlan.priceValue,
+            planId: checkoutPlan.id,
+            userId: appSettings?.user_id,
+            email: userEmail || 'user@example.com'
+          })
+        });
+        const data = await response.json();
+        if (data.init_point) {
+          window.location.href = data.init_point;
+        }
+        return data; // Return reference for credit card flow if needed
+      } else {
+        const response = await fetch('/api/payments/create-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: checkoutPlan.name,
+            price: checkoutPlan.priceValue,
+            planId: checkoutPlan.id,
+            userId: appSettings?.user_id,
+            email: userEmail || payer.email || 'user@example.com',
+            method: method,
+            payer: payer
+          })
+        });
+        const data = await response.json();
+        return data;
+      }
     } finally {
       setLoadingPlan(null);
     }
@@ -28,6 +73,7 @@ export default function PlansScreen({ appSettings, onClose, onUpdatePlan }: Plan
       id: 'hub',
       name: 'Netprime Hub',
       price: 'R$ 15,90',
+      priceValue: 15.90,
       badge: 'Básico',
       description: 'Ideal para quem assiste sozinho no celular.',
       features: [
@@ -52,6 +98,7 @@ export default function PlansScreen({ appSettings, onClose, onUpdatePlan }: Plan
       id: 'plus',
       name: 'Netprime Plus',
       price: 'R$ 25,90',
+      priceValue: 25.90,
       badge: 'Recomendado',
       description: 'Para o casal ou dividir com um amigo.',
       features: [
@@ -75,6 +122,7 @@ export default function PlansScreen({ appSettings, onClose, onUpdatePlan }: Plan
       id: 'max',
       name: 'Netprime Max',
       price: 'R$ 35,90',
+      priceValue: 35.90,
       badge: 'Premium VIP',
       description: 'A experiência definitiva com tudo liberado.',
       features: [
@@ -198,6 +246,16 @@ export default function PlansScreen({ appSettings, onClose, onUpdatePlan }: Plan
           })}
         </div>
       </div>
+
+      {checkoutPlan && (
+        <PaymentCheckoutModal
+          planTitle={checkoutPlan.name}
+          planPrice={checkoutPlan.priceValue}
+          planId={checkoutPlan.id}
+          onClose={() => setCheckoutPlan(null)}
+          onSubmit={handleCreatePayment}
+        />
+      )}
     </div>
   );
 }
