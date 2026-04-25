@@ -110,14 +110,22 @@ export default function ProfileDashboard({
 
   useEffect(() => {
     if (activeSubTab === 'plan' && appSettings?.user_id) {
-      fetch(`/api/referrals?userId=${appSettings.user_id}`)
-        .then(res => res.json())
-        .then(data => {
+      (async () => {
+        try {
+          const tokenResp = await supabase.auth.getSession();
+          const access_token = tokenResp.data.session?.access_token;
+          if (!access_token) return;
+          const res = await fetch(`/api/referrals?userId=${appSettings.user_id}`, {
+            headers: { Authorization: `Bearer ${access_token}` }
+          });
+          const data = await res.json();
           if (!data.error) {
             setReferralStats({ count: data.count, credits: data.credits, freeMonths: data.freeMonths, pending: data.pending });
           }
-        })
-        .catch(err => console.error("Erro ao buscar indicações:", err));
+        } catch (err) {
+          console.error("Erro ao buscar indicações:", err);
+        }
+      })();
     }
   }, [activeSubTab, appSettings?.user_id]);
 
@@ -125,9 +133,15 @@ export default function ProfileDashboard({
     if (!appSettings?.user_id) return;
     setRedeeming(true);
     try {
+      const tokenResp = await supabase.auth.getSession();
+      const access_token = tokenResp.data.session?.access_token;
+      if (!access_token) throw new Error('Sessão expirada');
       const res = await fetch('/api/referrals/redeem', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${access_token}`
+        },
         body: JSON.stringify({
           userId: appSettings.user_id,
           count: referralStats.count,
