@@ -9,7 +9,7 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const supabaseAdmin = supabaseUrl && supabaseServiceKey ? createClient(supabaseUrl, supabaseServiceKey) : null;
 
@@ -150,9 +150,10 @@ app.post('/api/admin/referrals/approve', async (req, res) => {
 
 app.post('/api/payments/create-preference', async (req, res) => {
   const { title, price, planId, userId, email } = req.body;
-  if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) return res.status(500).json({ error: 'MERCADO_PAGO_ACCESS_TOKEN não configurado.' });
+  const mpToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN;
+  if (!mpToken) return res.status(500).json({ error: 'MERCADO_PAGO_ACCESS_TOKEN não configurado.' });
   try {
-    const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN });
+    const client = new MercadoPagoConfig({ accessToken: mpToken });
     const preference = new Preference(client);
     const APP_URL = process.env.APP_URL || `https://${req.headers.host}`;
     const response = await preference.create({
@@ -178,9 +179,10 @@ app.post('/api/payments/create-preference', async (req, res) => {
 
 app.post('/api/payments/create-payment', async (req, res) => {
   const { title, price, planId, userId, email, method, payer, token, installments, payment_method_id, issuer_id } = req.body;
-  if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) return res.status(500).json({ error: 'MERCADO_PAGO_ACCESS_TOKEN não configurado.' });
+  const mpToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN;
+  if (!mpToken) return res.status(500).json({ error: 'MERCADO_PAGO_ACCESS_TOKEN não configurado.' });
   try {
-    const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN });
+    const client = new MercadoPagoConfig({ accessToken: mpToken });
     const payment = new Payment(client);
     const response = await payment.create({
       body: {
@@ -206,9 +208,10 @@ app.post('/api/payments/webhook', async (req, res) => {
   const type = req.query.topic || req.body?.type;
   if (type === 'payment' && paymentId) {
     try {
-      if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) return res.status(200).send('No token');
+      const mpToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN;
+      if (!mpToken) return res.status(200).send('No token');
       const response = await axios.get(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-        headers: { Authorization: `Bearer ${process.env.MERCADO_PAGO_ACCESS_TOKEN}` }
+        headers: { Authorization: `Bearer ${mpToken}` }
       });
       const payment = response.data;
       if (payment.status === 'approved') {

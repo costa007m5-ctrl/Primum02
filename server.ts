@@ -269,12 +269,13 @@ async function startServer() {
   app.post('/api/payments/create-preference', async (req, res) => {
     const { title, price, planId, userId, email } = req.body;
     
-    if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) {
+    const mpToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN;
+    if (!mpToken) {
       return res.status(500).json({ error: 'MERCADO_PAGO_ACCESS_TOKEN não configurado.' });
     }
 
     try {
-      const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN });
+      const client = new MercadoPagoConfig({ accessToken: mpToken });
       const preference = new Preference(client);
 
       const APP_URL = process.env.APP_URL || (process.env.NODE_ENV === 'production' ? `https://${req.get('host')}` : `http://localhost:${PORT}`);
@@ -318,12 +319,13 @@ async function startServer() {
   app.post('/api/payments/create-payment', async (req, res) => {
     const { title, price, planId, userId, email, method, payer, token, installments, payment_method_id, issuer_id } = req.body;
     
-    if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) {
+    const mpToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN;
+    if (!mpToken) {
       return res.status(500).json({ error: 'MERCADO_PAGO_ACCESS_TOKEN não configurado.' });
     }
 
     try {
-      const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN });
+      const client = new MercadoPagoConfig({ accessToken: mpToken });
       const payment = new Payment(client);
 
       const response = await payment.create({
@@ -358,14 +360,15 @@ async function startServer() {
     
     if (type === 'payment' && paymentId) {
       try {
-        if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) {
+        const mpToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN;
+        if (!mpToken) {
              return res.status(200).send('Webhook ignored: no token');
         }
 
         // Você precisaria fazer um GET no payment para conferir o status e liberar no banco
         // Utilizando o external_reference para achar o plano e usuario
         const response = await axios.get(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-          headers: { Authorization: `Bearer ${process.env.MERCADO_PAGO_ACCESS_TOKEN}` }
+          headers: { Authorization: `Bearer ${mpToken}` }
         });
         
         const payment = response.data;
