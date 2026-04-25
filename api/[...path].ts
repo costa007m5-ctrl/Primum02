@@ -27,6 +27,51 @@ app.get('/api/admin/users', async (req, res) => {
   }
 });
 
+app.post('/api/admin/updatesettings', async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase service key not configured" });
+  const { userId, plan, status, expiresAt } = req.body;
+  
+  if (!userId) return res.status(400).json({ error: "userId required" });
+
+  try {
+    const { data: existing, error: fetchErr } = await supabaseAdmin
+      .from('app_settings')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+      
+    if (existing) {
+      const { error } = await supabaseAdmin
+        .from('app_settings')
+        .update({
+          subscription_plan: plan,
+          subscription_status: status,
+          subscription_expires_at: expiresAt
+        })
+        .eq('user_id', userId);
+      if (error) throw error;
+    } else {
+      const { error } = await supabaseAdmin
+        .from('app_settings')
+        .insert({
+          user_id: userId,
+          subscription_plan: plan,
+          subscription_status: status,
+          subscription_expires_at: expiresAt,
+          theme: 'dark',
+          language: 'pt-BR',
+          autoplay_next: true,
+          show_logos: true
+        });
+      if (error) throw error;
+    }
+    return res.json({ success: true });
+  } catch (err: any) {
+    console.error(err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/referrals', async (req, res) => {
   const { userId } = req.query;
   if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin not configured" });

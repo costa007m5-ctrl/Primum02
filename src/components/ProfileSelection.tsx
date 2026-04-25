@@ -130,8 +130,10 @@ const ProfileSelection: React.FC<ProfileSelectionProps> = ({ onSelect, appSettin
       
       setShowEditModal(null);
       fetchProfiles();
-    } catch (error) {
+      setIsEditing(false); // Sair do modo de edição após salvar
+    } catch (error: any) {
       console.error('Erro ao atualizar perfil:', error);
+      alert('Erro ao atualizar perfil: ' + error.message);
     }
   };
 

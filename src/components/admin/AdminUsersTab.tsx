@@ -39,13 +39,15 @@ export default function AdminUsersTab() {
         // Mocking user profile info or if we have profiles, we fetch them. 
         // We will try fetching 'profiles'
         const { data: profilesData } = await supabase.from('profiles').select('id, user_id, name, type');
-        // Agrupar perfis por user_id pra ter uma ideia de quem é, ou se tivermos o email salvo em algum lugar.
-        // Já que a lista auth.users não é exposta pra client_key
         
-        // Se a gente precisar dos emails reais do auth, precisamos chamar uma edge function ou endpoint do nosso backend Node que use admin sdk.
-        // Nosso server.ts pode ter uma rota pra isso /api/admin/users
+        const profilesMap: Record<string, string[]> = {};
+        if (profilesData) {
+           profilesData.forEach(p => {
+             if (!profilesMap[p.user_id]) profilesMap[p.user_id] = [];
+             profilesMap[p.user_id].push(p.name);
+           });
+        }
         
-        // Por ora, vamos pelo server local:
         const tokenResp = await supabase.auth.getSession();
         const access_token = tokenResp.data.session?.access_token;
         
@@ -55,21 +57,29 @@ export default function AdminUsersTab() {
           });
           if (res.ok) {
              const data = await res.json();
-             setUsers(data.users || []);
+             const mappedUsers = data.users?.map((u: any) => ({
+                 id: u.id,
+                 email: u.email,
+                 created_at: u.created_at,
+                 profiles: profilesMap[u.id] || [],
+                 referred_by: u.user_metadata?.referred_by
+             }));
+             setUsers(mappedUsers || []);
           } else {
-             // Fallback to building users from settings
              const fakeUsers = settingsData.map(s => ({
                 id: s.user_id,
-                email: 'user_' + s.user_id.substring(0,6) + '@example.com',
-                created_at: new Date().toISOString()
+                email: 'ID: ' + s.user_id.substring(0,8),
+                created_at: new Date().toISOString(),
+                profiles: profilesMap[s.user_id] || []
              }));
              setUsers(fakeUsers);
           }
         } catch {
              const fakeUsers = settingsData.map(s => ({
                 id: s.user_id,
-                email: 'user_' + s.user_id.substring(0,6) + '@example.com',
-                created_at: new Date().toISOString()
+                email: 'ID: ' + s.user_id.substring(0,8),
+                created_at: new Date().toISOString(),
+                profiles: profilesMap[s.user_id] || []
              }));
              setUsers(fakeUsers);
         }
@@ -95,34 +105,33 @@ export default function AdminUsersTab() {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + editData.daysToAdd);
       
-      const s = settings[userId];
-      if (s) {
-        await supabase.from('app_settings')
-          .update({
-            subscription_plan: editData.plan,
-            subscription_status: editData.status,
-            subscription_expires_at: editData.status === 'active' ? expiresAt.toISOString() : null
-          })
-          .eq('user_id', userId);
-      } else {
-         await supabase.from('app_settings')
-          .insert({
-            user_id: userId,
-            subscription_plan: editData.plan,
-            subscription_status: editData.status,
-            subscription_expires_at: editData.status === 'active' ? expiresAt.toISOString() : null,
-            theme: 'dark',
-            language: 'pt-BR',
-            autoplay_next: true,
-            show_logos: true
-          });
-      }
+      const tokenResp = await supabase.auth.getSession();
+      const access_token = tokenResp.data.session?.access_token;
       
+      const res = await fetch('/api/admin/updatesettings', {
+         method: 'POST',
+         headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${access_token}`
+         },
+         body: JSON.stringify({
+            userId: userId,
+            plan: editData.plan,
+            status: editData.status,
+            expiresAt: editData.status === 'active' ? expiresAt.toISOString() : null
+         })
+      });
+
+      if (!res.ok) {
+         const d = await res.json();
+         throw new Error(d.error || 'Erro ao salvar no servidor');
+      }
+
       setEditingUserId(null);
       fetchData(); // reload
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao salvar", error);
-      alert("Erro ao salvar os novos dados.");
+      alert("Erro ao salvar os novos dados: " + (error.message || 'Verifique o console para mais detalhes.'));
     }
   };
 
@@ -179,7 +188,19 @@ export default function AdminUsersTab() {
                 
                 return (
                   <tr key={u.id} className="border-t border-white/5 hover:bg-white/5">
-                    <td className="p-4">{u.email}</td>
+                    <td className="p-4">
+                      <div className="font-bold">{u.email}</div>
+                      {u.profiles && u.profiles.length > 0 && (
+                        <div className="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">
+                          Perfis: {u.profiles.join(', ')}
+                        </div>
+                      )}
+                      {u.referred_by && (
+                        <div className="text-[10px] text-green-400 mt-1 uppercase tracking-widest rounded bg-green-500/10 px-2 py-0.5 inline-block">
+                          Indicado por: {u.referred_by.substring(0,8)}
+                        </div>
+                      )}
+                    </td>
                     <td className="p-4">
                       {isEditing ? (
                         <select 

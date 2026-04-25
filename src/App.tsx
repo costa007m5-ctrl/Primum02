@@ -1600,15 +1600,30 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   const effectiveAppSettings = useMemo(() => {
-    if (isAdmin && appSettings) {
-      return {
-        ...appSettings,
-        subscription_plan: 'max',
-        subscription_status: 'active'
-      } as AppSettings;
+    if (isAdmin) {
+      if (appSettings) {
+        return {
+          ...appSettings,
+          subscription_plan: 'max',
+          subscription_status: 'active'
+        } as AppSettings;
+      } else {
+        return {
+          id: 'admin-mock',
+          user_id: user?.id || 'admin',
+          subscription_plan: 'max',
+          subscription_status: 'active',
+          theme: 'default',
+          language: 'pt-BR',
+          autoplay_next: true,
+          show_logos: true,
+          category_backdrops: {},
+          updated_at: new Date().toISOString()
+        } as unknown as AppSettings;
+      }
     }
     return appSettings;
-  }, [appSettings, isAdmin]);
+  }, [appSettings, isAdmin, user]);
 
   const [scannerState, setScannerState] = useState<ScannerState | null>(() => {
     const saved = localStorage.getItem('scanner_state');
@@ -3941,7 +3956,7 @@ export default function App() {
     );
   }
 
-  if (!profile && !isAdmin) {
+  if (!profile && activeTab !== 'admin') {
     return <ProfileSelection onSelect={handleSelectProfile} appSettings={effectiveAppSettings} />;
   }
 
