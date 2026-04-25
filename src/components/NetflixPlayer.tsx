@@ -157,6 +157,26 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   
   const EMOTES = ['🔥', '😂', '😱', '😍', '😢', '👏', '👎', '❓', '🍿', '😮', '💀', '🤡'];
 
+  const isMedianApp = () => {
+    if (typeof navigator === 'undefined') return false;
+    const ua = navigator.userAgent.toLowerCase();
+    return ua.includes('median') || ua.includes('gonative');
+  };
+
+  const setMedianOrientation = (orientation: 'landscape' | 'portrait' | 'unlocked') => {
+    try {
+      if (typeof window !== 'undefined' && isMedianApp()) {
+        if ((window as any).median) {
+          (window as any).median.screen.setOrientation({orientation});
+        } else if ((window as any).gonative) {
+          (window as any).gonative.screen.setOrientation({orientation});
+        } else {
+          window.location.href = `median://screen/setOrientation?orientation=${orientation}`;
+        }
+      }
+    } catch(e) {}
+  };
+
   useEffect(() => {
     if (roomId) {
       const socket = io();
@@ -724,18 +744,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         console.warn("Orientation lock not supported", e);
       }
       
-      // Median.co / GoNative fallback for WebView orientation lock
-      try {
-        if (typeof window !== 'undefined') {
-          if ((window as any).median) {
-            (window as any).median.screen.setOrientation({orientation: 'landscape'});
-          } else if ((window as any).gonative) {
-            (window as any).gonative.screen.setOrientation({orientation: 'landscape'});
-          } else {
-            window.location.href = 'median://screen/setOrientation?orientation=landscape';
-          }
-        }
-      } catch(e) {}
+      setMedianOrientation('landscape');
     };
     lockOrientation();
 
@@ -751,18 +760,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         } catch (e) {}
       }
       
-      // Median.co / GoNative fallback for WebView orientation unlock
-      try {
-        if (typeof window !== 'undefined') {
-          if ((window as any).median) {
-            (window as any).median.screen.setOrientation({orientation: 'unlocked'});
-          } else if ((window as any).gonative) {
-            (window as any).gonative.screen.setOrientation({orientation: 'unlocked'});
-          } else {
-            window.location.href = 'median://screen/setOrientation?orientation=unlocked';
-          }
-        }
-      } catch(e) {}
+      setMedianOrientation('unlocked');
     };
   }, [autoRotate]);
 
@@ -855,15 +853,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
           if (screen.orientation && (screen.orientation as any).lock) {
             (screen.orientation as any).lock('landscape').catch(() => {});
           }
-          if (typeof window !== 'undefined') {
-            if ((window as any).median) {
-              (window as any).median.screen.setOrientation({orientation: 'landscape'});
-            } else if ((window as any).gonative) {
-              (window as any).gonative.screen.setOrientation({orientation: 'landscape'});
-            } else {
-              window.location.href = 'median://screen/setOrientation?orientation=landscape';
-            }
-          }
+          setMedianOrientation('landscape');
         } catch(e) {}
       } else {
         video.pause();
@@ -945,10 +935,12 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     
     // Median.co WebView fallback fullscreen
     try {
-      if (!isFullscreen) {
-         window.location.href = 'median://screen/fullScreen';
-      } else {
-         window.location.href = 'median://screen/normalScreen';
+      if (isMedianApp()) {
+        if (!isFullscreen) {
+           window.location.href = 'median://screen/fullScreen';
+        } else {
+           window.location.href = 'median://screen/normalScreen';
+        }
       }
     } catch(e) {}
   };
@@ -1379,15 +1371,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                       if (screen.orientation && (screen.orientation as any).lock) {
                         (screen.orientation as any).lock('landscape').catch(() => {});
                       }
-                      if (typeof window !== 'undefined') {
-                        if ((window as any).median) {
-                          (window as any).median.screen.setOrientation({orientation: 'landscape'});
-                        } else if ((window as any).gonative) {
-                          (window as any).gonative.screen.setOrientation({orientation: 'landscape'});
-                        } else {
-                          window.location.href = 'median://screen/setOrientation?orientation=landscape';
-                        }
-                      }
+                      setMedianOrientation('landscape');
                     } catch(e) {}
                   }}
                   className="bg-red-600/20 text-red-500 border border-red-600/30 px-8 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] italic hover:bg-red-600 hover:text-white transition-all"
