@@ -9,6 +9,11 @@ dotenv.config();
 const app = express();
 app.use((req, res, next) => {
   if (req.body !== undefined) {
+    if (typeof req.body === 'string') {
+      try {
+        req.body = JSON.parse(req.body);
+      } catch (e) {}
+    }
     return next();
   }
   express.json()(req, res, next);
@@ -178,7 +183,7 @@ router.post('/payments/create-preference', async (req, res) => {
     const APP_URL = process.env.APP_URL || `https://${req.headers.host}`;
     const response = await preference.create({
       body: {
-        items: [{ id: planId, title: title, quantity: 1, unit_price: Number(price), currency_id: 'BRL' }],
+        items: [{ id: planId || 'hub', title: title || 'Assinatura', quantity: 1, unit_price: Number(price) || 15.9, currency_id: 'BRL' }],
         payer: { email: email || 'test@test.com' },
         back_urls: {
           success: `${APP_URL}/menu?payment=success&plan=${planId}`,
@@ -208,8 +213,8 @@ router.post('/payments/create-payment', async (req, res) => {
     const APP_URL = process.env.APP_URL || `https://${req.headers.host}`;
     const response = await payment.create({
       body: {
-        transaction_amount: Number(price),
-        description: title,
+        transaction_amount: Number(price) || 15.9,
+        description: title || 'Assinatura',
         payment_method_id: method || payment_method_id,
         token: token,
         installments: installments || 1,

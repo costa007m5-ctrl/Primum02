@@ -96,6 +96,11 @@ async function startServer() {
 
   app.use((req, res, next) => {
     if (req.body !== undefined) {
+      if (typeof req.body === 'string') {
+        try {
+          req.body = JSON.parse(req.body);
+        } catch (e) {}
+      }
       return next();
     }
     express.json()(req, res, next);
@@ -299,10 +304,10 @@ async function startServer() {
         body: {
           items: [
             {
-              id: planId,
-              title: title,
+              id: planId || 'hub',
+              title: title || 'Assinatura',
               quantity: 1,
-              unit_price: Number(price),
+              unit_price: Number(price) || 15.9,
               currency_id: 'BRL',
             }
           ],
@@ -347,8 +352,8 @@ async function startServer() {
 
       const response = await payment.create({
         body: {
-          transaction_amount: Number(price),
-          description: title,
+          transaction_amount: Number(price) || 15.9,
+          description: title || 'Assinatura',
           payment_method_id: method || payment_method_id,
           token: token,
           installments: installments || 1,

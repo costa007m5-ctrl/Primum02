@@ -75,7 +75,8 @@ export default function AdminUsersTab() {
              } else {
                setApiError(`Erro na API: ${errData.error || 'Desconhecido'}`);
              }
-             const fakeUsers = settingsData.map(s => ({
+             const mappedSettings = settingsData || [];
+             const fakeUsers = mappedSettings.map((s: any) => ({
                 id: s.user_id,
                 email: 'ID: ' + s.user_id.substring(0,8),
                 created_at: new Date().toISOString(),
@@ -85,7 +86,8 @@ export default function AdminUsersTab() {
           }
         } catch {
              setApiError('Não foi possível conectar à API do admin local (/api/admin/users). Certifique-se de que o backend express está rodando.');
-             const fakeUsers = settingsData.map(s => ({
+             const mappedSettings = settingsData || [];
+             const fakeUsers = mappedSettings.map((s: any) => ({
                 id: s.user_id,
                 email: 'ID: ' + s.user_id.substring(0,8),
                 created_at: new Date().toISOString(),
