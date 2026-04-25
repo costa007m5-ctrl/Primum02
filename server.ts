@@ -236,7 +236,8 @@ async function startServer() {
             ...payer,
             email: email || payer?.email || 'user@example.com'
           }
-        }
+        },
+        requestOptions: { idempotencyKey: `${userId}_${planId}_${Date.now()}_${Math.random()}` }
       });
 
       res.json(response);

@@ -77,14 +77,20 @@ export default function PaymentCheckoutModal({ planTitle, planPrice, planId, onC
       };
 
       const data = await onSubmit(method === 'credit_card' ? 'preference' : method, payer);
+      if (data?.error) {
+        throw new Error(data.details || data.error);
+      }
+      
       if (data?.point_of_interaction?.transaction_data) {
         setSuccessData(data);
       } else if (data?.transaction_details?.external_resource_url) {
         setSuccessData(data);
+      } else if (method !== 'credit_card') {
+        throw new Error('Resposta inválida do servidor');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('Erro ao gerar pagamento. Tente novamente.');
+      alert(error.message ? `Erro ao gerar pagamento: ${error.message}` : 'Erro ao gerar pagamento. Tente novamente.');
     } finally {
       setLoading(false);
     }

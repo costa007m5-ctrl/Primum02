@@ -93,7 +93,8 @@ app.post('/api/payments/create-payment', async (req, res) => {
         issuer_id: issuer_id,
         external_reference: `${userId}_${planId}_${Date.now()}`,
         payer: { ...payer, email: email || payer?.email || 'user@example.com' }
-      }
+      },
+      requestOptions: { idempotencyKey: `${userId}_${planId}_${Date.now()}_${Math.random()}` }
     });
     res.json(response);
   } catch (error: any) {
