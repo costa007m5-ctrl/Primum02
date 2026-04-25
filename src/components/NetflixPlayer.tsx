@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Play, Pause, RotateCcw, RotateCw, Volume2, VolumeX, Maximize, Minimize, X, ChevronLeft, Settings, Subtitles, FastForward, WifiOff, AlertCircle, Cast, Tv, Share2, Info, Smile, Users } from 'lucide-react';
+import { Play, Pause, RotateCcw, RotateCw, Volume2, VolumeX, Maximize, Minimize, X, ChevronLeft, Settings, Subtitles, FastForward, WifiOff, AlertCircle, Cast, Tv, Share2, Info, Smile, Users, PictureInPicture } from 'lucide-react';
 import screenfull from 'screenfull';
 import Hls from 'hls.js';
 import { motion, AnimatePresence } from 'motion/react';
@@ -196,6 +196,34 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       };
     }
   }, [roomId, isHost, movieId]);
+
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (!videoRef.current) return;
+      
+      try {
+        if (document.hidden) {
+          // Quando a aba/app ficar oculta, tentar ativar o PiP
+          // Apenas se o vídeo estiver tocando
+          if (!videoRef.current.paused && document.pictureInPictureEnabled) {
+            await videoRef.current.requestPictureInPicture();
+          }
+        } else {
+          // Quando voltar para a aba, sair do PiP se estiver ativo
+          if (document.pictureInPictureElement) {
+            await document.exitPictureInPicture();
+          }
+        }
+      } catch (error) {
+        console.warn('Erro ao processar Picture-in-Picture:', error);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   const sendEmote = (emote: string) => {
     if (socketRef.current && roomId) {
@@ -815,6 +843,18 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       videoRef.current.volume = val;
       videoRef.current.muted = val === 0;
       setIsMuted(val === 0);
+    }
+  };
+
+  const togglePiP = async () => {
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else if (document.pictureInPictureEnabled && videoRef.current) {
+        await videoRef.current.requestPictureInPicture();
+      }
+    } catch (error) {
+      console.error("PiP error:", error);
     }
   };
 
@@ -1688,6 +1728,14 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 </div>
               </div>
 
+              <button 
+                onClick={togglePiP}
+                className="text-white hover:text-gray-300 transition-all hidden md:block"
+                title="Mini Player (Picture-in-Picture)"
+              >
+                <PictureInPicture size={24} className="md:w-6 md:h-6 lg:w-8 lg:h-8" />
+              </button>
+
               {hasNextEpisode && onNextEpisode && (
                 <button 
                   onClick={onNextEpisode}
@@ -1722,6 +1770,14 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                   </div>
                 )}
               </div>
+
+              <button 
+                onClick={togglePiP}
+                className="text-white hover:text-gray-300 md:hidden"
+                title="Mini Player"
+              >
+                <PictureInPicture size={28} />
+              </button>
 
               {hasNextEpisode && onNextEpisode && (
                 <button 
