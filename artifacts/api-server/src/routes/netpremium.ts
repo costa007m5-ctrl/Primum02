@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import axios from "axios";
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 import { createClient } from "@supabase/supabase-js";
+import { requireAdmin, requireUser, type AuthedRequest } from "../middleware/netpremium-auth.js";
 
 const router: IRouter = Router();
 
@@ -24,7 +25,10 @@ function getAppUrl(req: any): string {
 }
 
 router.get("/api/debug-env", (req, res) => {
-  res.json({
+  if (process.env["NODE_ENV"] === "production") {
+    return res.status(404).json({ error: "Not found" });
+  }
+  return res.json({
     hasUrl: !!process.env["SUPABASE_URL"] || !!process.env["VITE_SUPABASE_URL"],
     hasKey: !!process.env["SUPABASE_SERVICE_ROLE_KEY"],
     hasMPToken:
@@ -34,7 +38,7 @@ router.get("/api/debug-env", (req, res) => {
   });
 });
 
-router.get("/api/admin/users", async (_req, res) => {
+router.get("/api/admin/users", requireAdmin, async (_req, res) => {
   if (supabaseAdmin) {
     try {
       const {
@@ -51,10 +55,16 @@ router.get("/api/admin/users", async (_req, res) => {
   }
 });
 
-router.get("/api/referrals", async (req, res) => {
+router.get("/api/referrals", requireUser, async (req: AuthedRequest, res) => {
   const { userId } = req.query;
   if (!supabaseAdmin) return res.status(500).json({ error: "Supabase service key not configured" });
   if (!userId) return res.status(400).json({ error: "userId required" });
+  if (
+    !req.netpremiumUser ||
+    (req.netpremiumUser.id !== userId && !req.netpremiumUser.isAdmin)
+  ) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
 
   try {
     const {
@@ -95,9 +105,15 @@ router.get("/api/referrals", async (req, res) => {
   }
 });
 
-router.post("/api/referrals/redeem", async (req, res) => {
+router.post("/api/referrals/redeem", requireUser, async (req: AuthedRequest, res) => {
   if (!supabaseAdmin) return res.status(500).json({ error: "Supabase service key not configured" });
   const { userId, count, credits, freeMonths } = req.body;
+  if (
+    !req.netpremiumUser ||
+    (req.netpremiumUser.id !== userId && !req.netpremiumUser.isAdmin)
+  ) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
   try {
     const {
       data: { user },
@@ -121,7 +137,7 @@ router.post("/api/referrals/redeem", async (req, res) => {
   }
 });
 
-router.get("/api/admin/referrals/requests", async (_req, res) => {
+router.get("/api/admin/referrals/requests", requireAdmin, async (_req, res) => {
   if (!supabaseAdmin) return res.status(500).json({ error: "Supabase service key not configured" });
   try {
     const { data, error } = await supabaseAdmin
@@ -135,7 +151,7 @@ router.get("/api/admin/referrals/requests", async (_req, res) => {
   }
 });
 
-router.post("/api/admin/referrals/approve", async (req, res) => {
+router.post("/api/admin/referrals/approve", requireAdmin, async (req, res) => {
   if (!supabaseAdmin) return res.status(500).json({ error: "Supabase service key not configured" });
   const { requestId, status } = req.body;
   try {
@@ -150,7 +166,7 @@ router.post("/api/admin/referrals/approve", async (req, res) => {
   }
 });
 
-router.post("/api/admin/updatesettings", async (req, res) => {
+router.post("/api/admin/updatesettings", requireAdmin, async (req, res) => {
   if (!supabaseAdmin) return res.status(500).json({ error: "Supabase service key not configured" });
   const { userId, plan, status, expiresAt } = req.body;
 
