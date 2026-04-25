@@ -129,6 +129,9 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const [showStuckButton, setShowStuckButton] = useState(false);
   const [error, setError] = useState<{ message: string; type: 'network' | 'format' | 'unknown' } | null>(null);
+  const [bufferedPercentage, setBufferedPercentage] = useState(0);
+  const [hoverTime, setHoverTime] = useState<number | null>(null);
+  const [hoverPosition, setHoverPosition] = useState<number>(0);
   const [showRecsOverlay, setShowRecsOverlay] = useState(false);
   const [showTvShare, setShowTvShare] = useState(false);
   const [showLogoOverlay, setShowLogoOverlay] = useState(false);
@@ -558,6 +561,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       if (video.buffered.length > 0 && video.duration > 0) {
         const bufferedEnd = video.buffered.end(video.buffered.length - 1);
         const progress = Math.min(100, Math.round((bufferedEnd / video.duration) * 100));
+        setBufferedPercentage(progress);
         
         if (!isLoading) {
            setLoadingProgress(100);
@@ -1585,7 +1589,36 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
           {/* Barra de Progresso */}
           <div className={`flex items-center gap-4 group/progress ${(roomId && !isHost) ? 'pointer-events-none opacity-50' : ''}`}>
             <span className="text-white text-sm font-medium min-w-[50px]">{formatTime(currentTime)}</span>
-            <div className="relative flex-1 h-1.5 bg-gray-600 rounded-full overflow-hidden cursor-pointer">
+            <div 
+              className="relative flex-1 h-2 md:h-1.5 bg-gray-600/50 rounded-full cursor-pointer group/bar hover:h-3 transition-all"
+              onMouseMove={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const pos = (e.clientX - rect.left) / rect.width;
+                setHoverPosition(Math.max(0, Math.min(1, pos)));
+                if (duration) setHoverTime(pos * duration);
+              }}
+              onMouseLeave={() => setHoverTime(null)}
+              onTouchMove={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const touch = e.touches[0];
+                const pos = (touch.clientX - rect.left) / rect.width;
+                setHoverPosition(Math.max(0, Math.min(1, pos)));
+                if (duration) setHoverTime(pos * duration);
+              }}
+              onTouchEnd={() => setHoverTime(null)}
+            >
+              {/* Barra de Carregamento (Buffer) - Parte em banco */}
+              <div 
+                className="absolute top-0 left-0 h-full bg-red-600/40 rounded-full transition-all duration-300"
+                style={{ width: `${bufferedPercentage}%` }}
+              />
+              
+              {/* Barra Assistida */}
+              <div 
+                className="absolute top-0 left-0 h-full bg-red-600 transition-all duration-100 rounded-full"
+                style={{ width: `${(currentTime / duration) * 100}%` }}
+              />
+              
               <input
                 type="range"
                 min="0"
@@ -1594,14 +1627,24 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 onChange={handleSeek}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
               />
+              
+              {/* Botão de Progresso */}
               <div 
-                className="absolute top-0 left-0 h-full bg-red-600 transition-all duration-100"
-                style={{ width: `${(currentTime / duration) * 100}%` }}
+                className="absolute top-1/2 w-4 h-4 bg-red-600 rounded-full shadow-[0_0_10px_rgba(220,38,38,0.8)] opacity-0 group-hover/progress:opacity-100 transition-opacity pointer-events-none z-20"
+                style={{ left: `${(currentTime / duration) * 100}%`, transform: 'translate(-50%, -50%)' }}
               />
-              <div 
-                className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-red-600 rounded-full shadow-xl opacity-0 group-hover/progress:opacity-100 transition-opacity"
-                style={{ left: `${(currentTime / duration) * 100}%`, marginLeft: '-8px' }}
-              />
+              
+              {/* Miniatura de Tempo/Cena Hover */}
+              {hoverTime !== null && (
+                <div 
+                  className="absolute bottom-full mb-4 bg-white text-black px-3 py-1.5 rounded-lg font-black text-sm shadow-2xl pointer-events-none z-30 flex flex-col items-center"
+                  style={{ left: `${hoverPosition * 100}%`, transform: 'translateX(-50%)' }}
+                >
+                  {/* Seta */}
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-x-[6px] border-x-transparent border-t-[6px] border-t-white" />
+                  <span>{formatTime(hoverTime)}</span>
+                </div>
+              )}
             </div>
             <span className="text-white text-sm font-medium min-w-[50px]">{formatTime(duration - currentTime)}</span>
           </div>

@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { DollarSign, ExternalLink, ShieldCheck, Activity } from 'lucide-react';
 
 export default function AdminMercadoPagoTab() {
-  const webhookUrl = `${window.location.origin}/api/payments/webhook`;
+  const originUrl = window.location.origin === 'null' || window.location.origin.includes('about:') ? 'https://seu-dominio-aqui.com' : window.location.origin;
+  const webhookUrl = `${originUrl}/api/payments/webhook`;
   return (
     <div className="max-w-4xl mx-auto py-8">
       <div className="mb-8">

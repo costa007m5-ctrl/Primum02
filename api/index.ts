@@ -60,37 +60,27 @@ router.post('/admin/updatesettings', async (req, res) => {
   if (!userId) return res.status(400).json({ error: "userId required" });
 
   try {
-    const { data: existing, error: fetchErr } = await supabaseAdmin
+    const expiresAtIso = expiresAt ? new Date(expiresAt).toISOString() : null;
+    
+    // Instead of single() which throws PGRST116 on 0 rows, use upsert
+    const { error: upsertErr } = await supabaseAdmin
       .from('app_settings')
-      .select('id')
-      .eq('user_id', userId)
-      .single();
+      .upsert({
+        user_id: userId,
+        subscription_plan: plan,
+        subscription_status: status,
+        subscription_expires_at: expiresAtIso,
+        theme: 'dark',
+        language: 'pt-BR',
+        autoplay_next: true,
+        show_logos: true
+      }, { onConflict: 'user_id' });
       
-    if (existing) {
-      const { error } = await supabaseAdmin
-        .from('app_settings')
-        .update({
-          subscription_plan: plan,
-          subscription_status: status,
-          subscription_expires_at: expiresAt
-        })
-        .eq('user_id', userId);
-      if (error) throw error;
-    } else {
-      const { error } = await supabaseAdmin
-        .from('app_settings')
-        .insert({
-          user_id: userId,
-          subscription_plan: plan,
-          subscription_status: status,
-          subscription_expires_at: expiresAt,
-          theme: 'dark',
-          language: 'pt-BR',
-          autoplay_next: true,
-          show_logos: true
-        });
-      if (error) throw error;
+    if (upsertErr) {
+      console.error("Upsert erro:", upsertErr);
+      throw upsertErr;
     }
+    
     return res.json({ success: true });
   } catch (err: any) {
     console.error(err);
