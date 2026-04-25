@@ -58,6 +58,10 @@ export default function AdminUsersTab() {
           });
           if (res.ok) {
              const data = await res.json();
+             if (data.settings && Array.isArray(data.settings)) {
+                data.settings.forEach((s: any) => settingsMap[s.user_id] = s);
+                setSettings({...settingsMap});
+             }
              const mappedUsers = data.users?.map((u: any) => ({
                  id: u.id,
                  email: u.email,

@@ -152,7 +152,8 @@ async function startServer() {
        try {
          const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
          if (error) return res.status(500).json({ error: error.message });
-         return res.json({ users });
+         const { data: settings } = await supabaseAdmin.from('app_settings').select('*');
+         return res.json({ users, settings });
        } catch (error: any) {
          return res.status(500).json({ error: error.message });
        }
