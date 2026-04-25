@@ -141,6 +141,27 @@ async function startServer() {
     }
   });
 
+  app.get('/api/referrals', async (req, res) => {
+    const { userId } = req.query;
+    if (!supabaseAdmin) return res.status(500).json({ error: "Supabase service key not configured" });
+    if (!userId) return res.status(400).json({ error: "userId required" });
+
+    try {
+      const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
+      if (error) return res.status(500).json({ error: error.message });
+
+      const userList = users as any[];
+      const referredUsers = userList.filter(u => u.user_metadata?.referred_by === userId);
+      const count = referredUsers.length;
+      const credits = count * 3;
+      const freeMonths = Math.floor(count / 5);
+
+      return res.json({ count, credits, freeMonths });
+    } catch (error: any) {
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
   // Mercado Pago endpoints
   app.post('/api/payments/create-preference', async (req, res) => {
     const { title, price, planId, userId, email } = req.body;

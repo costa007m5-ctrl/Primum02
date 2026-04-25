@@ -68,11 +68,13 @@ const Login: React.FC<LoginProps> = ({ initialMode = 'login', movies = [] }) => 
         });
         if (error) throw error;
       } else if (mode === 'signup') {
+        const referralCode = localStorage.getItem('netplay_referral_code');
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/menu`
+            emailRedirectTo: `${window.location.origin}/menu`,
+            data: { referred_by: referralCode || null }
           }
         });
         if (error) throw error;

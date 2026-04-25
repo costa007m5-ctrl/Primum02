@@ -1522,6 +1522,20 @@ const ProfilePageView = React.memo(({
   );
 });
 
+function InviteRedirect() {
+  const { inviteId } = useParams();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (inviteId) {
+      localStorage.setItem('netplay_referral_code', inviteId);
+    }
+    navigate('/', { replace: true });
+  }, [inviteId, navigate]);
+
+  return <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="animate-spin text-red-600" size={48} /></div>;
+}
+
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1578,6 +1592,24 @@ export default function App() {
   const [myList, setMyList] = useState<Movie[]>([]);
   const [favorites, setFavorites] = useState<Movie[]>([]);
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
+  
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  const [streamingProviders, setStreamingProviders] = useState<StreamingProvider[]>([]);
+
+  // Hoist isAdmin before its use in useMemo hooks
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const effectiveAppSettings = useMemo(() => {
+    if (isAdmin && appSettings) {
+      return {
+        ...appSettings,
+        subscription_plan: 'max',
+        subscription_status: 'active'
+      } as AppSettings;
+    }
+    return appSettings;
+  }, [appSettings, isAdmin]);
+
   const [scannerState, setScannerState] = useState<ScannerState | null>(() => {
     const saved = localStorage.getItem('scanner_state');
     return saved ? JSON.parse(saved) : null;
@@ -1592,11 +1624,6 @@ export default function App() {
     const saved = localStorage.getItem('collection_automation_state');
     return saved ? JSON.parse(saved) : null;
   });
-
-  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
-  const [streamingProviders, setStreamingProviders] = useState<StreamingProvider[]>([]);
-
-  const [isAdmin, setIsAdmin] = useState(false);
 
   const hasTmdbKey = !!import.meta.env.VITE_TMDB_API_KEY;
   const hasSupabase = !!import.meta.env.VITE_SUPABASE_URL && !!import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -3290,7 +3317,7 @@ export default function App() {
         // Criar configurações padrão se não existirem
         const { data: newData, error: createError } = await supabase
           .from('app_settings')
-          .insert([{ user_id: user.id }])
+          .insert([{ user_id: user.id, subscription_status: 'inactive' }])
           .select()
           .single();
         if (!createError) setAppSettings(newData);
@@ -3894,7 +3921,7 @@ export default function App() {
     return <Login initialMode={initialLoginMode} movies={myMovies} />;
   }
 
-  if (isPlansScreenOpen && !isAdmin) {
+  if (isPlansScreenOpen) {
     return (
       <ThemeContext.Provider value={{ 
         theme: currentTheme, 
@@ -3903,7 +3930,7 @@ export default function App() {
       }}>
         <div className={`bg-[#111] min-h-screen w-full font-sans selection:bg-red-600 selection:text-white ${currentTheme !== 'default' ? 'theme-active theme-' + currentTheme.toLowerCase().replace(/[^a-z]/g, '') : ''}`}>
           <PlansScreen 
-            appSettings={appSettings} 
+            appSettings={effectiveAppSettings} 
             onClose={() => setIsPlansScreenOpen(false)} 
             onUpdatePlan={handleUpdatePlan} 
             userEmail={user?.email}
@@ -3915,7 +3942,7 @@ export default function App() {
   }
 
   if (!profile && !isAdmin) {
-    return <ProfileSelection onSelect={handleSelectProfile} appSettings={appSettings} />;
+    return <ProfileSelection onSelect={handleSelectProfile} appSettings={effectiveAppSettings} />;
   }
 
   if (activeTab === 'admin') {
@@ -4005,6 +4032,9 @@ export default function App() {
           
           <Route path="/redefinirsenha" element={<Login initialMode="updatePassword" />} />
           <Route path="/confirmacao" element={<Login initialMode="login" />} />
+          <Route path="/invite/:inviteId" element={
+            <InviteRedirect />
+          } />
           <Route path="/menu" element={
             <HomeView 
               myMovies={myMovies} 
@@ -4102,7 +4132,7 @@ export default function App() {
                navigate={navigate}
                sendTestNotification={sendTestNotification}
                continueWatching={continueWatching}
-               appSettings={appSettings}
+               appSettings={effectiveAppSettings}
                driveFiles={driveFiles}
                fetchDriveFiles={fetchDriveFiles}
                isFetchingDrive={isFetchingDrive}
@@ -4134,7 +4164,7 @@ export default function App() {
                 onWatchParty={(m: Movie) => setWatchPartyMovie(m)}
                 top10Movies={top10Movies}
                 top10Series={top10Series}
-                appSettings={appSettings}
+                appSettings={effectiveAppSettings}
               />
             } />
             <Route path="/watch/:movieId" element={
@@ -4146,7 +4176,7 @@ export default function App() {
                 onProgress={updateProgress}
                 activeRoomId={activeRoomId}
                 isAppHost={isHost}
-                appSettings={appSettings}
+                appSettings={effectiveAppSettings}
               />
             } />
           </Routes>

@@ -18,7 +18,6 @@ export default function PlansScreen({ appSettings, onClose, onUpdatePlan, userEm
   const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
 
   const handleSelectPlan = async (plan: 'hub' | 'plus' | 'max') => {
-    if (hasActivePlan && plan === currentPlan) return;
     const planConfig = plans.find(p => p.id === plan);
     if (planConfig) {
       setCheckoutPlan(planConfig);
@@ -247,20 +246,20 @@ export default function PlansScreen({ appSettings, onClose, onUpdatePlan, userEm
                   </div>
 
                   <button
-                    disabled={isCurrent || loadingPlan === plan.id}
+                    disabled={loadingPlan === plan.id}
                     onClick={() => handleSelectPlan(plan.id as any)}
                     className={`w-full py-4 rounded-xl font-black uppercase tracking-widest text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
-                      isCurrent 
-                        ? 'bg-white/10 text-white/50 cursor-not-allowed border border-white/5' 
-                        : isMax
+                      isMax
                         ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:shadow-[0_0_20px_rgba(147,51,234,0.5)] border border-white/10 hover:scale-105'
+                        : isCurrent
+                        ? 'bg-red-600 text-white hover:bg-red-700'
                         : 'bg-white text-black hover:bg-gray-200 hover:scale-105'
                     }`}
                   >
                     {loadingPlan === plan.id ? (
                       <span className="animate-pulse">Processando...</span>
                     ) : isCurrent ? (
-                      'Plano Atual'
+                      'Renovar Plano'
                     ) : (
                       'Escolher Plano'
                     )}

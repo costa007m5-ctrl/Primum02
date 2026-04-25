@@ -105,6 +105,21 @@ export default function ProfileDashboard({
     return Math.round(totalSize);
   }, [downloads]);
 
+  const [referralStats, setReferralStats] = useState({ count: 0, credits: 0, freeMonths: 0 });
+
+  useEffect(() => {
+    if (activeSubTab === 'plan' && appSettings?.user_id) {
+      fetch(`/api/referrals?userId=${appSettings.user_id}`)
+        .then(res => res.json())
+        .then(data => {
+          if (!data.error) {
+            setReferralStats({ count: data.count, credits: data.credits, freeMonths: data.freeMonths });
+          }
+        })
+        .catch(err => console.error("Erro ao buscar indicações:", err));
+    }
+  }, [activeSubTab, appSettings?.user_id]);
+
   // Sync local state if appSettings changes from outside
   useEffect(() => {
     if (appSettings) {
@@ -594,10 +609,10 @@ export default function ProfileDashboard({
                      <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-2">Seu Link Exclusivo</p>
                      <div className="flex items-center gap-2">
                        <code className="flex-1 text-xs text-red-400 truncate bg-white/5 p-2 rounded truncate block">
-                         https://app.netprime.com/invite/{profile?.id?.substring(0, 8) || 'user'}
+                         {window.location.origin}/invite/{appSettings?.user_id || profile?.id?.substring(0, 8) || 'user'}
                        </code>
                        <button onClick={() => {
-                         navigator.clipboard.writeText(`https://app.netprime.com/invite/${profile?.id?.substring(0, 8) || 'user'}`);
+                         navigator.clipboard.writeText(`${window.location.origin}/invite/${appSettings?.user_id || profile?.id?.substring(0, 8) || 'user'}`);
                          alert('Link copiado!');
                        }} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors">
                          <Copy size={16} />
@@ -609,11 +624,17 @@ export default function ProfileDashboard({
                  <div className="grid grid-cols-2 gap-4">
                    <div className="bg-white/5 rounded-xl block p-4 text-center border border-white/5">
                      <p className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-1">Indicações</p>
-                     <p className="text-2xl text-white font-black">0</p>
+                     <p className="text-2xl text-white font-black">{referralStats.count}</p>
                    </div>
                    <div className="bg-white/5 rounded-xl block p-4 text-center border border-white/5">
                      <p className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-1">Créditos</p>
-                     <p className="text-2xl text-green-400 font-black">R$ 0</p>
+                     <p className="text-2xl text-green-400 font-black">
+                        {referralStats.freeMonths > 0 ? (
+                          <span className="text-purple-400">{referralStats.freeMonths} Mês!</span>
+                        ) : (
+                          `R$ ${referralStats.credits.toFixed(2).replace('.', ',')}`
+                        )}
+                     </p>
                    </div>
                  </div>
                </div>
