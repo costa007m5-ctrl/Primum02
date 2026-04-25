@@ -1083,7 +1083,8 @@ const MovieDetailRouteWrapper = ({
   watchHistory,
   onWatchParty,
   top10Movies = [],
-  top10Series = []
+  top10Series = [],
+  appSettings
 }: any) => {
   const { movieId } = useParams();
   const navigate = useNavigate();
@@ -1189,11 +1190,12 @@ const MovieDetailRouteWrapper = ({
       streamingProviders={streamingProviders}
       onRequestMovie={onRequestMovie}
       rank={movieRank}
+      appSettings={appSettings}
     />
   );
 };
 
-const PlayerRouteWrapper = ({ myMovies, profile, closePlayer, handleSelectMovie, onProgress, activeRoomId, isAppHost }: any) => {
+const PlayerRouteWrapper = ({ myMovies, profile, closePlayer, handleSelectMovie, onProgress, activeRoomId, isAppHost, appSettings }: any) => {
   const { movieId } = useParams();
   const location = useLocation();
   const movieFromState = location.state?.movie;
@@ -1242,6 +1244,7 @@ const PlayerRouteWrapper = ({ myMovies, profile, closePlayer, handleSelectMovie,
       onProgress={onProgress}
       roomId={currentRoomId}
       isHost={isHost}
+      appSettings={appSettings}
     />
   );
 };
@@ -1404,6 +1407,8 @@ const GenreViewWrapper = ({ myMovies, moviesByGenre, handleSelectMovie, navigate
   );
 };
 
+import PlansScreen from './components/PlansScreen';
+
 const ProfilePageView = React.memo(({ 
   profile, 
   favorites, 
@@ -1413,7 +1418,8 @@ const ProfilePageView = React.memo(({
   handleLogout, 
   navigate,
   continueWatching,
-  setIsSettingsOpen
+  setIsSettingsOpen,
+  setIsPlansScreenOpen // injected
 }: any) => {
   return (
     <motion.div
@@ -1534,6 +1540,7 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [isPlansScreenOpen, setIsPlansScreenOpen] = useState(false);
   const [myMovies, setMyMovies] = useState<Movie[]>([]);
   const [continueWatching, setContinueWatching] = useState<Movie[]>([]);
   const [watchHistory, setWatchHistory] = useState<Record<number, number>>({});
@@ -3764,6 +3771,17 @@ export default function App() {
     });
   }, [selectedProvider, visibleMovies]);
 
+  useEffect(() => {
+    const handleOpenPlans = () => setIsPlansScreenOpen(true);
+    document.addEventListener('open-plans', handleOpenPlans);
+    return () => document.removeEventListener('open-plans', handleOpenPlans);
+  }, []);
+
+  const handleUpdatePlan = async (plan: 'hub' | 'plus' | 'max') => {
+    await updateAppSettings({ subscription_plan: plan });
+    setIsPlansScreenOpen(false);
+  };
+
   if (loading || showIntro) {
     return (
       <IntroVignette 
@@ -3809,7 +3827,7 @@ export default function App() {
   }
 
   if (!profile) {
-    return <ProfileSelection onSelect={handleSelectProfile} />;
+    return <ProfileSelection onSelect={handleSelectProfile} appSettings={appSettings} />;
   }
 
   if (activeTab === 'admin') {
@@ -4028,6 +4046,7 @@ export default function App() {
                 onWatchParty={(m: Movie) => setWatchPartyMovie(m)}
                 top10Movies={top10Movies}
                 top10Series={top10Series}
+                appSettings={appSettings}
               />
             } />
             <Route path="/watch/:movieId" element={
@@ -4039,6 +4058,7 @@ export default function App() {
                 onProgress={updateProgress}
                 activeRoomId={activeRoomId}
                 isAppHost={isHost}
+                appSettings={appSettings}
               />
             } />
           </Routes>
@@ -4210,6 +4230,14 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {isPlansScreenOpen && (
+        <PlansScreen 
+          appSettings={appSettings} 
+          onClose={() => setIsPlansScreenOpen(false)} 
+          onUpdatePlan={handleUpdatePlan} 
+        />
+      )}
 
       <footer className="text-gray-500 text-center py-10 border-t border-gray-800 text-sm mt-10">
         <p>&copy; 2026 Netflix Clone. Desenvolvido para fins educacionais.</p>

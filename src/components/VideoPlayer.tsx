@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import screenfull from 'screenfull';
 import NetflixPlayer from './NetflixPlayer';
 import { X, Maximize, ExternalLink, Users, Smile, Send, Play, WifiOff } from 'lucide-react';
-import { Movie, RoomEvent } from '../types';
+import { Movie, RoomEvent, AppSettings } from '../types';
 import { supabase } from '../lib/supabase';
 
 interface VideoPlayerProps {
@@ -14,9 +14,10 @@ interface VideoPlayerProps {
   onPlayNext?: (movie: Movie, episodeUrl: string) => void;
   recommendations?: Movie[];
   onProgress?: (movieId: string | number, time: number) => void;
+  appSettings?: AppSettings;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, roomId, isHost, onPlayNext, recommendations = [], onProgress }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, roomId, isHost, onPlayNext, recommendations = [], onProgress, appSettings }) => {
   const [orientationKey, setOrientationKey] = useState(0);
   const [playerStyle, setPlayerStyle] = useState<'netflix' | 'standard' | 'special' | null>('netflix');
   const [drivePlayMethod, setDrivePlayMethod] = useState<'api' | 'uc' | 'iframe'>('api');
@@ -56,7 +57,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, ro
   useEffect(() => {
     return () => {
       const finalTime = currentTimeRef.current;
-      if (profileId && movie.id && finalTime > 0) {
+      if (profileId && movie.id && finalTime > 0 && appSettings?.subscription_plan !== 'hub') {
         supabase.from('watch_history').upsert({
           profile_id: profileId,
           movie_id: movie.id,
@@ -65,11 +66,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, ro
         }, { onConflict: 'profile_id,movie_id' }).then(() => {});
       }
     };
-  }, [profileId, movie.id]);
+  }, [profileId, movie.id, appSettings?.subscription_plan]);
 
   useEffect(() => {
     const saveToHistory = async () => {
       if (!profileId || !movie.id) return;
+      if (appSettings?.subscription_plan === 'hub') return;
       
       try {
         const { error } = await supabase
@@ -479,6 +481,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, ro
           videoUrlOptions={videoUrlOptions}
           isHost={isHost}
           roomId={roomId}
+          maxQualityHeight={appSettings?.subscription_plan === 'hub' ? 720 : 1080}
           onSwitchPlayer={() => {
             if (isDriveVideo) {
               setDrivePlayMethod('iframe');
@@ -491,7 +494,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, ro
             currentTimeRef.current = time;
             if (onProgress) onProgress(movie.id, time);
             
-            if (profileId && movie.id && (Math.floor(time) % 3 === 0)) {
+            if (profileId && movie.id && (Math.floor(time) % 3 === 0) && appSettings?.subscription_plan !== 'hub') {
               await supabase.from('watch_history').upsert({
                 profile_id: profileId,
                 movie_id: movie.id,

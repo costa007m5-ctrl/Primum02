@@ -126,10 +126,11 @@ export interface DownloadedMovie extends Movie {
 export interface AppSettings {
   id: string;
   user_id: string;
-  theme: 'dark' | 'light';
+  theme: 'dark' | 'light' | 'neon';
   language: string;
   autoplay_next: boolean;
   show_logos: boolean;
+  subscription_plan?: 'hub' | 'plus' | 'max';
   google_drive_token?: string;
   google_drive_accounts?: GoogleDriveAccount[];
   category_backdrops?: Record<number, string>; // ID do gênero -> Backdrop URL

@@ -2,10 +2,10 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Settings, Shield, RefreshCcw, Send, TrendingUp, Bookmark, 
-  Play, ChevronRight, Clock, Award, HardDrive, 
+  Play, ChevronRight, Clock, Award, HardDrive, Crown,
   Trash2, Search, Film, Tv, Sliders, Type, Bell, Monitor,
   Palette, UserCircle, Edit3, Lock, LogOut, CheckCircle2, AlertCircle, Heart,
-  Save, X, Smartphone, List, Download
+  Save, X, Smartphone, List, Download, Sparkles
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -190,6 +190,7 @@ export default function ProfileDashboard({
 
   const menuItems = [
     { id: 'overview', icon: UserCircle, label: 'Geral' },
+    { id: 'plan', icon: Crown, label: 'Assinatura' },
     { id: 'stats', icon: TrendingUp, label: 'Analytics' },
     { id: 'lists', icon: List, label: 'Minhas Listas' },
     { id: 'settings', icon: Sliders, label: 'Preferências (Novo)' },
@@ -213,7 +214,13 @@ export default function ProfileDashboard({
           return (
             <button 
               key={item.id}
-              onClick={() => setActiveSubTab(item.id as any)}
+              onClick={() => {
+                if (item.id === 'plan') {
+                  document.dispatchEvent(new CustomEvent('open-plans'));
+                } else {
+                  setActiveSubTab(item.id as any);
+                }
+              }}
               className={`flex-1 flex items-center justify-center gap-3 px-6 py-4 text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap rounded-xl ${isActive ? 'text-white bg-red-600 shadow-lg shadow-red-600/30' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
             >
               <Icon size={16} className={isActive ? 'text-white' : ''} /> <span className="hidden sm:inline">{item.label}</span>
@@ -352,6 +359,11 @@ export default function ProfileDashboard({
                     <Settings className="text-gray-400" /> Ações Rápidas
                   </h3>
                   <div className="space-y-3">
+                    {appSettings?.subscription_plan === 'max' && (
+                      <button onClick={() => window.open('https://wa.me/?text=Olá, sou cliente VIP Netprime Max e preciso de suporte.', '_blank')} className="w-full py-4 px-6 rounded-xl bg-green-600/10 hover:bg-green-600/20 text-green-500 border border-green-600/20 font-black text-xs uppercase tracking-widest flex items-center justify-between transition-all shadow-[0_0_15px_rgba(34,197,94,0.2)]">
+                        <span>Suporte VIP (WhatsApp)</span> <Smartphone size={16} />
+                      </button>
+                    )}
                     <button onClick={handleClearHistory} className="w-full py-4 px-6 rounded-xl bg-red-600/10 hover:bg-red-600/20 text-red-500 border border-red-600/20 font-black text-xs uppercase tracking-widest flex items-center justify-between transition-all">
                       <span>Limpar Histórico</span> <Trash2 size={16} />
                     </button>
@@ -450,6 +462,25 @@ export default function ProfileDashboard({
                         <div className={`absolute top-1 bg-white w-4 h-4 rounded-full transition-transform ${reduceMotion ? 'left-7' : 'left-1'}`}></div>
                       </div>
                     </label>
+
+                    <div>
+                      <p className="text-white font-bold mb-2 flex items-center gap-2">Tema da Interface {appSettings?.subscription_plan === 'max' ? <Sparkles size={14} className="text-yellow-500" /> : <Lock size={14} className="text-gray-500" />}</p>
+                      <select 
+                        value={appSettings?.theme || 'default'} 
+                        onChange={(e) => {
+                          if (appSettings?.subscription_plan !== 'max') {
+                            document.dispatchEvent(new CustomEvent('open-plans'));
+                            return;
+                          }
+                          if (updateAppSettings) updateAppSettings('theme', e.target.value);
+                        }} 
+                        className={`w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white outline-none focus:border-red-600 transition-colors ${appSettings?.subscription_plan !== 'max' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        <option value="default">Vermelho (Padrão)</option>
+                        <option value="netflix">Netflix</option>
+                        <option value="neon" disabled={appSettings?.subscription_plan !== 'max'}>Cyberpunk Neon (Max Only)</option>
+                      </select>
+                    </div>
 
                     <div>
                       <p className="text-white font-bold mb-2">Tamanho das Legendas</p>

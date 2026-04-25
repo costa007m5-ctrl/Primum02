@@ -815,6 +815,13 @@ create table if not exists app_settings (
   unique(user_id)
 );
 
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_name='app_settings' and column_name='subscription_plan') then
+    alter table app_settings add column subscription_plan text default 'hub';
+  end if;
+end $$;
+
 alter table profiles enable row level security;
 alter table watch_history enable row level security;
 alter table my_list enable row level security;

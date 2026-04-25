@@ -26,6 +26,7 @@ interface NetflixPlayerProps {
   isHost?: boolean;
   roomId?: string;
   profile?: any;
+  maxQualityHeight?: number;
 }
 
 const NetflixPlayer: React.FC<NetflixPlayerProps> = ({ 
@@ -47,7 +48,8 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   videoUrlOptions = [],
   isHost = true,
   roomId = null,
-  profile
+  profile,
+  maxQualityHeight
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -309,7 +311,9 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 enableWorker: true,
                 capLevelToPlayerSize: true,
                 startLevel: -1,
-                autoStartLoad: false, // Início manual apra evitar engasgos
+                autoStartLoad: true, // Auto start for faster loading
+                maxBufferLength: 30, // Keep buffer small for faster initial load
+                maxMaxBufferLength: 600,
                 xhrSetup: (xhr) => { 
                   xhr.withCredentials = false;
                 }
@@ -317,10 +321,13 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               hls.attachMedia(video);
               hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.loadSource(videoToPlay));
               hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-                const levels = data.levels.map((l, i) => ({ id: i, height: l.height, bitrate: l.bitrate })).sort((a, b) => b.height - a.height);
-                setQualityLevels(levels);
+                let parsedLevels = data.levels.map((l, i) => ({ id: i, height: l.height, bitrate: l.bitrate })).sort((a, b) => b.height - a.height);
+                if (maxQualityHeight) {
+                  parsedLevels = parsedLevels.filter(l => l.height <= maxQualityHeight);
+                  if (parsedLevels.length > 0) hls.autoLevelCapping = parsedLevels[0].id;
+                }
+                setQualityLevels(parsedLevels);
                 setLoadingProgress(50);
-                hls.startLoad(0);
                 video.play().catch(() => {});
               });
               hls.on(Hls.Events.FRAG_BUFFERED, () => {
@@ -372,19 +379,26 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 enableWorker: true,
                 capLevelToPlayerSize: true,
                 startLevel: -1,
-                autoStartLoad: false, // Início manual para ser instantâneo e não quebrar rede
+                autoStartLoad: true, // Auto start for faster loading
+                maxBufferLength: 30, // Keep buffer small for faster initial load
+                maxMaxBufferLength: 600,
                 xhrSetup: (xhr) => { 
                   xhr.withCredentials = false;
                 }
               });
               hls.attachMedia(video);
-              hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.loadSource(videoToPlay));
-              hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-                const levels = data.levels.map((l, i) => ({ id: i, height: l.height, bitrate: l.bitrate })).sort((a, b) => b.height - a.height);
-                setQualityLevels(levels);
-                setLoadingProgress(50);
-                hls.startLoad(initialTime);
+              hls.on(Hls.Events.MEDIA_ATTACHED, () => {
                 video.currentTime = initialTime;
+                hls.loadSource(videoToPlay);
+              });
+              hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+                let parsedLevels = data.levels.map((l, i) => ({ id: i, height: l.height, bitrate: l.bitrate })).sort((a, b) => b.height - a.height);
+                if (maxQualityHeight) {
+                  parsedLevels = parsedLevels.filter(l => l.height <= maxQualityHeight);
+                  if (parsedLevels.length > 0) hls.autoLevelCapping = parsedLevels[0].id;
+                }
+                setQualityLevels(parsedLevels);
+                setLoadingProgress(50);
                 video.play().catch(() => {});
               });
               hls.on(Hls.Events.FRAG_BUFFERED, () => {

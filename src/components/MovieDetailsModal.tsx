@@ -19,6 +19,7 @@ interface MovieDetailsModalProps {
   streamingProviders?: any[];
   onRequestMovie?: (movie: Movie) => void;
   rank?: number;
+  appSettings?: any;
 }
 
 const getProvider = (movie: Movie, streamingProviders?: any[]) => {
@@ -133,7 +134,8 @@ const MovieDetailsModal = React.memo(({
   isFavorite,
   streamingProviders,
   onRequestMovie,
-  rank
+  rank,
+  appSettings
 }: MovieDetailsModalProps) => {
   const [isMuted, setIsMuted] = useState(true);
   const [showVideo, setShowVideo] = useState(false);
@@ -242,6 +244,23 @@ const MovieDetailsModal = React.memo(({
   const ageRating = getAgeRating(movie.id);
   const matchPercentage = 80 + (movie.id % 20);
   const year = movie.release_date ? new Date(movie.release_date).getFullYear() : movie.first_air_date ? new Date(movie.first_air_date).getFullYear() : '2024';
+
+  const isLocked = useMemo(() => {
+    if (!movie.created_at) return false;
+    if (appSettings?.subscription_plan === 'max') return false;
+    
+    // Check how many days ago it was created in the Database
+    const createdDate = new Date(movie.created_at);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - createdDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (appSettings?.subscription_plan === 'plus') {
+        return diffDays <= 3;
+    }
+    // Default or Hub
+    return diffDays <= 7;
+  }, [movie.created_at, appSettings?.subscription_plan]);
 
   // Provider specific modal styles
   const modalThemes: Record<string, any> = {
@@ -460,7 +479,7 @@ const MovieDetailsModal = React.memo(({
             
             <div className="flex flex-wrap items-center gap-3 md:gap-8">
               {/* Botão Play Principal ou Resume/Restart */}
-              {savedProgress > 5 ? (
+              {savedProgress > 5 && !isLocked ? (
                 <div className="flex flex-wrap items-center gap-3 md:gap-8 w-full md:w-auto">
                   <motion.button 
                     whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(255,255,255,0.3)' }}
@@ -493,16 +512,29 @@ const MovieDetailsModal = React.memo(({
                 <>
                   {movie.videoUrl || movie.videoUrl2 || (movie.type === 'series' && movie.episodes && movie.episodes.length > 0) ? (
                     <motion.button 
-                      whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(255,255,255,0.3)' }}
+                      whileHover={{ scale: 1.05, boxShadow: isLocked ? '0 0 40px rgba(220,38,38,0.3)' : '0 0 40px rgba(255,255,255,0.3)' }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => {
+                        if (isLocked) {
+                          document.dispatchEvent(new CustomEvent('open-plans'));
+                          return;
+                        }
                         const urlToPlay = movie.type === 'series' && movie.episodes && movie.episodes.length > 0 ? movie.episodes[0].videoUrl : movie.videoUrl;
                         onPlay(movie, urlToPlay, 0);
                       }}
-                      className={`${theme.button} px-6 md:px-12 py-2.5 md:py-6 font-black uppercase tracking-widest flex items-center gap-2 md:gap-5 text-[10px] md:text-xl italic shadow-2xl`}
+                      className={`${isLocked ? 'bg-zinc-800 text-gray-400 border border-zinc-600' : theme.button} px-6 md:px-12 py-2.5 md:py-6 font-black uppercase tracking-widest flex items-center gap-2 md:gap-5 text-[10px] md:text-xl italic shadow-2xl transition-colors`}
                     >
-                      <Play fill="currentColor" size={14} className="md:w-8 md:h-8" /> 
-                      <span className="whitespace-nowrap">Assistir {getVideoSourceType(movie.type === 'series' && movie.episodes && movie.episodes.length > 0 ? movie.episodes[0].videoUrl : movie.videoUrl)}</span>
+                      {isLocked ? (
+                        <>
+                           <Lock size={14} className="md:w-8 md:h-8 text-yellow-500" />
+                           <span className="whitespace-nowrap text-yellow-500">Upgrade (Plus/Max)</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play fill="currentColor" size={14} className="md:w-8 md:h-8" /> 
+                          <span className="whitespace-nowrap">Assistir {getVideoSourceType(movie.type === 'series' && movie.episodes && movie.episodes.length > 0 ? movie.episodes[0].videoUrl : movie.videoUrl)}</span>
+                        </>
+                      )}
                     </motion.button>
                   ) : (
                     <motion.button 
@@ -516,7 +548,7 @@ const MovieDetailsModal = React.memo(({
                     </motion.button>
                   )}
 
-                  {(movie.videoUrl2 || (movie.type === 'series' && movie.episodes && movie.episodes.some(e => e.videoUrl2))) && (
+                  {!isLocked && (movie.videoUrl2 || (movie.type === 'series' && movie.episodes && movie.episodes.some(e => e.videoUrl2))) && (
                     <motion.button 
                       whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(220,38,38,0.3)' }}
                       whileTap={{ scale: 0.95 }}
@@ -565,11 +597,17 @@ const MovieDetailsModal = React.memo(({
               <motion.button 
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => onWatchParty(movie)}
-                className="p-2.5 md:p-6 rounded-lg md:rounded-2xl bg-white/5 border-2 border-white/10 text-white backdrop-blur-2xl hover:bg-white/10 transition-all shadow-2xl flex items-center gap-2 md:gap-4"
+                onClick={() => {
+                  if (appSettings?.subscription_plan !== 'max') {
+                    document.dispatchEvent(new CustomEvent('open-plans'));
+                    return;
+                  }
+                  onWatchParty(movie);
+                }}
+                className={`p-2.5 md:p-6 rounded-lg md:rounded-2xl border-2 backdrop-blur-2xl transition-all shadow-2xl flex items-center gap-2 md:gap-4 ${appSettings?.subscription_plan !== 'max' ? 'bg-zinc-800/50 border-zinc-700 text-gray-500' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'}`}
               >
-                <Users size={14} className="md:w-8 md:h-8" />
-                <span className="hidden md:block font-black uppercase tracking-widest text-xs italic">Watch Party</span>
+                {appSettings?.subscription_plan !== 'max' ? <Lock size={14} className="md:w-8 md:h-8 text-yellow-500" /> : <Users size={14} className="md:w-8 md:h-8" />}
+                <span className={`hidden md:block font-black uppercase tracking-widest text-xs italic ${appSettings?.subscription_plan !== 'max' ? 'text-yellow-500' : ''}`}>Watch Party</span>
               </motion.button>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Check, X, User, Trash2, Sparkles, RefreshCcw, Film, Tv, Play, Loader2 } from 'lucide-react';
+import { Plus, Edit2, Check, X, User, Trash2, Sparkles, RefreshCcw, Film, Tv, Play, Loader2, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { Profile, Movie } from '../types';
@@ -15,11 +15,20 @@ const DEFAULT_AVATARS = [
   'https://wallpapers.com/images/hd/netflix-profile-pictures-1000-x-1000-2fg9967892fg996789.jpg'
 ];
 
+const PREMIUM_AVATARS = [
+  'https://mir-s3-cdn-cf.behance.net/project_modules/disp/366be133850498.56ba69ac36858.png', 
+  'https://mir-s3-cdn-cf.behance.net/project_modules/disp/84c20033850498.56ba69ac290ea.png',
+  'https://mir-s3-cdn-cf.behance.net/project_modules/disp/64623a33850498.56ba69ac2a6f7.png',
+  'https://pro2-bar-s3-cdn-cf3.myportfolio.com/aa2bb133fcd9891823ebce6f9aebd1b5/0b6ac486-2dc9-4a0d-8ca3-30b1bc7e2311_rw_600.gif?h=60ef5ba96e6d761ff017f8b9e4aaeaf6', // GIF! 
+  'https://pro2-bar-s3-cdn-cf.myportfolio.com/aa2bb133fcd9891823ebce6f9aebd1b5/45db51bd-9c02-4fc4-8830-bd6c1b3fbc06_rw_600.gif?h=bd171328eb4132b49eb120287dd44bb5' // GIF 2
+];
+
 interface ProfileSelectionProps {
   onSelect: (profile: Profile) => void;
+  appSettings?: any;
 }
 
-const ProfileSelection: React.FC<ProfileSelectionProps> = ({ onSelect }) => {
+const ProfileSelection: React.FC<ProfileSelectionProps> = ({ onSelect, appSettings }) => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -55,7 +64,9 @@ const ProfileSelection: React.FC<ProfileSelectionProps> = ({ onSelect }) => {
     }
   };
 
-  const allAvatars = [...DEFAULT_AVATARS, ...movieAvatars];
+  const allAvatars = appSettings?.subscription_plan === 'max' 
+    ? [...PREMIUM_AVATARS, ...DEFAULT_AVATARS, ...movieAvatars] 
+    : [...DEFAULT_AVATARS, ...movieAvatars];
 
   const fetchProfiles = async () => {
     setLoading(true);
@@ -183,8 +194,13 @@ const ProfileSelection: React.FC<ProfileSelectionProps> = ({ onSelect }) => {
                 >
                   <div 
                     onClick={() => isEditing ? (setShowEditModal(p), setNewName(p.name), setSelectedAvatar(p.avatar_url)) : onSelect(p)}
-                    className="w-28 h-28 md:w-40 md:h-40 rounded-3xl overflow-hidden cursor-pointer transition-all duration-500 group-hover:ring-8 group-hover:ring-red-600 group-hover:scale-105 shadow-2xl relative"
+                    className={`w-28 h-28 md:w-40 md:h-40 rounded-3xl overflow-hidden cursor-pointer transition-all duration-500 group-hover:scale-105 shadow-2xl relative ${appSettings?.subscription_plan === 'max' ? 'ring-4 ring-yellow-500 shadow-[0_0_30px_rgba(234,179,8,0.3)] group-hover:ring-8 group-hover:ring-yellow-400' : 'group-hover:ring-8 group-hover:ring-red-600'}`}
                   >
+                    {appSettings?.subscription_plan === 'max' && (
+                      <div className="absolute -top-1 -right-1 z-20">
+                        <Crown size={24} className="text-yellow-400 drop-shadow-md rotate-12" fill="currentColor" />
+                      </div>
+                    )}
                     <img 
                       src={p.avatar_url} 
                       alt={p.name}
@@ -323,22 +339,30 @@ const ProfileSelection: React.FC<ProfileSelectionProps> = ({ onSelect }) => {
                 </div>
               </div>
               <div className="grid grid-cols-5 gap-4 max-h-[240px] overflow-y-auto pr-4 scrollbar-hide">
-                {allAvatars.map((avatar, idx) => (
-                  <motion.div 
-                    key={idx}
-                    whileHover={{ scale: 1.1, rotate: 2 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setSelectedAvatar(avatar)}
-                    className={`aspect-square rounded-2xl overflow-hidden cursor-pointer border-4 transition-all shadow-xl ${selectedAvatar === avatar ? 'border-red-600 ring-4 ring-red-600/20' : 'border-transparent hover:border-white/30'}`}
-                  >
-                    <img 
-                      src={avatar} 
-                      alt={`Avatar ${idx}`} 
-                      className="w-full h-full object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                  </motion.div>
-                ))}
+                {allAvatars.map((avatar, idx) => {
+                  const isPremium = PREMIUM_AVATARS.includes(avatar);
+                  return (
+                    <motion.div 
+                      key={idx}
+                      whileHover={{ scale: 1.1, rotate: 2 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setSelectedAvatar(avatar)}
+                      className={`relative aspect-square rounded-2xl overflow-hidden cursor-pointer border-4 transition-all shadow-xl ${selectedAvatar === avatar ? 'border-red-600 ring-4 ring-red-600/20' : 'border-transparent hover:border-white/30'}`}
+                    >
+                      <img 
+                        src={avatar} 
+                        alt={`Avatar ${idx}`} 
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                      {isPremium && (
+                        <div className="absolute top-1 right-1 bg-gradient-to-br from-yellow-400 to-yellow-600 text-black p-0.5 rounded-full shadow-lg">
+                          <Sparkles size={10} fill="currentColor" />
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })}
               </div>
             </div>
           </motion.div>
