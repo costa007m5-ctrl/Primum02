@@ -342,7 +342,7 @@ const AdvancedSearch = React.memo(({ onSelectMovie, myMovies, moviesByGenre, dyn
             </div>
          ) : (
             <div className="space-y-32 mt-[-20px]">
-               {/* 🚀 CATEGORIES CAROUSEL SYSTEM */}
+               {/* Categories carousel */}
                <section className="space-y-10 group">
                   <div className="flex items-center justify-between">
                      <h3 className="text-2xl md:text-5xl font-black uppercase italic tracking-tighter">Explorar por Gênero</h3>

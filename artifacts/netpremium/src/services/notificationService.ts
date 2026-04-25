@@ -1,10 +1,19 @@
+import { supabase } from '../lib/supabase';
+
 export const notificationService = {
   async sendNotification(title: string, message: string, imageUrl?: string, data?: any) {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const access_token = session?.access_token;
+      if (!access_token) {
+        console.warn('Notificação ignorada: sessão não disponível');
+        return false;
+      }
       const response = await fetch('/api/notifications/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${access_token}`,
         },
         body: JSON.stringify({
           title,

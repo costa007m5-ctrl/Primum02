@@ -368,7 +368,7 @@ router.post("/api/payments/webhook", async (req, res) => {
   res.status(200).send("OK");
 });
 
-router.post("/api/notifications/send", async (req, res) => {
+router.post("/api/notifications/send", requireAdmin, async (req, res) => {
   const { title, message, imageUrl, data } = req.body;
   const appId = process.env["VITE_ONESIGNAL_APP_ID"] || "581f23c1-2b57-4646-8780-6cd2ccbba30e";
   const restApiKey = process.env["ONESIGNAL_REST_API_KEY"];

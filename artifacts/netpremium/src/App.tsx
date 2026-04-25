@@ -287,7 +287,7 @@ const HomeView = React.memo(({
           />
         )}
 
-        {/* 🚀 CATEGORIES CAROUSEL SYSTEM NA TELA INICIAL */}
+        {/* Home screen categories carousel */}
         <section className="space-y-3 md:space-y-4 group pt-2 md:pt-4 px-4 md:px-12">
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-xl md:text-2xl font-black uppercase italic tracking-tighter text-white">Explorar por Gênero</h3>
