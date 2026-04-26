@@ -133,10 +133,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
 
     switch (event.type) {
       case 'play':
-        videoRef.current?.play();
+        if (videoRef.current?.paused) videoRef.current?.play();
         break;
       case 'pause':
-        videoRef.current?.pause();
+        if (!videoRef.current?.paused) videoRef.current?.pause();
         break;
       case 'seek':
         if (videoRef.current) {
@@ -176,7 +176,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !roomId || !isHost) return;
+    if (!video || !roomId) return;
 
     const onPlay = () => broadcastEvent('play');
     const onPause = () => broadcastEvent('pause');
@@ -191,7 +191,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
       video.removeEventListener('pause', onPause);
       video.removeEventListener('seeked', onSeeked);
     };
-  }, [roomId, isHost]);
+  }, [roomId]);
 
   const extractDriveId = (url: string) => {
     const match = url.match(/(?:file\/d\/|id=)([-\w]{25,})/);

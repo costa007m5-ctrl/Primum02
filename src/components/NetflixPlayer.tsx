@@ -222,13 +222,13 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               }
               break;
             case 'play':
-              if (!isHost && videoRef.current) videoRef.current.play().catch(() => {});
+              if (videoRef.current && videoRef.current.paused) videoRef.current.play().catch(() => {});
               break;
             case 'pause':
-              if (!isHost && videoRef.current) videoRef.current.pause();
+              if (videoRef.current && !videoRef.current.paused) videoRef.current.pause();
               break;
             case 'seek':
-              if (!isHost && videoRef.current) {
+              if (videoRef.current) {
                 const diff = Math.abs(videoRef.current.currentTime - payload.time);
                 if (diff > 2) {
                   videoRef.current.currentTime = payload.time;
@@ -673,7 +673,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     const handlePause = () => {
       setIsPlaying(false);
       setIsLoading(false); // If it pauses, we are not loading/buffering anymore
-      if (isHost && channelRef.current && roomId) {
+      if (channelRef.current && roomId) {
         channelRef.current.send({
           type: 'broadcast',
           event: 'room_event',
@@ -702,7 +702,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       setError(null);
       retryCountRef.current = 0;
 
-      if (isHost && channelRef.current && roomId && video) {
+      if (channelRef.current && roomId && video) {
         channelRef.current.send({
           type: 'broadcast',
           event: 'room_event',
@@ -932,11 +932,9 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   const togglePlay = () => {
     const video = videoRef.current;
     if (video) {
-      if (!isHost && roomId) return; // Guests can't control playback
-
       if (video.paused) {
         video.play().catch(() => {});
-        if (isHost && channelRef.current && roomId) {
+        if (channelRef.current && roomId) {
           channelRef.current.send({
             type: 'broadcast',
             event: 'room_event',
@@ -947,7 +945,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         // The video.play() will trigger handlePlaying which now handles the orientation lock.
       } else {
         video.pause();
-        if (isHost && channelRef.current && roomId) {
+        if (channelRef.current && roomId) {
           channelRef.current.send({
             type: 'broadcast',
             event: 'room_event',
@@ -959,12 +957,11 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   };
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!isHost && roomId) return; // Propagate seek only for hosts
     const time = parseFloat(e.target.value);
     if (videoRef.current) {
       videoRef.current.currentTime = time;
       setCurrentTime(time);
-      if (isHost && channelRef.current && roomId) {
+      if (channelRef.current && roomId) {
         channelRef.current.send({
           type: 'broadcast',
           event: 'room_event',
@@ -975,10 +972,9 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   };
 
   const skip = (amount: number) => {
-    if (!isHost && roomId) return;
     if (videoRef.current) {
       videoRef.current.currentTime += amount;
-      if (isHost && channelRef.current && roomId) {
+      if (channelRef.current && roomId) {
         channelRef.current.send({
           type: 'broadcast',
           event: 'room_event',
