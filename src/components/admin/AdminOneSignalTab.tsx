@@ -117,7 +117,7 @@ export const AdminOneSignalTab: React.FC = () => {
               <li><strong>Table:</strong> Escolha <code>movies</code> ou <code>series</code> e marque eventos <strong>Insert</strong>.</li>
               <li><strong>Type:</strong> HTTP Request</li>
               <li><strong>Method:</strong> POST</li>
-              <li><strong>URL:</strong> Cole a URL final do seu applet seguido por <code>/api/webhooks/supabase/onesignal</code>.</li>
+              <li><strong>URL (Copie este valor):</strong> <code className="bg-black/50 px-2 py-1 rounded text-red-400 break-all">{window.location.origin}/api/webhooks/supabase/onesignal</code></li>
             </ul>
           </div>
         </div>
