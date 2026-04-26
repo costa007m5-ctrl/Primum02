@@ -3576,6 +3576,23 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    // Auto-join watch party if profile is already loaded and we have movies
+    const params = new URLSearchParams(window.location.search);
+    const roomId = params.get('room');
+    const movieId = params.get('movie');
+
+    if (roomId && movieId && profile && myMovies.length > 0) {
+      const isAlreadyInWatch = location.pathname.includes('/watch');
+      if (!isAlreadyInWatch) {
+        const movie = myMovies.find(m => m.id.toString() === movieId.toString());
+        if (movie) {
+           navigate(`/watch/${movie.id}${window.location.search}`, { state: { movie, backgroundLocation: location.state?.backgroundLocation } });
+        }
+      }
+    }
+  }, [profile, myMovies, location.pathname, navigate]);
+
   const handleSwitchProfile = () => {
     setProfile(null);
     localStorage.removeItem('active_profile');
