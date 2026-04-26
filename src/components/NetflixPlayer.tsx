@@ -625,6 +625,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
             await (screen.orientation as any).lock('landscape').catch(() => {});
             setIsLandscape(true);
           }
+          setMedianOrientation('landscape');
         } catch (e) {}
       };
       lock();
@@ -848,13 +849,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
           socketRef.current.emit('sync-playback', { roomId, playing: true, currentTime: video.currentTime });
         }
         
-        // When play is pressed, lock to landscape
-        try {
-          if (screen.orientation && (screen.orientation as any).lock) {
-            (screen.orientation as any).lock('landscape').catch(() => {});
-          }
-          setMedianOrientation('landscape');
-        } catch(e) {}
+        // The video.play() will trigger handlePlaying which now handles the orientation lock.
       } else {
         video.pause();
         if (isHost && socketRef.current && roomId) {
@@ -1367,12 +1362,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                     setLoadingProgress(100);
                     setShowLogoOverlay(false);
                     if (videoRef.current) videoRef.current.play().catch(() => {});
-                    try {
-                      if (screen.orientation && (screen.orientation as any).lock) {
-                        (screen.orientation as any).lock('landscape').catch(() => {});
-                      }
-                      setMedianOrientation('landscape');
-                    } catch(e) {}
+                    // play() will trigger handlePlaying which locks orientation.
                   }}
                   className="bg-red-600/20 text-red-500 border border-red-600/30 px-8 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] italic hover:bg-red-600 hover:text-white transition-all"
                 >
