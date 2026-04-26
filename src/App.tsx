@@ -3400,6 +3400,7 @@ export default function App() {
       }
     } catch (error) {
       console.error('Erro ao alternar favorito:', error);
+      alert('Tivemos um problema ao atualizar os Favoritos. Verifique a conexão e tente novamente.');
     }
   };
 
@@ -3409,19 +3410,25 @@ export default function App() {
     
     try {
       if (isInList) {
-        await supabase
+        const { error } = await supabase
           .from('my_list')
           .delete()
           .eq('profile_id', profile.id)
           .eq('movie_id', movie.id);
+          
+        if (error) throw error;
+        setMyList(prev => prev.filter(m => m.id !== movie.id));
       } else {
-        await supabase
+        const { error } = await supabase
           .from('my_list')
           .insert([{ profile_id: profile.id, movie_id: movie.id }]);
+          
+        if (error) throw error;
+        setMyList(prev => [...prev, movie]);
       }
-      fetchMyList();
     } catch (error) {
       console.error('Erro ao alternar minha lista:', error);
+      alert('Tivemos um problema ao atualizar a Minha Lista. Verifique a conexão e tente novamente.');
     }
   };
 

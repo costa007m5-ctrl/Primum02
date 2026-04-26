@@ -142,6 +142,7 @@ const MovieDetailsModal = React.memo(({
   const [activeInfoTab, setActiveInfoTab] = useState<'details' | 'episodes' | 'similar'>('details');
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
   const [showTvShare, setShowTvShare] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
   const [realWatchProviders, setRealWatchProviders] = useState<any[]>([]);
   const [currentProvider, setCurrentProvider] = useState<any>(getProvider(movie, streamingProviders));
   const [showQualitySelector, setShowQualitySelector] = useState(false);
@@ -610,31 +611,71 @@ const MovieDetailsModal = React.memo(({
                 <span className={`hidden md:block font-black uppercase tracking-widest text-xs italic ${appSettings?.subscription_plan !== 'max' ? 'text-yellow-500' : ''}`}>Watch Party</span>
               </motion.button>
 
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                  const url = `${window.location.origin}/movie/${movie.id}`;
-                  const title = `Ei, recomendo você assistir: ${movie.title || movie.name}`;
-                  const text = `Assista agora no aplicativo: ${movie.title || movie.name}\n\n`;
-                  
-                  if (navigator.share) {
-                    navigator.share({
-                      title: movie.title || movie.name,
-                      text: text,
-                      url: url
-                    }).catch(console.error);
-                  } else {
-                    navigator.clipboard.writeText(title + "\n" + url);
-                    alert("O link desse filme foi copiado! Envie por mensagem para seus amigos.");
-                  }
-                }}
-                className="p-2.5 md:p-6 rounded-lg md:rounded-2xl bg-[#25D366]/20 border-2 border-[#25D366]/30 text-[#25D366] backdrop-blur-2xl hover:bg-[#25D366] hover:text-white transition-all shadow-2xl flex items-center gap-2 md:gap-4 ml-auto"
-                title="Indicar via WhatsApp / Compartilhar"
-              >
-                <Share2 size={14} className="md:w-8 md:h-8" />
-                <span className="hidden md:block font-black uppercase tracking-widest text-xs italic">Indicar Amigo</span>
-              </motion.button>
+              <div className="relative ml-auto">
+                {!showShareMenu ? (
+                  <motion.button 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowShareMenu(true)}
+                    className="p-2.5 md:p-6 rounded-lg md:rounded-2xl bg-[#25D366]/20 border-2 border-[#25D366]/30 text-[#25D366] backdrop-blur-2xl hover:bg-[#25D366] hover:text-white transition-all shadow-2xl flex items-center gap-2 md:gap-4"
+                    title="Indicar via WhatsApp / Compartilhar"
+                  >
+                    <Share2 size={14} className="md:w-8 md:h-8" />
+                    <span className="hidden md:block font-black uppercase tracking-widest text-xs italic">Indicar Amigo</span>
+                  </motion.button>
+                ) : (
+                  <motion.div 
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex items-center gap-2"
+                  >
+                    <a 
+                      href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Ei, recomendo você assistir: ${movie.title || movie.name}\n\nAssista agora no aplicativo: ${window.location.origin}/movie/${movie.id}`)}`}
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="p-2.5 md:p-4 rounded-lg md:rounded-2xl bg-[#25D366] text-white shadow-2xl flex items-center"
+                      title="WhatsApp"
+                    >
+                      <span className="font-black uppercase tracking-widest text-[10px] md:text-xs">WhatsApp</span>
+                    </a>
+                    <a 
+                      href={`https://t.me/share/url?url=${encodeURIComponent(`${window.location.origin}/movie/${movie.id}`)}&text=${encodeURIComponent(`Ei, recomendo você assistir: ${movie.title || movie.name}`)}`}
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="p-2.5 md:p-4 rounded-lg md:rounded-2xl bg-[#0088cc] text-white shadow-2xl flex items-center"
+                      title="Telegram"
+                    >
+                      <span className="font-black uppercase tracking-widest text-[10px] md:text-xs">Telegram</span>
+                    </a>
+                    <button
+                      onClick={() => {
+                        const url = `${window.location.origin}/movie/${movie.id}`;
+                        if (navigator.share) {
+                          navigator.share({
+                            title: movie.title || movie.name,
+                            text: `Assista agora no aplicativo: ${movie.title || movie.name}\n\n`,
+                            url: url
+                          }).catch(console.error);
+                        } else {
+                          navigator.clipboard.writeText(`${window.location.origin}/movie/${movie.id}`);
+                          alert("Link copiado!");
+                        }
+                      }}
+                      className="p-2.5 md:p-4 rounded-lg md:rounded-2xl bg-white/10 text-white hover:bg-white border-2 border-white/20 hover:text-black shadow-2xl flex items-center"
+                      title="Mais..."
+                    >
+                      <Share2 size={14} className="md:w-5 md:h-5" />
+                    </button>
+                    <button
+                      onClick={() => setShowShareMenu(false)}
+                      className="p-2.5 md:p-4 rounded-lg md:rounded-2xl bg-black/40 text-gray-400 hover:text-white"
+                      title="Fechar"
+                    >
+                      <X size={14} className="md:w-5 md:h-5" />
+                    </button>
+                  </motion.div>
+                )}
+              </div>
             </div>
           </div>
         </div>
