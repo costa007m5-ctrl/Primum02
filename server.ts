@@ -58,9 +58,12 @@ async function startServer() {
         room.hostId = socket.id;
       }
 
-      const userExists = room.users.find(u => u.profileName === profile.name);
+      const safeProfileName = profile?.name || 'User_' + socket.id.substring(0, 4);
+      const safeAvatar = profile?.avatar_url || '';
+
+      const userExists = room.users.find(u => u.profileName === safeProfileName);
       if (!userExists) {
-        room.users.push({ id: socket.id, profileName: profile.name, avatar: profile.avatar_url });
+        room.users.push({ id: socket.id, profileName: safeProfileName, avatar: safeAvatar });
       }
 
       io.to(roomId).emit('room-update', room);

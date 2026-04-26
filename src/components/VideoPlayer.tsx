@@ -94,6 +94,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
 
   useEffect(() => {
     if (!roomId) return;
+    if (playerStyle === 'netflix') return; // NetflixPlayer handles its own sync
 
     const channel = supabase.channel(`room:${roomId}`, {
       config: {
