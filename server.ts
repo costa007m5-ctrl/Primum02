@@ -51,7 +51,10 @@ async function startServer() {
         rooms.set(roomId, room);
       }
 
-      if (isHost && !room.hostId) {
+      if (isHost) {
+        room.hostId = socket.id;
+      } else if (!room.hostId) {
+        // If room has no host, first one to join becomes host
         room.hostId = socket.id;
       }
 

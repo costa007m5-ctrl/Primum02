@@ -9,6 +9,7 @@ interface VideoPlayerProps {
   movie: Movie;
   onClose: () => void;
   profileId?: string;
+  profile?: any; // Added profile object
   roomId?: string;
   isHost?: boolean;
   onPlayNext?: (movie: Movie, episodeUrl: string) => void;
@@ -17,7 +18,7 @@ interface VideoPlayerProps {
   appSettings?: AppSettings;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, roomId, isHost, onPlayNext, recommendations = [], onProgress, appSettings }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, profile, roomId, isHost, onPlayNext, recommendations = [], onProgress, appSettings }) => {
   const [orientationKey, setOrientationKey] = useState(0);
   const [playerStyle, setPlayerStyle] = useState<'netflix' | 'standard' | 'special' | null>('netflix');
   const [drivePlayMethod, setDrivePlayMethod] = useState<'api' | 'uc' | 'iframe'>('api');
@@ -481,6 +482,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, ro
           videoUrlOptions={videoUrlOptions}
           isHost={isHost}
           roomId={roomId}
+          profile={profile}
           maxQualityHeight={appSettings?.subscription_plan === 'hub' ? 720 : 1080}
           onSwitchPlayer={() => {
             if (isDriveVideo) {

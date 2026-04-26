@@ -182,7 +182,16 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       const socket = io();
       socketRef.current = socket;
 
-      socket.emit('join-room', { roomId, profile, movieId, isHost });
+      const joinRoom = () => {
+        socket.emit('join-room', { roomId, profile, movieId, isHost });
+      };
+
+      socket.on('connect', joinRoom);
+      
+      // If already connected, join immediately
+      if (socket.connected) {
+        joinRoom();
+      }
 
       socket.on('room-update', (room) => {
         setRoomUsers(room.users);

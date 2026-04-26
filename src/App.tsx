@@ -1240,6 +1240,7 @@ const PlayerRouteWrapper = ({ myMovies, profile, closePlayer, handleSelectMovie,
       movie={{...movie, videoUrl: videoUrl || movie.video_url || movie.videoUrl}} 
       onClose={closePlayer}
       profileId={profile?.id}
+      profile={profile}
       recommendations={myMovies.slice(0, 10)}
       onProgress={onProgress}
       roomId={currentRoomId}
@@ -3093,7 +3094,6 @@ export default function App() {
       const movieId = params.get('movie');
 
       if (roomId && movieId) {
-        setActiveRoomId(roomId);
         // O filme será carregado quando o usuário selecionar o perfil
       }
     }).catch(err => {
@@ -3587,7 +3587,11 @@ export default function App() {
       if (!isAlreadyInWatch) {
         const movie = myMovies.find(m => m.id.toString() === movieId.toString());
         if (movie) {
-           navigate(`/watch/${movie.id}${window.location.search}`, { state: { movie, backgroundLocation: location.state?.backgroundLocation } });
+           // We push to watch with the search params so the player wrapper can get them
+           navigate(`/watch/${movie.id}?room=${roomId}`, { 
+             state: { movie, backgroundLocation: location.state?.backgroundLocation },
+             replace: true 
+           });
         }
       }
     }
@@ -3654,7 +3658,7 @@ export default function App() {
   };
 
   const closePlayer = () => {
-    navigate(-1);
+    navigate(state?.backgroundLocation?.pathname || '/menu');
     // Pequeno delay para garantir que a navegação e o unmount do player salvaram o progresso
     setTimeout(() => {
       fetchContinueWatching();
@@ -4059,7 +4063,7 @@ export default function App() {
       <main className="relative pb-20 min-h-screen overscroll-none">
         <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="w-16 h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div></div>}>
           <Routes location={state?.backgroundLocation || location}>
-            <Route path="/" element={<Navigate to="/menu" replace />} />
+            <Route path="/" element={<Navigate to={`/menu${location.search}`} replace />} />
           
           <Route path="/redefinirsenha" element={<Login initialMode="updatePassword" />} />
           <Route path="/confirmacao" element={<Login initialMode="login" />} />
