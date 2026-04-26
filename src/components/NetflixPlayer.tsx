@@ -4,7 +4,7 @@ import screenfull from 'screenfull';
 import Hls from 'hls.js';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
-import { io, Socket } from 'socket.io-client';
+import { supabase } from '../lib/supabase';
 
 interface NetflixPlayerProps {
   src: string;
@@ -153,7 +153,8 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   const [emotes, setEmotes] = useState<{ id: string | number; emoji: string; x: number; y: number; profileName?: string }[]>([]);
   const [showEmotePicker, setShowEmotePicker] = useState(false);
   const [roomUsers, setRoomUsers] = useState<any[]>([]);
-  const socketRef = useRef<Socket | null>(null);
+  const channelRef = useRef<any>(null);
+  const clientIdRef = useRef(Math.random().toString(36).substring(2, 10));
   
   const EMOTES = ['🔥', '😂', '😱', '😍', '😢', '👏', '👎', '❓', '🍿', '😮', '💀', '🤡'];
 
@@ -179,73 +180,103 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
 
   useEffect(() => {
     if (roomId && profile) {
-      const socket = io({
-        transports: ['websocket', 'polling'], // Allow polling fallback in case Vite intercepts websocket
+      const channel = supabase.channel(`room:${roomId}`, {
+        config: {
+          presence: {
+            key: clientIdRef.current,
+          },
+        },
       });
-      socketRef.current = socket;
+
+      channelRef.current = channel;
 
       let syncInterval: any;
-      const joinRoom = () => {
-        socket.emit('join-room', { roomId, profile, movieId, isHost });
-        if (isHost && !syncInterval) {
-          syncInterval = setInterval(() => {
-            if (videoRef.current) {
-              socket.emit('sync-playback', { roomId, playing: !videoRef.current.paused, currentTime: videoRef.current.currentTime });
-            }
-          }, 3000);
-        }
-      };
 
-      socket.on('connect', joinRoom);
-      if (socket.connected) {
-        joinRoom();
-      }
+      channel
+        .on('presence', { event: 'sync' }, () => {
+          const state = channel.presenceState();
+          const users = Object.values(state).flat().map((p: any) => ({
+            id: p.profileId,
+            profileName: p.profileName,
+            avatar: p.avatar
+          }));
+          
+          const uniqueUsers = Array.from(new Map(users.map(item => [item.profileName, item])).values());
+          setRoomUsers(uniqueUsers);
+        })
+        .on('broadcast', { event: 'room_event' }, ({ payload }) => {
+          if (payload.sender_id === clientIdRef.current) return;
 
-      socket.on('room-update', (room) => {
-        setRoomUsers(room.users);
-        if (!isHost && videoRef.current) {
-          const diff = Math.abs(videoRef.current.currentTime - room.currentTime);
-          if (diff > 2) {
-            videoRef.current.currentTime = room.currentTime;
+          switch (payload.type) {
+            case 'sync_host':
+              if (!isHost && videoRef.current) {
+                const diff = Math.abs(videoRef.current.currentTime - payload.currentTime);
+                if (diff > 2) {
+                  videoRef.current.currentTime = payload.currentTime;
+                }
+                if (payload.playing && videoRef.current.paused) {
+                  videoRef.current.play().catch(() => {});
+                } else if (!payload.playing && !videoRef.current.paused) {
+                  videoRef.current.pause();
+                }
+              }
+              break;
+            case 'play':
+              if (!isHost && videoRef.current) videoRef.current.play().catch(() => {});
+              break;
+            case 'pause':
+              if (!isHost && videoRef.current) videoRef.current.pause();
+              break;
+            case 'seek':
+              if (!isHost && videoRef.current) {
+                const diff = Math.abs(videoRef.current.currentTime - payload.time);
+                if (diff > 2) {
+                  videoRef.current.currentTime = payload.time;
+                }
+              }
+              break;
+            case 'emote':
+              const x = 20 + Math.random() * 60;
+              const y = 20 + Math.random() * 60;
+              const id = Math.random();
+              setEmotes(prev => [...prev, { id, emoji: payload.emoji, x, y, profileName: payload.profileName }]);
+              setTimeout(() => {
+                setEmotes(prev => prev.filter(e => e.id !== id));
+              }, 3000);
+              break;
           }
-          if (room.playing && videoRef.current.paused) {
-            videoRef.current.play().catch(() => {});
-          } else if (!room.playing && !videoRef.current.paused) {
-            videoRef.current.pause();
-          }
-        }
-      });
-
-      socket.on('playback-update', ({ playing, currentTime }) => {
-        if (!isHost && videoRef.current) {
-          const diff = Math.abs(videoRef.current.currentTime - currentTime);
-          if (diff > 2) {
-            videoRef.current.currentTime = currentTime;
-          }
-          if (playing && videoRef.current.paused) {
-            // Attempt to play, but don't get stuck if it fails
-            videoRef.current.play().catch((err) => {
-              console.warn("Autoplay blocked for member:", err);
-              // IF it blocks, they just have to click play
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await channel.track({
+              profileId: profile.id || 'anonymous',
+              profileName: profile.name || 'Usuário',
+              avatar: profile.avatar_url,
+              joined_at: new Date().toISOString(),
             });
-          } else if (!playing && !videoRef.current.paused) {
-            videoRef.current.pause();
-          }
-        }
-      });
 
-      socket.on('receive-emote', ({ emote, profileName, id }) => {
-        const x = 20 + Math.random() * 60;
-        const y = 20 + Math.random() * 60;
-        setEmotes(prev => [...prev, { id, emoji: emote, x, y, profileName }]);
-        setTimeout(() => {
-          setEmotes(prev => prev.filter(e => e.id !== id));
-        }, 3000);
-      });
+            if (isHost && !syncInterval) {
+              syncInterval = setInterval(() => {
+                if (videoRef.current) {
+                  channel.send({
+                    type: 'broadcast',
+                    event: 'room_event',
+                    payload: { 
+                      type: 'sync_host', 
+                      playing: !videoRef.current.paused, 
+                      currentTime: videoRef.current.currentTime,
+                      sender_id: clientIdRef.current 
+                    }
+                  });
+                }
+              }, 3000);
+            }
+          }
+        });
 
       return () => {
         if (syncInterval) clearInterval(syncInterval);
-        socket.disconnect();
+        channel.unsubscribe();
       };
     }
   }, [roomId, isHost, profile, movieId]);
@@ -304,8 +335,12 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   }, []);
 
   const sendEmote = (emote: string) => {
-    if (socketRef.current && roomId) {
-      socketRef.current.emit('send-emote', { roomId, emote, profileName: profile?.name });
+    if (channelRef.current && roomId) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'room_event',
+        payload: { type: 'emote', emoji: emote, profileName: profile?.name, sender_id: clientIdRef.current }
+      });
     }
     
     // Always show locally immediately for instant feedback
@@ -638,8 +673,12 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     const handlePause = () => {
       setIsPlaying(false);
       setIsLoading(false); // If it pauses, we are not loading/buffering anymore
-      if (isHost && socketRef.current && roomId) {
-        socketRef.current.emit('sync-playback', { roomId, playing: false, currentTime: video.currentTime });
+      if (isHost && channelRef.current && roomId) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'room_event',
+          payload: { type: 'pause', sender_id: clientIdRef.current }
+        });
       }
     };
 
@@ -663,8 +702,12 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       setError(null);
       retryCountRef.current = 0;
 
-      if (isHost && socketRef.current && roomId && video) {
-        socketRef.current.emit('sync-playback', { roomId, playing: true, currentTime: video.currentTime });
+      if (isHost && channelRef.current && roomId && video) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'room_event',
+          payload: { type: 'play', sender_id: clientIdRef.current }
+        });
       }
       
       const lock = async () => {
@@ -893,15 +936,23 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
 
       if (video.paused) {
         video.play().catch(() => {});
-        if (isHost && socketRef.current && roomId) {
-          socketRef.current.emit('sync-playback', { roomId, playing: true, currentTime: video.currentTime });
+        if (isHost && channelRef.current && roomId) {
+          channelRef.current.send({
+            type: 'broadcast',
+            event: 'room_event',
+            payload: { type: 'play', sender_id: clientIdRef.current }
+          });
         }
         
         // The video.play() will trigger handlePlaying which now handles the orientation lock.
       } else {
         video.pause();
-        if (isHost && socketRef.current && roomId) {
-          socketRef.current.emit('sync-playback', { roomId, playing: false, currentTime: video.currentTime });
+        if (isHost && channelRef.current && roomId) {
+          channelRef.current.send({
+            type: 'broadcast',
+            event: 'room_event',
+            payload: { type: 'pause', sender_id: clientIdRef.current }
+          });
         }
       }
     }
@@ -913,8 +964,12 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     if (videoRef.current) {
       videoRef.current.currentTime = time;
       setCurrentTime(time);
-      if (isHost && socketRef.current && roomId) {
-        socketRef.current.emit('sync-playback', { roomId, playing: isPlaying, currentTime: time });
+      if (isHost && channelRef.current && roomId) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'room_event',
+          payload: { type: 'seek', time, sender_id: clientIdRef.current }
+        });
       }
     }
   };
@@ -923,8 +978,12 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     if (!isHost && roomId) return;
     if (videoRef.current) {
       videoRef.current.currentTime += amount;
-      if (isHost && socketRef.current && roomId) {
-        socketRef.current.emit('sync-playback', { roomId, playing: isPlaying, currentTime: videoRef.current.currentTime });
+      if (isHost && channelRef.current && roomId) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'room_event',
+          payload: { type: 'seek', time: videoRef.current.currentTime, sender_id: clientIdRef.current }
+        });
       }
     }
   };
