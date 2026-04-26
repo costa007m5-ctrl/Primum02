@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Play, Pause, RotateCcw, RotateCw, Volume2, VolumeX, Maximize, Minimize, X, ChevronLeft, Settings, Subtitles, FastForward, WifiOff, AlertCircle, Cast, Tv, Share2, Info, Smile, Users, PictureInPicture } from 'lucide-react';
+import { Play, Pause, RotateCcw, RotateCw, Volume2, VolumeX, Maximize, Minimize, X, ChevronLeft, Settings, Subtitles, FastForward, WifiOff, AlertCircle, Cast, Tv, Share2, Info, Smile, Users, PictureInPicture, ZoomIn, ZoomOut } from 'lucide-react';
 import screenfull from 'screenfull';
 import Hls from 'hls.js';
 import { motion, AnimatePresence } from 'motion/react';
@@ -150,11 +150,13 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     const saved = localStorage.getItem('autoRotate');
     return saved !== null ? JSON.parse(saved) : true;
   });
+  const [objectFit, setObjectFit] = useState<'contain' | 'cover'>('contain');
   const [emotes, setEmotes] = useState<{ id: string | number; emoji: string; x: number; y: number; profileName?: string }[]>([]);
   const [showEmotePicker, setShowEmotePicker] = useState(false);
   const [roomUsers, setRoomUsers] = useState<any[]>([]);
   const channelRef = useRef<any>(null);
   const clientIdRef = useRef(Math.random().toString(36).substring(2, 10));
+  const lastProgressTime = useRef(0);
   
   const EMOTES = ['🔥', '😂', '😱', '😍', '😢', '👏', '👎', '❓', '🍿', '😮', '💀', '🤡'];
 
@@ -607,7 +609,12 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     const handleTimeUpdate = () => {
       const time = video.currentTime;
       setCurrentTime(time);
-      if (onProgress) onProgress(time);
+      if (onProgress) {
+        if (Math.abs(time - lastProgressTime.current) >= 10) {
+           onProgress(time);
+           lastProgressTime.current = time;
+        }
+      }
 
       if ((time > 0.1 || video.currentTime > 0) && isLoading) {
         setIsLoading(false);
@@ -1286,7 +1293,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       <video
         key={`${activeSrc}-${sessionKey}-${playerMode}`}
         ref={videoRef}
-        className="w-full h-full object-contain"
+        className={`w-full h-full transition-all duration-300 ${objectFit === 'cover' ? 'object-cover' : 'object-contain'}`}
         autoPlay
         playsInline
         crossOrigin="anonymous"
@@ -1907,6 +1914,17 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               </div>
 
               <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setObjectFit(f => f === 'contain' ? 'cover' : 'contain');
+                }}
+                className="text-white hover:text-gray-300 transition-all hidden md:block"
+                title={objectFit === 'contain' ? "Preencher Tela" : "Ajustar à Tela"}
+              >
+                {objectFit === 'contain' ? <ZoomIn size={24} className="md:w-6 md:h-6 lg:w-8 lg:h-8" /> : <ZoomOut size={24} className="md:w-6 md:h-6 lg:w-8 lg:h-8" />}
+              </button>
+
+              <button 
                 onClick={togglePiP}
                 className="text-white hover:text-gray-300 transition-all hidden md:block"
                 title="Mini Player (Picture-in-Picture)"
@@ -1948,6 +1966,17 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                   </div>
                 )}
               </div>
+
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setObjectFit(f => f === 'contain' ? 'cover' : 'contain');
+                }}
+                className="text-white hover:text-gray-300 md:hidden"
+                title={objectFit === 'contain' ? "Preencher Tela" : "Ajustar à Tela"}
+              >
+                {objectFit === 'contain' ? <ZoomIn size={28} /> : <ZoomOut size={28} />}
+              </button>
 
               <button 
                 onClick={togglePiP}
