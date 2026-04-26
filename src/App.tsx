@@ -3629,8 +3629,8 @@ export default function App() {
     
     // Navegação síncrona permite que o autoplay passe no browser sem block
     const search = window.location.search;
-    navigate(`/watch/${movie.id}${search}`, { state: { movie, episodeUrl, startTime } });
-  }, [navigate]);
+    navigate(`/watch/${movie.id}${search}`, { state: { movie, episodeUrl, startTime, backgroundLocation: location.state?.backgroundLocation } });
+  }, [navigate, location.state]);
 
   const closeMovieDetails = () => {
     navigate(state?.backgroundLocation?.pathname || '/menu');
@@ -4213,7 +4213,7 @@ export default function App() {
           onRoomCreated={(roomId) => {
             setActiveRoomId(roomId);
             setIsHost(true);
-            navigate(`/watch/${watchPartyMovie.id}`);
+            navigate(`/watch/${watchPartyMovie.id}`, { state: { movie: watchPartyMovie, backgroundLocation: location.state?.backgroundLocation } });
             setWatchPartyMovie(null);
           }}
         />

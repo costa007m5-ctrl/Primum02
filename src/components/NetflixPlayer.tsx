@@ -274,6 +274,16 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     if (socketRef.current && roomId) {
       socketRef.current.emit('send-emote', { roomId, emote, profileName: profile?.name });
     }
+    
+    // Always show locally immediately for instant feedback
+    const x = 20 + Math.random() * 60;
+    const y = 20 + Math.random() * 60;
+    const id = Math.random();
+    setEmotes(prev => [...prev, { id, emoji: emote, x, y, profileName: profile?.name }]);
+    setTimeout(() => {
+      setEmotes(prev => prev.filter(e => e.id !== id));
+    }, 3000);
+    
     setShowEmotePicker(false);
     resetControlsTimer();
   };

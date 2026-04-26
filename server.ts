@@ -73,7 +73,7 @@ async function startServer() {
     });
 
     socket.on('send-emote', ({ roomId, emote, profileName }) => {
-      io.to(roomId).emit('receive-emote', { emote, profileName, id: Math.random() });
+      socket.to(roomId).emit('receive-emote', { emote, profileName, id: Math.random() });
     });
 
     socket.on('disconnect', () => {
