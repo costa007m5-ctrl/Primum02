@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, createContext, useContext, useRef, Suspense } from 'react';
+import OneSignal from 'react-onesignal';
 import { Routes, Route, useNavigate, useLocation, Navigate, useParams } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Banner from './components/Banner';
@@ -1543,6 +1544,19 @@ export default function App() {
   const state = location.state as any;
   const [currentTheme, setCurrentTheme] = useState('default');
   const [providerData, setProviderData] = useState<any>(null);
+
+  useEffect(() => {
+    try {
+      OneSignal.init({
+        appId: import.meta.env.VITE_ONESIGNAL_APP_ID || "581f23c1-2b57-4646-8780-6cd2ccbba30e",
+        allowLocalhostAsSecureOrigin: true,
+      }).then(() => {
+        OneSignal.Slidedown.promptPush();
+      });
+    } catch (e) {
+      console.warn("OneSignal init error:", e);
+    }
+  }, []);
 
   const [showIntro, setShowIntro] = useState(true);
   const [showAppInfo, setShowAppInfo] = useState(true);

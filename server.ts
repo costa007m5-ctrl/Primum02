@@ -426,6 +426,60 @@ async function startServer() {
     res.status(200).send('OK');
   });
 
+  // Rota para o Webhook do Supabase (Automação de Novos Filmes/Séries)
+  app.post('/api/webhooks/supabase/onesignal', async (req, res) => {
+    // Supabase envia o corpo como { type: "INSERT", table: "movies", record: { title: "...", ... } }
+    const { type, table, record } = req.body;
+    
+    if (type !== 'INSERT' || (table !== 'movies' && table !== 'series')) {
+      return res.status(200).send('Ignored');
+    }
+
+    const title = record.title || record.name;
+    const isSerie = table === 'series' || record.type === 'series';
+    const message = `Venha conferir o novo título que acabou de chegar.`;
+    const heading = `Novo Lançamento no Netprime: ${title}!`;
+    const imageUrl = record.backdrop_path ? 
+       (record.backdrop_path.startsWith('http') ? record.backdrop_path : `https://image.tmdb.org/t/p/w500${record.backdrop_path}`) : 
+       null;
+    
+    const APP_URL = process.env.APP_URL || (process.env.NODE_ENV === 'production' ? `https://${req.get('host')}` : `http://localhost:${PORT}`);
+    const targetUrl = `${APP_URL}/movie/${record.id}`;
+
+    const appId = process.env.VITE_ONESIGNAL_APP_ID || '581f23c1-2b57-4646-8780-6cd2ccbba30e';
+    const restApiKey = process.env.ONESIGNAL_REST_API_KEY;
+
+    if (!restApiKey) {
+      console.error('ERRO: ONESIGNAL_REST_API_KEY não configurada para o webhook.');
+      return res.status(500).json({ error: 'Configuração Pendente: Adicione a ONESIGNAL_REST_API_KEY nos Secrets.' });
+    }
+
+    try {
+      await axios.post(
+        'https://onesignal.com/api/v1/notifications',
+        {
+          app_id: appId,
+          included_segments: ['Subscribed Users', 'All'],
+          headings: { en: heading, pt: heading },
+          contents: { en: message, pt: message },
+          url: targetUrl,
+          big_picture: imageUrl,
+          chrome_web_image: imageUrl
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            Authorization: `Basic ${restApiKey}`,
+          },
+        }
+      );
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Erro ao enviar notificação automática OneSignal:', error.response?.data || error.message);
+      res.status(500).json({ error: 'Falha no webhook' });
+    }
+  });
+
   // Rota para enviar notificações via OneSignal
   app.post('/api/notifications/send', async (req, res) => {
     const { title, message, imageUrl, data } = req.body;
