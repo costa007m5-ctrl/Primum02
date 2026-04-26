@@ -609,6 +609,32 @@ const MovieDetailsModal = React.memo(({
                 {appSettings?.subscription_plan !== 'max' ? <Lock size={14} className="md:w-8 md:h-8 text-yellow-500" /> : <Users size={14} className="md:w-8 md:h-8" />}
                 <span className={`hidden md:block font-black uppercase tracking-widest text-xs italic ${appSettings?.subscription_plan !== 'max' ? 'text-yellow-500' : ''}`}>Watch Party</span>
               </motion.button>
+
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  const url = `${window.location.origin}/movie/${movie.id}`;
+                  const title = `Ei, recomendo você assistir: ${movie.title || movie.name}`;
+                  const text = `Assista agora no aplicativo: ${movie.title || movie.name}\n\n`;
+                  
+                  if (navigator.share) {
+                    navigator.share({
+                      title: movie.title || movie.name,
+                      text: text,
+                      url: url
+                    }).catch(console.error);
+                  } else {
+                    navigator.clipboard.writeText(title + "\n" + url);
+                    alert("O link desse filme foi copiado! Envie por mensagem para seus amigos.");
+                  }
+                }}
+                className="p-2.5 md:p-6 rounded-lg md:rounded-2xl bg-[#25D366]/20 border-2 border-[#25D366]/30 text-[#25D366] backdrop-blur-2xl hover:bg-[#25D366] hover:text-white transition-all shadow-2xl flex items-center gap-2 md:gap-4 ml-auto"
+                title="Indicar via WhatsApp / Compartilhar"
+              >
+                <Share2 size={14} className="md:w-8 md:h-8" />
+                <span className="hidden md:block font-black uppercase tracking-widest text-xs italic">Indicar Amigo</span>
+              </motion.button>
             </div>
           </div>
         </div>

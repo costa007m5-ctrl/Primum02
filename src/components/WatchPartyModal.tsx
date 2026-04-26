@@ -78,7 +78,7 @@ const WatchPartyModal: React.FC<WatchPartyModalProps> = ({ movie, profile, onClo
             </button>
           ) : (
             <div className="w-full space-y-6">
-              <div className="bg-black/40 p-4 rounded-lg border border-gray-800">
+              <div className="bg-black/40 p-4 rounded-xl border border-gray-800">
                 <p className="text-xs font-bold text-gray-500 uppercase mb-2 text-left">Link da Sala</p>
                 <div className="flex gap-2">
                   <input 
@@ -89,11 +89,47 @@ const WatchPartyModal: React.FC<WatchPartyModalProps> = ({ movie, profile, onClo
                   />
                   <button 
                     onClick={copyToClipboard}
-                    className="text-white hover:text-red-500 transition-colors"
+                    className="text-white hover:text-red-500 transition-colors bg-white/5 p-2 rounded"
+                    title="Copiar"
                   >
-                    {copied ? <Check size={20} className="text-green-500" /> : <Copy size={20} />}
+                    {copied ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
                   </button>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <a 
+                  href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Ei! Criei uma sala para assistirmos *${movie.title || movie.name}* juntos! Entra aí: ${shareUrl}`)}`}
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="bg-[#25D366]/20 text-[#25D366] hover:bg-[#25D366] hover:text-white border border-[#25D366]/30 py-3 rounded-xl flex items-center justify-center font-black uppercase text-[10px] tracking-widest transition-colors"
+                >
+                  WhatsApp
+                </a>
+                <a 
+                  href={`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`Ei! Criei uma sala para assistirmos ${movie.title || movie.name} juntos! Entra aí:`)}`}
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="bg-[#0088cc]/20 text-[#0088cc] hover:bg-[#0088cc] hover:text-white border border-[#0088cc]/30 py-3 rounded-xl flex items-center justify-center font-black uppercase text-[10px] tracking-widest transition-colors"
+                >
+                  Telegram
+                </a>
+                <button
+                  onClick={() => {
+                    if (navigator.share) {
+                      navigator.share({
+                        title: `Assistir ${movie.title || movie.name} juntos`,
+                        text: `Ei! Criei uma sala para assistirmos ${movie.title || movie.name} juntos! Entra aí.`,
+                        url: shareUrl
+                      });
+                    } else {
+                      copyToClipboard();
+                    }
+                  }}
+                  className="bg-white/5 text-white hover:bg-white hover:text-black border border-white/10 py-3 rounded-xl flex items-center justify-center font-black uppercase text-[10px] tracking-widest transition-colors"
+                >
+                  Mais...
+                </button>
               </div>
 
               <div className="flex flex-col gap-3">

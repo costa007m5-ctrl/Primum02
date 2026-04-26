@@ -114,6 +114,7 @@ export const AdminOneSignalTab: React.FC = () => {
             <h4 className="text-blue-400 font-bold mb-2">Supabase Webhook Automation</h4>
             <ul className="list-disc list-inside text-sm text-gray-300 space-y-2">
               <li>Na ferramenta Supabase vá em: <strong>Database &gt; Webhooks</strong> e crie.</li>
+              <li><strong>Name:</strong> <code>onesignal_movies</code> ou algo de sua preferência (sem espaços).</li>
               <li><strong>Table:</strong> Escolha <code>movies</code> ou <code>series</code> e marque eventos <strong>Insert</strong>.</li>
               <li><strong>Type:</strong> HTTP Request</li>
               <li><strong>Method:</strong> POST</li>

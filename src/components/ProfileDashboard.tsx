@@ -5,7 +5,7 @@ import {
   Play, ChevronRight, Clock, Award, HardDrive, Crown,
   Trash2, Search, Film, Tv, Sliders, Type, Bell, Monitor,
   Palette, UserCircle, Edit3, Lock, LogOut, CheckCircle2, AlertCircle, Heart,
-  Save, X, Smartphone, List, Download, Sparkles, Users, Copy
+  Save, X, Smartphone, List, Download, Sparkles, Users, Copy, Share2
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -640,6 +640,42 @@ export default function ProfileDashboard({
                          alert('Link copiado!');
                        }} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors">
                          <Copy size={16} />
+                       </button>
+                     </div>
+
+                     <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-4 mb-3">Compartilhar Seu Link</p>
+                     <div className="flex items-center gap-2 flex-wrap mt-2">
+                       <a 
+                         href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Ei! Vem assistir as melhores séries e filmes comigo. Baixe o app e ganhe vantagens usando meu convite! ${window.location.origin}/invite/${appSettings?.user_id || profile?.id?.substring(0, 8) || 'user'}`)}`}
+                         target="_blank" 
+                         rel="noopener noreferrer"
+                         className="flex items-center gap-2 bg-[#25D366]/20 text-[#25D366] hover:bg-[#25D366] hover:text-white px-3 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-colors flex-1 justify-center whitespace-nowrap border border-[#25D366]/30"
+                       >
+                         WhatsApp
+                       </a>
+                       <a 
+                         href={`https://t.me/share/url?url=${encodeURIComponent(`${window.location.origin}/invite/${appSettings?.user_id || profile?.id?.substring(0, 8) || 'user'}`)}&text=${encodeURIComponent(`Ei! Vem assistir as melhores séries e filmes comigo usando meu convite:`)}`}
+                         target="_blank" 
+                         rel="noopener noreferrer"
+                         className="flex items-center gap-2 bg-[#0088cc]/20 text-[#0088cc] hover:bg-[#0088cc] hover:text-white px-3 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-colors flex-1 justify-center whitespace-nowrap border border-[#0088cc]/30"
+                       >
+                         Telegram
+                       </a>
+                       <button
+                         onClick={() => {
+                           if (navigator.share) {
+                             navigator.share({
+                               title: 'Convite Especial',
+                               text: 'Vem assistir filmes e séries comigo! Aproveite e baixe usando meu convite especial.',
+                               url: `${window.location.origin}/invite/${appSettings?.user_id || profile?.id?.substring(0, 8) || 'user'}`
+                             });
+                           } else {
+                             alert('Navegador não suporta compartilhamento nativo. Copie o link acima!');
+                           }
+                         }}
+                         className="flex items-center gap-2 bg-white/10 text-white hover:bg-white hover:text-black px-3 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-colors flex-1 justify-center whitespace-nowrap border border-white/20"
+                       >
+                         <Share2 size={14} /> Mais...
                        </button>
                      </div>
                    </div>
