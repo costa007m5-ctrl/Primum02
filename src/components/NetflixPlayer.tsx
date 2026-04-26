@@ -182,6 +182,9 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     if (roomId && profile) {
       const channel = supabase.channel(`room:${roomId}`, {
         config: {
+          broadcast: {
+            ack: true,
+          },
           presence: {
             key: clientIdRef.current,
           },
@@ -211,10 +214,12 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
             case 'sync_host':
               if (!isHost && videoRef.current) {
                 const diff = Math.abs(videoRef.current.currentTime - payload.currentTime);
-                if (diff > 2) {
+                // Tolerates up to 4 seconds of mismatch
+                if (diff > 4) {
                   videoRef.current.currentTime = payload.currentTime;
                 }
                 if (payload.playing && videoRef.current.paused) {
+                  // Only try to play if we have enough data to at least start
                   videoRef.current.play().catch(() => {});
                 } else if (!payload.playing && !videoRef.current.paused) {
                   videoRef.current.pause();
@@ -229,10 +234,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               break;
             case 'seek':
               if (videoRef.current) {
-                const diff = Math.abs(videoRef.current.currentTime - payload.time);
-                if (diff > 2) {
-                  videoRef.current.currentTime = payload.time;
-                }
+                videoRef.current.currentTime = payload.time;
               }
               break;
             case 'emote':
@@ -267,7 +269,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                       currentTime: videoRef.current.currentTime,
                       sender_id: clientIdRef.current 
                     }
-                  });
+                  }).catch(() => {});
                 }
               }, 3000);
             }
@@ -340,7 +342,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         type: 'broadcast',
         event: 'room_event',
         payload: { type: 'emote', emoji: emote, profileName: profile?.name, sender_id: clientIdRef.current }
-      });
+      }).catch((e: Error) => console.error("Emote broadcast err:", e));
     }
     
     // Always show locally immediately for instant feedback
@@ -673,12 +675,12 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     const handlePause = () => {
       setIsPlaying(false);
       setIsLoading(false); // If it pauses, we are not loading/buffering anymore
-      if (channelRef.current && roomId) {
+      if (isHost && channelRef.current && roomId) {
         channelRef.current.send({
           type: 'broadcast',
           event: 'room_event',
           payload: { type: 'pause', sender_id: clientIdRef.current }
-        });
+        }).catch(() => {});
       }
     };
 
@@ -702,12 +704,12 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       setError(null);
       retryCountRef.current = 0;
 
-      if (channelRef.current && roomId && video) {
+      if (isHost && channelRef.current && roomId && video) {
         channelRef.current.send({
           type: 'broadcast',
           event: 'room_event',
           payload: { type: 'play', sender_id: clientIdRef.current }
-        });
+        }).catch(() => {});
       }
       
       const lock = async () => {
@@ -933,53 +935,55 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     const video = videoRef.current;
     if (video) {
       if (video.paused) {
+        // Allow guest to initiate playback to bypass browser autoplay blocks
         video.play().catch(() => {});
-        if (channelRef.current && roomId) {
+        if (isHost && channelRef.current && roomId) {
           channelRef.current.send({
             type: 'broadcast',
             event: 'room_event',
             payload: { type: 'play', sender_id: clientIdRef.current }
-          });
+          }).catch(() => {});
         }
-        
-        // The video.play() will trigger handlePlaying which now handles the orientation lock.
       } else {
+        if (!isHost && roomId) return; // Only host can actively pause the room
         video.pause();
-        if (channelRef.current && roomId) {
+        if (isHost && channelRef.current && roomId) {
           channelRef.current.send({
             type: 'broadcast',
             event: 'room_event',
             payload: { type: 'pause', sender_id: clientIdRef.current }
-          });
+          }).catch(() => {});
         }
       }
     }
   };
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isHost && roomId) return;
     const time = parseFloat(e.target.value);
     if (videoRef.current) {
       videoRef.current.currentTime = time;
       setCurrentTime(time);
-      if (channelRef.current && roomId) {
+      if (isHost && channelRef.current && roomId) {
         channelRef.current.send({
           type: 'broadcast',
           event: 'room_event',
           payload: { type: 'seek', time, sender_id: clientIdRef.current }
-        });
+        }).catch(() => {});
       }
     }
   };
 
   const skip = (amount: number) => {
+    if (!isHost && roomId) return;
     if (videoRef.current) {
       videoRef.current.currentTime += amount;
-      if (channelRef.current && roomId) {
+      if (isHost && channelRef.current && roomId) {
         channelRef.current.send({
           type: 'broadcast',
           event: 'room_event',
           payload: { type: 'seek', time: videoRef.current.currentTime, sender_id: clientIdRef.current }
-        });
+        }).catch(() => {});
       }
     }
   };

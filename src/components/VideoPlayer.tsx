@@ -155,7 +155,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
       type: 'broadcast',
       event: 'room_event',
       payload: { type, payload, sender_id: profileId },
-    });
+    }).catch(() => {});
   };
 
   const addEmote = (emoji: string) => {
