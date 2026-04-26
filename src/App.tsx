@@ -418,10 +418,9 @@ const UniverseTabView = React.memo(({
       exit={{ opacity: 0 }}
       className="min-h-screen relative bg-[#050505] overflow-x-hidden"
     >
-      {/* Dynamic Aura Background */}
-      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[60%] aspect-square bg-red-600/5 rounded-full blur-[150px] animate-pulse" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] aspect-square bg-blue-600/5 rounded-full blur-[120px]" />
+      {/* Fast Background */}
+      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden bg-black">
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-red-900/10 via-black to-black" />
       </div>
 
       <AnimatePresence mode="wait">

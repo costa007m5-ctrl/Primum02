@@ -171,13 +171,11 @@ const Banner = React.memo(({ onPlay, onInfo, movieOverride, movies = [] }: Banne
               />
             </motion.div>
           ) : (
-            <motion.h1 
-              animate={{ y: [0, -5, 0] }}
-              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+            <h1 
               className="text-3xl md:text-9xl lg:text-[11rem] font-black pb-2 drop-shadow-2xl uppercase tracking-tighter italic leading-[0.9] text-white font-display select-none pr-4"
             >
               {movie?.title || movie?.name || movie?.original_name}
-            </motion.h1>
+            </h1>
           )}
 
           <div className="flex items-center gap-4 md:gap-8 max-w-3xl border-l-[3px] md:border-l-[6px] border-[#e50914] pl-5 md:pl-10 ml-1 md:ml-3">

@@ -118,11 +118,9 @@ const UniverseView: React.FC<UniverseViewProps> = React.memo(({
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[400] bg-black flex flex-col items-center justify-center p-10 overflow-hidden"
           >
-            {/* Pulsing Background Glow */}
-            <motion.div 
-              animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }}
-              transition={{ duration: 4, repeat: Infinity }}
-              className={`absolute inset-0 blur-[100px] opacity-20`}
+            {/* Optimized Background Glow */}
+            <div 
+              className={`absolute inset-0 opacity-10`}
               style={{ background: `radial-gradient(circle, ${franchise.color || '#ff0000'} 0%, transparent 70%)` }}
             />
 
@@ -205,18 +203,15 @@ const UniverseView: React.FC<UniverseViewProps> = React.memo(({
             </motion.div>
           </AnimatePresence>
           
-          {/* Animated Mesh Blobs */}
-          <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-30">
-            <motion.div 
-              animate={{ x: [0, 100, 0], y: [0, -50, 0] }}
-              transition={{ duration: 15, repeat: Infinity }}
-              className={`absolute top-[-10%] left-[-10%] w-[50%] aspect-square rounded-full blur-[150px]`}
-              style={{ backgroundColor: franchise.color }}
+          {/* Optimized Ambient Lights */}
+          <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-30 pointer-events-none">
+            <div 
+              className={`absolute top-[-10%] left-[-10%] w-[50%] h-[50%]`}
+              style={{ background: `radial-gradient(circle at top left, ${franchise.color}, transparent 70%)` }}
             />
-            <motion.div 
-              animate={{ x: [0, -100, 0], y: [0, 50, 0] }}
-              transition={{ duration: 20, repeat: Infinity, delay: 2 }}
-              className="absolute bottom-[-10%] right-[-10%] w-[40%] aspect-square bg-blue-600/20 rounded-full blur-[120px]"
+            <div 
+              className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%]"
+              style={{ background: `radial-gradient(circle at bottom right, rgba(37,99,235,0.4), transparent 70%)` }}
             />
           </div>
         </div>
