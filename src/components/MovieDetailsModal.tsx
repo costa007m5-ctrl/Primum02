@@ -30,7 +30,8 @@ const getProvider = (movie: Movie, streamingProviders?: any[]) => {
     { name: 'Prime Video', logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f1/Prime_Video.png', bg: 'bg-[#00a8e1]' },
     { name: 'Apple TV+', logo: 'https://upload.wikimedia.org/wikipedia/commons/2/28/Apple_TV_Plus_Logo.svg', bg: 'bg-black' },
     { name: 'Paramount+', logo: 'https://upload.wikimedia.org/wikipedia/commons/a/a5/Paramount_Plus.svg', bg: 'bg-blue-900' },
-    { name: 'Globoplay', logo: 'https://upload.wikimedia.org/wikipedia/commons/a/af/Globoplay_logo.svg', bg: 'bg-white' }
+    { name: 'Globoplay', logo: 'https://upload.wikimedia.org/wikipedia/commons/a/af/Globoplay_logo.svg', bg: 'bg-white' },
+    { name: 'Hulu', logo: 'https://upload.wikimedia.org/wikipedia/commons/e/e4/Hulu_Logo.svg', bg: 'bg-[#1ce783]' }
   ];
 
   const t = (movie.title || movie.name || '').toLowerCase();
@@ -176,7 +177,10 @@ const MovieDetailsModal = React.memo(({
             { name: 'Disney+', logo: 'https://upload.wikimedia.org/wikipedia/commons/3/3e/Disney%2B_logo.svg', bg: 'bg-[#00143c]' },
             { name: 'Max', logo: 'https://upload.wikimedia.org/wikipedia/commons/c/ce/Max_logo.svg', bg: 'bg-[#002be7]' },
             { name: 'Prime Video', logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f1/Prime_Video.png', bg: 'bg-[#00a8e1]' },
-            { name: 'Apple TV+', logo: 'https://upload.wikimedia.org/wikipedia/commons/2/28/Apple_TV_Plus_Logo.svg', bg: 'bg-black' }
+            { name: 'Apple TV+', logo: 'https://upload.wikimedia.org/wikipedia/commons/2/28/Apple_TV_Plus_Logo.svg', bg: 'bg-black' },
+            { name: 'Paramount+', logo: 'https://upload.wikimedia.org/wikipedia/commons/a/a5/Paramount_Plus.svg', bg: 'bg-blue-900' },
+            { name: 'Globoplay', logo: 'https://upload.wikimedia.org/wikipedia/commons/a/af/Globoplay_logo.svg', bg: 'bg-white' },
+            { name: 'Hulu', logo: 'https://upload.wikimedia.org/wikipedia/commons/e/e4/Hulu_Logo.svg', bg: 'bg-[#1ce783]' }
           ];
           
           const found = brProviders.find((p: any) => 
@@ -489,10 +493,10 @@ const MovieDetailsModal = React.memo(({
                       const urlToPlay = movie.type === 'series' && movie.episodes && movie.episodes.length > 0 ? movie.episodes[0].videoUrl : movie.videoUrl;
                       onPlay(movie, urlToPlay, savedProgress);
                     }}
-                    className={`${theme.button} flex-1 md:flex-none px-6 md:px-12 py-3 md:py-6 font-black uppercase tracking-widest flex items-center justify-center gap-2 md:gap-5 text-[10px] md:text-xl italic shadow-2xl relative overflow-hidden group`}
+                    className="bg-white text-black hover:bg-gray-200 flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 rounded-md font-bold uppercase tracking-widest flex items-center justify-center gap-2 md:gap-3 text-xs md:text-sm shadow-xl relative overflow-hidden group"
                   >
-                    <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
-                    <Play fill="currentColor" size={14} className="md:w-8 md:h-8" /> 
+                    <div className="absolute inset-0 bg-black/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
+                    <Play fill="currentColor" size={14} className="md:w-6 md:h-6" /> 
                     <span className="whitespace-nowrap relative z-10">Continuar ({formatProgressTime(savedProgress)})</span>
                   </motion.button>
 
@@ -503,9 +507,9 @@ const MovieDetailsModal = React.memo(({
                       const urlToPlay = movie.type === 'series' && movie.episodes && movie.episodes.length > 0 ? movie.episodes[0].videoUrl : movie.videoUrl;
                       onPlay(movie, urlToPlay, 0);
                     }}
-                    className={`${theme.secondaryButton} px-6 md:px-8 py-3 md:py-6 font-black uppercase tracking-widest flex items-center gap-2 md:gap-4 text-[10px] md:text-lg italic backdrop-blur-md`}
+                    className="bg-white/10 text-white border-2 border-white/20 hover:bg-white/20 px-6 md:px-8 py-3 md:py-4 rounded-md font-bold uppercase tracking-widest flex items-center gap-2 md:gap-3 text-xs md:text-sm shadow-xl backdrop-blur-md transition-all"
                   >
-                    <RotateCcw size={14} className="md:w-6 md:h-6" />
+                    <RotateCcw size={14} className="md:w-5 md:h-5" />
                     <span className="whitespace-nowrap">Reiniciar</span>
                   </motion.button>
                 </div>
@@ -523,17 +527,17 @@ const MovieDetailsModal = React.memo(({
                         const urlToPlay = movie.type === 'series' && movie.episodes && movie.episodes.length > 0 ? movie.episodes[0].videoUrl : movie.videoUrl;
                         onPlay(movie, urlToPlay, 0);
                       }}
-                      className={`${isLocked ? 'bg-zinc-800 text-gray-400 border border-zinc-600' : theme.button} px-6 md:px-12 py-2.5 md:py-6 font-black uppercase tracking-widest flex items-center gap-2 md:gap-5 text-[10px] md:text-xl italic shadow-2xl transition-colors`}
+                      className={`${isLocked ? 'bg-zinc-800 text-gray-400 border border-zinc-600' : 'bg-white text-black hover:bg-gray-200'} px-6 md:px-10 py-3 md:py-4 rounded-md font-bold uppercase tracking-widest flex items-center gap-2 md:gap-3 text-xs md:text-sm shadow-xl transition-colors`}
                     >
                       {isLocked ? (
                         <>
-                           <Lock size={14} className="md:w-8 md:h-8 text-yellow-500" />
+                           <Lock size={14} className="md:w-6 md:h-6 text-yellow-500" />
                            <span className="whitespace-nowrap text-yellow-500">Upgrade (Plus/Max)</span>
                         </>
                       ) : (
                         <>
-                          <Play fill="currentColor" size={14} className="md:w-8 md:h-8" /> 
-                          <span className="whitespace-nowrap">Assistir {getVideoSourceType(movie.type === 'series' && movie.episodes && movie.episodes.length > 0 ? movie.episodes[0].videoUrl : movie.videoUrl)}</span>
+                          <Play fill="currentColor" size={14} className="md:w-6 md:h-6" /> 
+                          <span className="whitespace-nowrap">Continuar</span>
                         </>
                       )}
                     </motion.button>
@@ -542,139 +546,72 @@ const MovieDetailsModal = React.memo(({
                       whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(220,38,38,0.3)' }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => onRequestMovie?.(movie)}
-                      className="bg-white/10 text-white border-2 border-white/20 px-6 md:px-12 py-2.5 md:py-6 rounded-md font-black uppercase tracking-widest flex items-center gap-2 md:gap-5 text-[10px] md:text-xl italic shadow-2xl transition-all hover:bg-red-600 hover:border-red-500"
+                      className="bg-white/10 text-white border-2 border-white/20 px-6 md:px-10 py-3 md:py-4 rounded-md font-bold uppercase tracking-widest flex items-center gap-2 md:gap-3 text-xs md:text-sm shadow-xl transition-all hover:bg-white hover:text-black"
                     >
-                      <Sparkles size={14} className="md:w-8 md:h-8" /> 
+                      <Sparkles size={14} className="md:w-6 md:h-6" /> 
                       <span className="whitespace-nowrap">Indicar Filme</span>
                     </motion.button>
                   )}
 
                   {!isLocked && (movie.videoUrl2 || (movie.type === 'series' && movie.episodes && movie.episodes.some(e => e.videoUrl2))) && (
                     <motion.button 
-                      whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(220,38,38,0.3)' }}
+                      whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(255,255,255,0.3)' }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => {
                         const urlToPlay = movie.type === 'series' && movie.episodes && movie.episodes.length > 0 ? (movie.episodes[0].videoUrl2 || movie.episodes[0].videoUrl) : movie.videoUrl2;
                         onPlay(movie, urlToPlay, 0);
                       }}
-                      className={`bg-red-600 text-white hover:bg-red-700 px-6 md:px-12 py-2.5 md:py-6 rounded-md font-black uppercase tracking-widest flex items-center gap-2 md:gap-5 text-[10px] md:text-xl italic shadow-2xl transition-all`}
+                      className={`bg-white text-black hover:bg-gray-200 px-6 md:px-10 py-3 md:py-4 rounded-md font-bold uppercase tracking-widest flex items-center gap-2 md:gap-3 text-xs md:text-sm shadow-xl transition-all`}
                     >
-                      <Play fill="currentColor" size={14} className="md:w-8 md:h-8" />
-                      <span className="whitespace-nowrap">Assistir {getVideoSourceType(movie.type === 'series' && movie.episodes && movie.episodes.length > 0 ? (movie.episodes[0].videoUrl2 || movie.episodes[0].videoUrl) : movie.videoUrl2)}</span>
+                      <Play fill="currentColor" size={14} className="md:w-6 md:h-6" />
+                      <span className="whitespace-nowrap">Opção 2</span>
                     </motion.button>
                   )}
                 </>
               )}
               
-              <motion.button 
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => onToggleMyList(movie)}
-                className={`p-2.5 md:p-6 rounded-lg md:rounded-2xl border-2 transition-all shadow-2xl ${isAddedToMyList ? 'bg-red-600 border-red-600 text-white' : 'bg-white/5 border-white/10 text-white backdrop-blur-2xl'}`}
-              >
-                <Plus size={14} className={`md:w-8 md:h-8 transition-transform duration-700 ${isAddedToMyList ? 'rotate-45' : ''}`} />
-              </motion.button>
+              <div className="flex bg-black/20 rounded-full items-center gap-3 md:gap-4 p-1">
+                <motion.button 
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => onToggleMyList(movie)}
+                  className={`w-10 h-10 md:w-14 md:h-14 rounded-full border-2 transition-all flex items-center justify-center ${isAddedToMyList ? 'bg-white border-white text-black' : 'bg-transparent border-white text-white hover:bg-white inset-0 hover:text-black'}`}
+                  title="Minha Lista"
+                >
+                  <Plus size={14} className={`md:w-6 md:h-6 transition-transform duration-700 ${isAddedToMyList ? 'rotate-45' : ''}`} />
+                </motion.button>
 
-              <motion.button 
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => onToggleFavorite(movie)}
-                className={`p-2.5 md:p-6 rounded-lg md:rounded-2xl border-2 transition-all shadow-2xl ${isFavorite ? 'bg-white text-black border-white' : 'bg-white/5 border-white/10 text-white backdrop-blur-2xl'}`}
-              >
-                <ThumbsUp size={14} className={`md:w-8 md:h-8 ${isFavorite ? 'fill-black' : ''}`} />
-              </motion.button>
+                <motion.button 
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => onWatchParty()}
+                  className="w-10 h-10 md:w-14 md:h-14 rounded-full bg-transparent border-2 border-white text-white hover:bg-white hover:text-black transition-all flex items-center justify-center"
+                  title="Assistir em Grupo"
+                >
+                  <Users size={14} className="md:w-6 md:h-6" />
+                </motion.button>
 
-              <motion.button 
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setShowTvShare(true)}
-                className="p-2.5 md:p-6 rounded-lg md:rounded-2xl bg-white/5 border-2 border-white/10 text-white backdrop-blur-2xl hover:bg-white/10 transition-all shadow-2xl flex items-center gap-2 md:gap-4"
-                title="Assistir na TV"
-              >
-                <Tv size={14} className="md:w-8 md:h-8" />
-                <span className="hidden md:block font-black uppercase tracking-widest text-xs italic">TV</span>
-              </motion.button>
-
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                  if (appSettings?.subscription_plan !== 'max') {
-                    document.dispatchEvent(new CustomEvent('open-plans'));
-                    return;
-                  }
-                  onWatchParty(movie);
-                }}
-                className={`p-2.5 md:p-6 rounded-lg md:rounded-2xl border-2 backdrop-blur-2xl transition-all shadow-2xl flex items-center gap-2 md:gap-4 ${appSettings?.subscription_plan !== 'max' ? 'bg-zinc-800/50 border-zinc-700 text-gray-500' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'}`}
-              >
-                {appSettings?.subscription_plan !== 'max' ? <Lock size={14} className="md:w-8 md:h-8 text-yellow-500" /> : <Users size={14} className="md:w-8 md:h-8" />}
-                <span className={`hidden md:block font-black uppercase tracking-widest text-xs italic ${appSettings?.subscription_plan !== 'max' ? 'text-yellow-500' : ''}`}>Watch Party</span>
-              </motion.button>
-
-              <div className="relative ml-auto">
-                {!showShareMenu ? (
-                  <motion.button 
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setShowShareMenu(true)}
-                    className="p-2.5 md:p-6 rounded-lg md:rounded-2xl bg-[#25D366]/20 border-2 border-[#25D366]/30 text-[#25D366] backdrop-blur-2xl hover:bg-[#25D366] hover:text-white transition-all shadow-2xl flex items-center gap-2 md:gap-4"
-                    title="Indicar via WhatsApp / Compartilhar"
-                  >
-                    <Share2 size={14} className="md:w-8 md:h-8" />
-                    <span className="hidden md:block font-black uppercase tracking-widest text-xs italic">Indicar Amigo</span>
-                  </motion.button>
-                ) : (
-                  <motion.div 
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center gap-2"
-                  >
-                    <a 
-                      href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Ei, recomendo você assistir: ${movie.title || movie.name}\n\nAssista agora no aplicativo: ${window.location.origin}/movie/${movie.id}`)}`}
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="p-2.5 md:p-4 rounded-lg md:rounded-2xl bg-[#25D366] text-white shadow-2xl flex items-center"
-                      title="WhatsApp"
-                    >
-                      <span className="font-black uppercase tracking-widest text-[10px] md:text-xs">WhatsApp</span>
-                    </a>
-                    <a 
-                      href={`https://t.me/share/url?url=${encodeURIComponent(`${window.location.origin}/movie/${movie.id}`)}&text=${encodeURIComponent(`Ei, recomendo você assistir: ${movie.title || movie.name}`)}`}
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="p-2.5 md:p-4 rounded-lg md:rounded-2xl bg-[#0088cc] text-white shadow-2xl flex items-center"
-                      title="Telegram"
-                    >
-                      <span className="font-black uppercase tracking-widest text-[10px] md:text-xs">Telegram</span>
-                    </a>
-                    <button
-                      onClick={() => {
-                        const url = `${window.location.origin}/movie/${movie.id}`;
-                        if (navigator.share) {
-                          navigator.share({
-                            title: movie.title || movie.name,
-                            text: `Assista agora no aplicativo: ${movie.title || movie.name}\n\n`,
-                            url: url
-                          }).catch(console.error);
-                        } else {
-                          navigator.clipboard.writeText(`${window.location.origin}/movie/${movie.id}`);
-                          alert("Link copiado!");
-                        }
-                      }}
-                      className="p-2.5 md:p-4 rounded-lg md:rounded-2xl bg-white/10 text-white hover:bg-white border-2 border-white/20 hover:text-black shadow-2xl flex items-center"
-                      title="Mais..."
-                    >
-                      <Share2 size={14} className="md:w-5 md:h-5" />
-                    </button>
-                    <button
-                      onClick={() => setShowShareMenu(false)}
-                      className="p-2.5 md:p-4 rounded-lg md:rounded-2xl bg-black/40 text-gray-400 hover:text-white"
-                      title="Fechar"
-                    >
-                      <X size={14} className="md:w-5 md:h-5" />
-                    </button>
-                  </motion.div>
-                )}
+                <motion.button 
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => {
+                    const url = `${window.location.origin}/movie/${movie.id}`;
+                    if (navigator.share) {
+                      navigator.share({
+                        title: movie.title || movie.name,
+                        text: `Assista agora no aplicativo: ${movie.title || movie.name}\n\n`,
+                        url: url
+                      }).catch(console.error);
+                    } else {
+                      navigator.clipboard.writeText(`${window.location.origin}/movie/${movie.id}`);
+                      alert("Link copiado!");
+                    }
+                  }}
+                  className="w-10 h-10 md:w-14 md:h-14 rounded-full bg-transparent border-2 border-white text-white hover:bg-white hover:text-black transition-all flex items-center justify-center"
+                  title="Compartilhar"
+                >
+                  <Share2 size={14} className="md:w-6 md:h-6" />
+                </motion.button>
               </div>
             </div>
           </div>
@@ -758,29 +695,29 @@ const MovieDetailsModal = React.memo(({
           </div>
 
           {/* Tabs Section */}
-          <div className="flex gap-8 md:gap-16 mb-12 md:mb-20 border-b border-white/5 overflow-x-auto no-scrollbar sticky top-0 bg-black/80 backdrop-blur-3xl z-50 py-6 px-6 md:px-12">
-            <button 
-              onClick={() => setActiveInfoTab('details')}
-              className={`pb-4 md:pb-8 text-xl md:text-5xl font-black uppercase tracking-tighter italic transition-all relative whitespace-nowrap ${activeInfoTab === 'details' ? 'text-white' : 'text-gray-600 hover:text-gray-400'}`}
-            >
-              Detalhes
-              {activeInfoTab === 'details' && <motion.div layoutId="tab" className={`absolute bottom-0 left-0 right-0 h-1.5 md:h-2.5 ${theme.accent.replace('text-', 'bg-')} rounded-t-full shadow-[0_0_30px_rgba(220,38,38,0.8)]`} />}
-            </button>
+          <div className="flex gap-6 md:gap-10 mb-8 md:mb-12 border-b-2 border-white/10 overflow-x-auto no-scrollbar sticky top-0 bg-[#040714]/80 backdrop-blur-3xl z-50 py-2 px-6 md:px-12">
             {movie.type === 'series' && (
               <button 
                 onClick={() => setActiveInfoTab('episodes')}
-                className={`pb-4 md:pb-8 text-xl md:text-5xl font-black uppercase tracking-tighter italic transition-all relative whitespace-nowrap ${activeInfoTab === 'episodes' ? 'text-white' : 'text-gray-600 hover:text-gray-400'}`}
+                className={`pb-4 md:pb-5 text-sm md:text-base font-bold uppercase tracking-[0.15em] transition-all relative whitespace-nowrap pt-4 ${activeInfoTab === 'episodes' ? 'text-white' : 'text-gray-400 hover:text-gray-200'}`}
               >
                 Episódios
-                {activeInfoTab === 'episodes' && <motion.div layoutId="tab" className={`absolute bottom-0 left-0 right-0 h-1.5 md:h-2.5 ${theme.accent.replace('text-', 'bg-')} rounded-t-full shadow-[0_0_30px_rgba(220,38,38,0.8)]`} />}
+                {activeInfoTab === 'episodes' && <motion.div layoutId="tab" className={`absolute bottom-[-2px] left-0 right-0 h-[3px] bg-white rounded-t-sm shadow-[0_0_10px_rgba(255,255,255,0.5)]`} />}
               </button>
             )}
             <button 
               onClick={() => setActiveInfoTab('similar')}
-              className={`pb-4 md:pb-8 text-xl md:text-5xl font-black uppercase tracking-tighter italic transition-all relative whitespace-nowrap ${activeInfoTab === 'similar' ? 'text-white' : 'text-gray-600 hover:text-gray-400'}`}
+              className={`pb-4 md:pb-5 text-sm md:text-base font-bold uppercase tracking-[0.15em] transition-all relative whitespace-nowrap pt-4 ${activeInfoTab === 'similar' ? 'text-white' : 'text-gray-400 hover:text-gray-200'}`}
             >
-              Semelhantes
-              {activeInfoTab === 'similar' && <motion.div layoutId="tab" className={`absolute bottom-0 left-0 right-0 h-1.5 md:h-2.5 ${theme.accent.replace('text-', 'bg-')} rounded-t-full shadow-[0_0_30px_rgba(220,38,38,0.8)]`} />}
+              Sugestões
+              {activeInfoTab === 'similar' && <motion.div layoutId="tab" className={`absolute bottom-[-2px] left-0 right-0 h-[3px] bg-white rounded-t-sm shadow-[0_0_10px_rgba(255,255,255,0.5)]`} />}
+            </button>
+            <button 
+              onClick={() => setActiveInfoTab('details')}
+              className={`pb-4 md:pb-5 text-sm md:text-base font-bold uppercase tracking-[0.15em] transition-all relative whitespace-nowrap pt-4 ${activeInfoTab === 'details' ? 'text-white' : 'text-gray-400 hover:text-gray-200'}`}
+            >
+              Detalhes
+              {activeInfoTab === 'details' && <motion.div layoutId="tab" className={`absolute bottom-[-2px] left-0 right-0 h-[3px] bg-white rounded-t-sm shadow-[0_0_10px_rgba(255,255,255,0.5)]`} />}
             </button>
           </div>
 

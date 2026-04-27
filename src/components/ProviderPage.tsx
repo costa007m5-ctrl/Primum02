@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { ChevronLeft, Play, Plus, Info } from 'lucide-react';
 import { Movie } from '../types';
 import Row from './Row';
+import { getMovieLogo } from '../services/tmdb';
+import { useNavigate } from 'react-router-dom';
 
 interface ProviderPageProps {
   provider: string;
@@ -32,16 +34,16 @@ const providerConfigs: Record<string, any> = {
   },
   'Disney+': {
     logo: 'https://upload.wikimedia.org/wikipedia/commons/3/3e/Disney%2B_logo.svg',
-    accent: '#0063e5',
-    bg: 'bg-[#040714]',
-    gradient: 'from-[#040714] via-[#040714]/90 to-[#040714]',
-    overlay: 'bg-[radial-gradient(circle_at_25%_25%,rgba(0,99,229,0.15),transparent_80%)]',
-    buttonPrimary: 'bg-[#0063e5] text-white hover:bg-[#0072ff] rounded-[0.4rem] font-black tracking-[0.1em] text-[10px] md:text-sm uppercase italic shadow-[0_0_20px_rgba(0,99,229,0.4)]',
-    buttonSecondary: 'bg-black/40 text-white border border-white/20 hover:bg-white/10 rounded-[0.4rem] font-black tracking-[0.1em] text-[10px] md:text-sm uppercase italic',
+    accent: '#f9f9f9',
+    bg: 'bg-black',
+    gradient: 'from-black/80 via-black/20 to-transparent',
+    overlay: 'hidden',
+    buttonPrimary: 'bg-[#f9f9f9] text-black hover:bg-white rounded font-bold tracking-[0.1em] text-xs md:text-sm uppercase shadow-lg',
+    buttonSecondary: 'bg-black/60 text-white border border-white/80 hover:bg-white/20 rounded font-bold tracking-[0.1em] text-xs md:text-sm uppercase',
     font: 'font-sans',
-    cardStyle: 'rounded-lg border border-white/5 shadow-2xl hover:border-[#0063e5] transition-colors duration-300',
-    heroLayout: 'bottom-0 left-0 w-full p-6 md:p-24 pb-32 md:pb-64',
-    titleStyle: 'text-2xl md:text-[8rem] font-black text-white tracking-tight drop-shadow-[0_0_30px_rgba(0,99,229,0.3)] uppercase italic leading-[0.9]',
+    cardStyle: 'rounded-lg border-[3px] border-transparent hover:border-white/80 shadow-[0_26px_58px_-16px_rgba(0,0,0,0.8)] hover:shadow-[0_40px_58px_-16px_rgba(0,0,0,0.8)] hover:scale-105 transition-all duration-300',
+    heroLayout: 'bottom-8 left-0 w-full p-6 md:p-24 pb-12 md:pb-24',
+    titleStyle: 'text-3xl md:text-7xl font-bold text-[#f9f9f9] tracking-tight drop-shadow-[0_0_30px_rgba(0,0,0,0.8)]',
     theme: 'disney'
   },
   'Max': {
@@ -113,8 +115,30 @@ const providerConfigs: Record<string, any> = {
     heroLayout: 'bottom-0 left-0 p-8 md:p-24 pb-48 md:pb-64',
     titleStyle: 'text-4xl md:text-8xl font-black text-white uppercase italic tracking-tighter leading-none',
     theme: 'globo'
+  },
+  'Hulu': {
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/e/e4/Hulu_Logo.svg',
+    accent: '#1ce783',
+    bg: 'bg-black',
+    gradient: 'from-black via-black/80 to-transparent',
+    overlay: 'bg-[radial-gradient(circle_at_25%_25%,rgba(28,231,131,0.1),transparent_70%)]',
+    buttonPrimary: 'bg-[#1ce783] text-black hover:bg-white rounded font-bold uppercase tracking-[0.1em] text-xs md:text-sm px-8 py-3 shadow-[0_0_20px_rgba(28,231,131,0.3)] transition-all',
+    buttonSecondary: 'bg-white/10 text-white hover:bg-white/20 rounded font-bold uppercase tracking-[0.1em] text-xs md:text-sm px-8 py-3 transition-all',
+    font: 'font-sans',
+    cardStyle: 'rounded-lg border-[3px] border-transparent hover:border-[#1ce783]/50 shadow-[rgba(0,0,0,0.5)_0px_20px_30px_-10px] hover:scale-105 transition-all duration-300',
+    heroLayout: 'bottom-0 left-0 w-full p-6 md:p-24 pb-12 md:pb-24',
+    titleStyle: 'text-3xl md:text-7xl font-bold text-white tracking-tight drop-shadow-[0_0_30px_rgba(0,0,0,0.8)]',
+    theme: 'hulu'
   }
 };
+
+const DISNEY_BRANDS = [
+  { id: 'disney', name: 'Disney', logo: 'https://upload.wikimedia.org/wikipedia/commons/a/a4/Disney_wordmark.svg', video: 'https://raw.githubusercontent.com/sonusindhu/disney-clone/main/public/videos/1564674844-disney.mp4', keywords: ['encanto', 'moana', 'frozen', 'rei leão', 'lion king', 'mickey', 'disney'], backdrop: 'https://image.tmdb.org/t/p/original/7Ry9S0SSTIyuQq9S8fXG8gC.jpg' },
+  { id: 'pixar', name: 'Pixar', logo: 'https://upload.wikimedia.org/wikipedia/commons/4/40/Pixar_logo.svg', video: 'https://raw.githubusercontent.com/sonusindhu/disney-clone/main/public/videos/1564676714-pixar.mp4', keywords: ['toy story', 'nemo', 'up', 'divertida mente', 'inside out', 'incredibles', 'monstros', 'cars'], backdrop: 'https://image.tmdb.org/t/p/original/hY6vshsh0rIn4766u63NBSmToIdp.jpg' },
+  { id: 'marvel', name: 'Marvel', logo: 'https://upload.wikimedia.org/wikipedia/commons/b/b9/Marvel_Logo.svg', video: 'https://raw.githubusercontent.com/sonusindhu/disney-clone/main/public/videos/1564676115-marvel.mp4', keywords: ['marvel', 'avengers', 'vingadores', 'iron man', 'homem de ferro', 'spider-man', 'spiderman', 'thor'], backdrop: 'https://image.tmdb.org/t/p/original/mDf935S7qbZOSo9u3YmBAzY6nU2.jpg' },
+  { id: 'star-wars', name: 'Star Wars', logo: 'https://upload.wikimedia.org/wikipedia/commons/c/ce/Star_wars2.svg', video: 'https://raw.githubusercontent.com/sonusindhu/disney-clone/main/public/videos/1608229455-star-wars.mp4', keywords: ['star wars', 'mandalorian', 'jedi', 'darth', 'skywalker', 'andor'], backdrop: 'https://image.tmdb.org/t/p/original/9v8X8tB8bS19K6G2w6N8fXG8gC.jpg' },
+  { id: 'national', name: 'National Geographic', logo: 'https://upload.wikimedia.org/wikipedia/commons/e/ec/National_Geographic_logo_text.svg', video: 'https://raw.githubusercontent.com/sonusindhu/disney-clone/main/public/videos/1564676296-national-geographic.mp4', keywords: ['cosmos', 'natureza', 'terra', 'vida', 'ocean', 'planeta'], backdrop: 'https://image.tmdb.org/t/p/original/aInel5k9AetCg2Vf3hR1Iq6n2eD.jpg' },
+];
 
 const ProviderPage: React.FC<ProviderPageProps> = ({ 
   provider, 
@@ -126,11 +150,33 @@ const ProviderPage: React.FC<ProviderPageProps> = ({
   myListIds,
   favoriteIds
 }) => {
+  const navigate = useNavigate();
   const config = providerConfigs[provider] || providerConfigs['Netflix'];
   const featuredMovie = movies[0];
+  const [featuredLogo, setFeaturedLogo] = useState<string | null>(null);
+  const [brandFilter, setBrandFilter] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (featuredMovie) {
+      getMovieLogo(featuredMovie.id, featuredMovie.type as 'movie' | 'tv').then(logo => {
+        setFeaturedLogo(logo);
+      }).catch(() => setFeaturedLogo(null));
+    }
+  }, [featuredMovie]);
+
+  const displayedMovies = React.useMemo(() => {
+    let filteredMovies = movies;
+    if (brandFilter) {
+      const brand = DISNEY_BRANDS.find(b => b.id === brandFilter);
+      if (brand) {
+        filteredMovies = movies.filter(m => brand.keywords.some(k => (m.title || m.name || '').toLowerCase().includes(k)));
+      }
+    }
+    return filteredMovies;
+  }, [movies, brandFilter]);
 
   const moviesByGenre = React.useMemo(() => {
-    return movies.reduce((acc, movie) => {
+    return displayedMovies.reduce((acc, movie) => {
       const genres = movie.genres?.split(',') || ['Geral'];
       genres.forEach(g => {
         const genre = g.trim();
@@ -139,7 +185,7 @@ const ProviderPage: React.FC<ProviderPageProps> = ({
       });
       return acc;
     }, {} as Record<string, Movie[]>);
-  }, [movies]);
+  }, [displayedMovies]);
 
   return (
     <motion.div 
@@ -176,9 +222,18 @@ const ProviderPage: React.FC<ProviderPageProps> = ({
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-transparent to-transparent"></div>
           
           <div className={`absolute ${config.heroLayout} space-y-3 md:space-y-6 max-w-3xl z-20`}>
-            <h1 className={`${config.titleStyle} text-2xl md:text-8xl`}>
-              {featuredMovie.title || featuredMovie.name}
-            </h1>
+            {featuredLogo ? (
+              <img 
+                src={`https://image.tmdb.org/t/p/w500${featuredLogo}`} 
+                alt={featuredMovie.title || featuredMovie.name} 
+                className="w-[70%] md:w-[80%] max-w-[400px] md:max-w-[600px] object-contain drop-shadow-[0_0_30px_rgba(0,0,0,0.8)] pb-2" 
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <h1 className={`${config.titleStyle} text-2xl md:text-8xl`}>
+                {featuredMovie.title || featuredMovie.name}
+              </h1>
+            )}
             <p className={`text-gray-200 text-xs md:text-2xl line-clamp-2 md:line-clamp-3 font-medium italic drop-shadow-lg ${config.font}`}>
               {featuredMovie.overview}
             </p>
@@ -201,7 +256,45 @@ const ProviderPage: React.FC<ProviderPageProps> = ({
       )}
 
       {/* Content Rows */}
-      <div className="relative z-30 -mt-20 md:-mt-48 pb-20 space-y-8 md:space-y-12">
+      <div className={`relative z-30 pb-20 space-y-8 md:space-y-12 px-2 md:px-0 ${provider === 'Disney+' ? '' : '-mt-20 md:-mt-48'}`}>
+        
+        {provider === 'Disney+' && (
+          <div className="flex overflow-x-auto no-scrollbar gap-4 md:gap-6 px-4 md:px-12 mb-12 relative z-40 py-4 mt-4">
+            {DISNEY_BRANDS.map((brand) => {
+              const backdropUrl = brand.backdrop;
+
+              return (
+                <div 
+                  key={brand.id}
+                  onClick={() => navigate(`/universe/${brand.id}`)}
+                  className={`relative aspect-video min-w-[140px] md:min-w-[200px] flex-none rounded-lg shadow-[rgba(0,0,0,0.69)_0px_26px_30px_-10px,rgba(0,0,0,0.73)_0px_16px_10px_-10px] cursor-pointer overflow-hidden transition-all duration-300 border-[3px] group bg-[linear-gradient(rgb(48,50,62),rgb(30,31,42))] border-white/10 hover:border-white/80 hover:scale-105 hover:shadow-[rgba(0,0,0,0.8)_0px_40px_58px_-16px,rgba(0,0,0,0.72)_0px_30px_22px_-10px]`}
+                >
+                  <video 
+                    autoPlay 
+                    loop 
+                    playsInline 
+                    muted 
+                    className={`w-full h-full object-cover transition-opacity duration-500 rounded-lg absolute inset-0 z-0 opacity-0 group-hover:opacity-100`}
+                  >
+                    <source src={brand.video} type="video/mp4" />
+                  </video>
+                  {backdropUrl && (
+                    <img 
+                      src={backdropUrl} 
+                      alt="" 
+                      className={`absolute inset-0 w-full h-full object-cover z-0 transition-opacity duration-500 scale-110 opacity-100 group-hover:opacity-0`} 
+                      referrerPolicy="no-referrer" 
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-transparent group-hover:bg-black/40 transition-colors z-10" />
+                  {/* For Marvel and StarWars, remove the invert filter since their original colors look better against the dark background */}
+                  <img src={brand.logo} alt={brand.name} className={`absolute inset-0 w-full h-full object-contain z-20 p-4 md:p-8 opacity-100 drop-shadow-2xl transition-transform group-hover:scale-110 ${['marvel', 'star-wars', 'national'].includes(brand.id) ? '' : 'brightness-0 invert'}`} style={{ filter: ['marvel', 'star-wars', 'national'].includes(brand.id) ? 'drop-shadow(0px 5px 10px rgba(0,0,0,0.5))' : 'brightness(0) invert(1) drop-shadow(0px 5px 10px rgba(0,0,0,0.5))' }} referrerPolicy="no-referrer" />
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* Top 10 Section */}
         <Row 
           title={`Top 10 ${provider} Hoje`}

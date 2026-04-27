@@ -78,6 +78,7 @@ const FRANCHISES: {
   { id: 'fast-furious', name: 'Fast & Furious', keywords: ['velozes e furiosos', 'fast & furious', 'toretto'], color: '#d00', bg: 'bg-[#0a0a0a]', accent: 'text-red-700', icon: Zap, description: 'Velocidade, família e adrenalina pura. Acompanhe Dominic Toretto e sua equipe em missões impossíveis ao redor do mundo.', backdrop: 'https://image.tmdb.org/t/p/original/9n2tLpS0STIyuQq9S8fXG8gC.jpg', logo: 'https://upload.wikimedia.org/wikipedia/commons/a/ab/Fast_%26_Furious_logo.png' },
   { id: 'disney', name: 'Disney Classics', keywords: ['rei leão', 'lion king', 'aladdin', 'pequena sereia', 'bela e a fera', 'cinderela', 'branca de neve', 'pinóquio', 'frozen'], color: '#009dff', bg: 'bg-[#000a1a]', accent: 'text-blue-300', icon: Sparkles, description: 'Onde os sonhos se tornam realidade. Clássicos atemporais que moldaram gerações em contos de fadas e aventuras mágicas.', backdrop: 'https://image.tmdb.org/t/p/original/7Ry9S0SSTIyuQq9S8fXG8gC.jpg', logo: 'https://upload.wikimedia.org/wikipedia/commons/3/3e/Disney%2B_logo.svg' },
   { id: 'pixar', name: 'Pixar', keywords: ['toy story', 'procurando nemo', 'finding nemo', 'monstros s.a', 'carro', 'cars', 'divertida mente', 'inside out', 'coco', 'viva a vida'], color: '#00aae4', bg: 'bg-[#00121a]', accent: 'text-blue-400', icon: Sparkles, description: 'Imaginação sem limites em cada frame. Pioneiros na animação digital, contando histórias que tocam o coração de jovens e adultos.', backdrop: 'https://image.tmdb.org/t/p/original/hY6vshsh0rIn4766u63NBSmToIdp.jpg', logo: 'https://upload.wikimedia.org/wikipedia/commons/0/03/Pixar_logo.svg' },
+  { id: 'national', name: 'National Geographic', keywords: ['cosmos', 'natureza', 'terra', 'vida', 'ocean', 'planeta', 'national geographic'], color: '#ffcc00', bg: 'bg-[#1a1600]', accent: 'text-yellow-500', icon: Sparkles, description: 'Explorando nosso mundo misterioso e as maravilhas da natureza.', backdrop: 'https://image.tmdb.org/t/p/original/aInel5k9AetCg2Vf3hR1Iq6n2eD.jpg', logo: 'https://upload.wikimedia.org/wikipedia/commons/e/ec/National_Geographic_logo_text.svg' },
   { id: 'horror', name: 'Terror & Horror', keywords: ['halloween', 'pânico', 'scream', 'invocação do mal', 'conjuring', 'it a coisa', 'sexta-feira 13', 'friday the 13th', 'terror', 'horror', 'sobrenatural'], color: '#ff0000', bg: 'bg-[#050000]', accent: 'text-red-600', icon: Ghost, description: 'Enfrente seus maiores medos.', backdrop: 'https://image.tmdb.org/t/p/original/5mUV0SRAAnT0UuLpAbfHshf6YmF.jpg' },
   { id: 'adventure', name: 'Aventura', keywords: ['aventura', 'adventure', 'exploração', 'journey', 'indiana jones', 'jumanji', 'piratas do caribe'], color: '#22c55e', bg: 'bg-[#061a0f]', accent: 'text-green-500', icon: Map, description: 'Grandes jornadas em terras desconhecidas.', backdrop: 'https://image.tmdb.org/t/p/original/620hn0I9pmS3v0YAs9XvSAnR039.jpg' },
   { id: 'fantasy', name: 'Fantasia', keywords: ['fantasia', 'fantasy', 'magia', 'magic', 'bruxo', 'wizard', 'dragão', 'dragon'], color: '#a855f7', bg: 'bg-[#150a1f]', accent: 'text-purple-500', icon: Sparkles, description: 'Onde o impossível ganha vida.', backdrop: 'https://image.tmdb.org/t/p/original/69Sns8WoETA0q6Zp3p6Wp5hr6In.jpg' },
@@ -1745,46 +1746,8 @@ export default function App() {
   const dynamicFranchises = useMemo(() => {
     const list: any[] = [];
     
-    // Group movies by collection_id first (The most precise way)
-    const collectionsById: Record<number, Movie[]> = {};
-    myMovies.forEach(m => {
-      if (m.collection_id) {
-        if (!collectionsById[m.collection_id]) collectionsById[m.collection_id] = [];
-        collectionsById[m.collection_id].push(m);
-      }
-    });
-
-    Object.entries(collectionsById).forEach(([id, movies]) => {
-      const collectionName = movies[0].collection_name || 'Coleção';
-      
-      // Check if it's one of our hardcoded ones to get the theme
-      const theme = FRANCHISES.find(f => {
-         const tMatch = f.keywords.some(k => collectionName.toLowerCase().includes(k));
-         return tMatch;
-      });
-
-      list.push({
-        id: `tmdb-${id}`,
-        name: collectionName,
-        keywords: [collectionName.toLowerCase()],
-        color: theme?.color || '#ffffff',
-        bg: theme?.bg || 'bg-[#121212]',
-        accent: theme?.accent || 'text-gray-400',
-        icon: theme?.icon || List,
-        description: `Coleção oficial do TMDb: ${collectionName}.`,
-        movies: movies.sort((a, b) => (a.release_year || 0) - (b.release_year || 0)),
-        poster: theme?.poster || movies[0].collection_poster_path || movies[0].poster_path,
-        backdrop: theme?.backdrop || movies[0].collection_backdrop_path || movies[0].backdrop_path,
-        logo: movies[0].collection_logo_path,
-        tmdb_collection_id: parseInt(id)
-      });
-    });
-
-    // Fallback/Supplement with keyword matching for those without collection_id
+    // First, always add the defined FRANCHISES so their IDs ('marvel', 'star-wars', etc.) are guaranteed to exist
     FRANCHISES.forEach(f => {
-      // If already added by ID, skip
-      if (list.some(item => item.name.toLowerCase().includes(f.name.toLowerCase()))) return;
-
       const movies = myMovies.filter(m => {
         const t = (m.title || '').toLowerCase();
         const o = (m.overview || '').toLowerCase();
@@ -1799,6 +1762,42 @@ export default function App() {
           poster: f.poster || movies[0].poster_path,
           backdrop: f.backdrop || movies[0].backdrop_path,
           logo: f.logo || logoFromMovie
+        });
+      }
+    });
+
+    // Then, add specific TMDB collections if they aren't part of a major franchise
+    const collectionsById: Record<number, Movie[]> = {};
+    myMovies.forEach(m => {
+      if (m.collection_id) {
+        if (!collectionsById[m.collection_id]) collectionsById[m.collection_id] = [];
+        collectionsById[m.collection_id].push(m);
+      }
+    });
+
+    Object.entries(collectionsById).forEach(([id, movies]) => {
+      const collectionName = movies[0].collection_name || 'Coleção';
+      
+      // Check if this collection is already covered by a major franchise
+      const isCoveredByFranchise = FRANCHISES.some(f => 
+        f.keywords.some(k => collectionName.toLowerCase().includes(k))
+      );
+
+      if (!isCoveredByFranchise) {
+        list.push({
+          id: `tmdb-${id}`,
+          name: collectionName,
+          keywords: [collectionName.toLowerCase()],
+          color: '#ffffff',
+          bg: 'bg-[#121212]',
+          accent: 'text-gray-400',
+          icon: List,
+          description: `Coleção oficial do TMDb: ${collectionName}.`,
+          movies: movies.sort((a, b) => (a.release_year || 0) - (b.release_year || 0)),
+          poster: movies[0].collection_poster_path || movies[0].poster_path,
+          backdrop: movies[0].collection_backdrop_path || movies[0].backdrop_path,
+          logo: movies[0].collection_logo_path,
+          tmdb_collection_id: parseInt(id)
         });
       }
     });
@@ -1849,6 +1848,7 @@ export default function App() {
       { name: 'Apple TV+', logo_url: 'https://upload.wikimedia.org/wikipedia/commons/2/28/Apple_TV_Plus_Logo.svg', priority: 5 },
       { name: 'Paramount+', logo_url: 'https://upload.wikimedia.org/wikipedia/commons/a/a5/Paramount_Plus.svg', priority: 6 },
       { name: 'Globoplay', logo_url: 'https://upload.wikimedia.org/wikipedia/commons/a/af/Globoplay_logo.svg', priority: 7 },
+      { name: 'Hulu', logo_url: 'https://upload.wikimedia.org/wikipedia/commons/e/e4/Hulu_Logo.svg', priority: 8 }
     ];
 
     const { error } = await supabase.from('streaming_providers').insert(defaults);
