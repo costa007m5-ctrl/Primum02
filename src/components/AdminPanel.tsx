@@ -6,7 +6,7 @@ import {
   Cloud, Link as LinkIcon, ExternalLink, Play, Check, X, Save,
   ArrowUpDown, Download, Settings, Database, Plus, Upload,
   Sparkles, Calendar, Shield, Copy, Star, Send, Image as ImageIcon,
-  Activity, Users, Heart, DollarSign, Server, Bell
+  Activity, Users, Heart, DollarSign, Server, Bell, RefreshCw
 } from 'lucide-react';
 import { Movie, ScannerState, ReScannerState, StreamingProvider } from '../types';
 import { supabase } from '../lib/supabase';
@@ -978,6 +978,67 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     } catch (e) {
       console.error(e);
       alert("Erro ao importar link KingX. Certifique-se que o link possui #video_url=");
+    }
+  };
+
+  const syncEpisodesWithTMDB = async (form: any, setForm: (data: any) => void) => {
+    if (!form.title) {
+      alert('Nome da série não pode estar vazio para buscar episódios no TMDB.');
+      return;
+    }
+    try {
+      const searchRes = await tmdb.get(requests.searchTv, { params: { query: form.title } });
+      if (searchRes.data.results.length === 0) {
+        alert('Série não encontrada no TMDB.');
+        return;
+      }
+      const result = searchRes.data.results[0];
+      
+      const episodes = form.episodes || [];
+      const uniqueSeasons = Array.from(new Set(episodes.map((e: any) => e.season))) as number[];
+      const seasonDetails: Record<number, any[]> = {};
+      
+      for (const s of uniqueSeasons) {
+        try {
+          const res = await tmdb.get(requests.tvSeasonDetails(result.id, s));
+          let eps = res.data.episodes;
+          
+          const hasEmptyOverviews = eps.some((ep: any) => !ep.overview);
+          if (hasEmptyOverviews) {
+            try {
+              const enRes = await tmdb.get(requests.tvSeasonDetails(result.id, s), { params: { language: 'en-US' } });
+              const enEpisodes = enRes.data.episodes;
+              eps = eps.map((ep: any, idx: number) => ({
+                ...ep,
+                overview: ep.overview || enEpisodes[idx]?.overview || ''
+              }));
+            } catch (enErr) {}
+          }
+          seasonDetails[s] = eps;
+        } catch (e) {
+          console.error(`Erro ao buscar temporada ${s}:`, e);
+        }
+      }
+
+      setForm({
+        ...form,
+        episodes: episodes.map((ep: any) => {
+          const tmdbEp = seasonDetails[ep.season]?.find(te => te.episode_number === ep.episode);
+          return {
+            ...ep,
+            title: tmdbEp?.name || ep.title,
+            overview: tmdbEp?.overview || ep.overview || '',
+            still_path: tmdbEp?.still_path ? `https://image.tmdb.org/t/p/w500/${tmdbEp.still_path}` : ep.still_path,
+            release_date: tmdbEp?.air_date || ep.release_date,
+            rating: tmdbEp?.vote_average || ep.rating,
+            runtime: tmdbEp?.runtime || ep.runtime
+          };
+        })
+      });
+      alert('Episódios sincronizados com o TMDB com sucesso!');
+    } catch (error) {
+      console.error('Erro na sincronização TMDB:', error);
+      alert('Ocorreu um erro ao buscar detalhes dos episódios no TMDB.');
     }
   };
 
@@ -2919,13 +2980,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <div className="space-y-6 pt-6 border-t border-white/5">
                         <div className="flex items-center justify-between">
                           <h3 className="text-sm font-black uppercase tracking-widest text-red-600">Episódios</h3>
-                          <button 
-                            type="button"
-                            onClick={() => addEpisode(newMovie, setNewMovie)}
-                            className="bg-white/5 hover:bg-white/10 text-[10px] font-bold px-4 py-2 rounded-xl transition-all"
-                          >
-                            + Adicionar Episódio
-                          </button>
+                          <div className="flex gap-2">
+                            <button 
+                              type="button"
+                              onClick={() => syncEpisodesWithTMDB(newMovie, setNewMovie)}
+                              className="bg-green-600/20 text-green-400 border border-green-500/30 hover:bg-green-600 hover:text-white text-[10px] font-bold px-4 py-2 rounded-xl transition-all flex items-center gap-1"
+                            >
+                              <RefreshCw size={12} /> Sync TMDB
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={() => addEpisode(newMovie, setNewMovie)}
+                              className="bg-white/5 hover:bg-white/10 text-[10px] font-bold px-4 py-2 rounded-xl transition-all"
+                            >
+                              + Adicionar Episódio
+                            </button>
+                          </div>
                         </div>
                         
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-4">
@@ -3277,6 +3347,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <div className="flex items-center justify-between">
                         <h3 className="text-sm font-black uppercase tracking-widest text-red-600">Episódios</h3>
                         <div className="flex gap-2">
+                          <button 
+                            type="button"
+                            onClick={() => syncEpisodesWithTMDB(editingMovie, setEditingMovie)}
+                            className="bg-green-600/20 text-green-400 border border-green-500/30 hover:bg-green-600 hover:text-white text-[10px] font-bold px-4 py-2 rounded-xl transition-all flex items-center gap-1"
+                          >
+                            <RefreshCw size={12} /> Sync TMDB
+                          </button>
                           <button 
                             type="button"
                             onClick={() => addEpisode(editingMovie, setEditingMovie)}
