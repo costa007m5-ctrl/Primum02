@@ -277,23 +277,6 @@ const AdminModal: React.FC<AdminModalProps> = ({
           const res = await tmdb.get(requests.tvSeasonDetails(result.id, s));
           let episodes = res.data.episodes;
 
-          // Fallback para Inglês se as sinopses estiverem vazias
-          const hasEmptyOverviews = episodes.some((ep: any) => !ep.overview);
-          if (hasEmptyOverviews) {
-            try {
-              const enRes = await tmdb.get(requests.tvSeasonDetails(result.id, s), {
-                params: { language: 'en-US' }
-              });
-              const enEpisodes = enRes.data.episodes;
-              episodes = episodes.map((ep: any, idx: number) => ({
-                ...ep,
-                overview: ep.overview || enEpisodes[idx]?.overview || ''
-              }));
-            } catch (enErr) {
-              console.error(`Erro ao buscar temporada ${s} em Inglês na busca manual:`, enErr);
-            }
-          }
-
           seasonDetails[s] = episodes;
         } catch (e) {
           console.error(`Erro ao buscar temporada ${s} na busca manual:`, e);
@@ -1427,17 +1410,6 @@ end $$;
                                         const res = await tmdb.get(requests.tvSeasonDetails(result.id, s));
                                         let episodes = res.data.episodes;
                                         
-                                        const hasEmptyOverviews = episodes.some((ep: any) => !ep.overview);
-                                        if (hasEmptyOverviews) {
-                                          try {
-                                            const enRes = await tmdb.get(requests.tvSeasonDetails(result.id, s), { params: { language: 'en-US' } });
-                                            const enEpisodes = enRes.data.episodes;
-                                            episodes = episodes.map((ep: any, idx: number) => ({
-                                              ...ep,
-                                              overview: ep.overview || enEpisodes[idx]?.overview || ''
-                                            }));
-                                          } catch (enErr) {}
-                                        }
                                         seasonDetails[s] = episodes;
                                       } catch (e) {
                                         console.error(`Erro ao buscar temporada ${s}:`, e);

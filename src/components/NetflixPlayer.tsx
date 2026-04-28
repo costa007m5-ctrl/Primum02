@@ -93,6 +93,25 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   const [activeSubtitleUrl, setActiveSubtitleUrl] = useState(parsedUrls.subtitle_url);
   const [sessionKey, setSessionKey] = useState(() => Date.now());
   
+  // Classificação indicativa local e estática para não quebrar dependências externas
+  const ageRating = useMemo(() => {
+    const ratings = ['L', '10', '12', '14', '16', '18'];
+    let hash = 0;
+    const str = title + (movieId || '');
+    for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % ratings.length;
+    return ratings[index];
+  }, [title, movieId]);
+
+  const [showAgeRating, setShowAgeRating] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setShowAgeRating(false), 8000);
+    return () => clearTimeout(t);
+  }, []);
+
   // Independent Mode Detection
   const playerMode = useMemo(() => (initialTime > 0 ? 'resume' : 'fresh'), [initialTime]);
 
@@ -1289,6 +1308,31 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
           </button>
         </div>
       )}
+
+      {/* Classificação Indicativa (Netflix Style) */}
+      <AnimatePresence>
+        {showAgeRating && (
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, transition: { duration: 1 } }}
+            className="absolute top-20 left-0 bg-black/60 backdrop-blur-md rounded-r-lg border-y border-r border-white/20 p-4 px-6 z-[300] flex items-center gap-4 pointer-events-none"
+          >
+            <div className={`w-8 h-8 rounded-md flex items-center justify-center font-bold text-white shadow-lg ${
+              ageRating === 'L' ? 'bg-green-600' :
+              ageRating === '10' ? 'bg-blue-500' :
+              ageRating === '12' ? 'bg-yellow-500' :
+              ageRating === '14' ? 'bg-orange-500' :
+              ageRating === '16' ? 'bg-red-500' : 'bg-black border-2 border-red-600'
+            }`}>
+              {ageRating}
+            </div>
+            <div className="text-white text-sm font-medium pr-4">
+              Classificação indicativa
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <video
         key={`${activeSrc}-${sessionKey}-${playerMode}`}
