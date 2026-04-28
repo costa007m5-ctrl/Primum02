@@ -7,6 +7,9 @@ export interface Episode {
   videoUrl2?: string;
   overview?: string;
   still_path?: string;
+  release_date?: string;
+  rating?: number;
+  runtime?: number;
 }
 
 export interface Movie {

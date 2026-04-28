@@ -973,9 +973,26 @@ const MovieDetailsModal = React.memo(({
                       <div className="flex-1 space-y-4">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                           <div className="space-y-2">
-                            <h4 className="text-white font-black text-xl md:text-2xl uppercase tracking-tighter italic group-hover:text-red-500 transition-colors">
-                              {ep.title || `Episódio ${ep.episode}`}
-                            </h4>
+                            <div className="flex items-center gap-3">
+                              <h4 className="text-white font-black text-xl md:text-2xl uppercase tracking-tighter italic group-hover:text-red-500 transition-colors">
+                                {ep.title || `Episódio ${ep.episode}`}
+                              </h4>
+                              {ep.rating && ep.rating > 0 && (
+                                <span className="bg-red-600/20 text-red-500 px-2 py-0.5 rounded text-[10px] font-black italic border border-red-500/20">
+                                  {ep.rating.toFixed(1)}
+                                </span>
+                              )}
+                              {ep.runtime && ep.runtime > 0 && (
+                                <span className="text-gray-400 text-xs font-bold italic">
+                                  {ep.runtime} min
+                                </span>
+                              )}
+                              {ep.release_date && (
+                                <span className="text-gray-400 text-xs font-bold italic">
+                                  {new Date(ep.release_date).getFullYear()}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-gray-500 text-sm md:text-lg leading-relaxed line-clamp-2 font-medium italic">
                               {ep.overview || `Temporada ${ep.season}, Episódio ${ep.episode}`}
                             </p>

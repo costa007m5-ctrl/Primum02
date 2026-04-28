@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Database, Copy, Check, Info, ShieldAlert, Trash2, Edit, Film, Loader2, Search, Filter, LayoutGrid, List, ChevronRight, Tv, PlayCircle, Plus, Settings, Sparkles } from 'lucide-react';
+import { X, Database, Copy, Check, Info, ShieldAlert, Trash2, Edit, Film, Loader2, Search, Filter, LayoutGrid, List, ChevronRight, Tv, PlayCircle, Plus, Settings, Sparkles, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import tmdb, { requests } from '../services/tmdb';
 import { Movie, Episode, ScannerState } from '../types';
@@ -308,7 +308,10 @@ const AdminModal: React.FC<AdminModalProps> = ({
             ...ep,
             title: tmdbEp?.name || ep.title,
             overview: tmdbEp?.overview || ep.overview || '',
-            still_path: tmdbEp?.still_path ? `https://image.tmdb.org/t/p/w500/${tmdbEp.still_path}` : ep.still_path
+            still_path: tmdbEp?.still_path ? `https://image.tmdb.org/t/p/w500/${tmdbEp.still_path}` : ep.still_path,
+            release_date: tmdbEp?.air_date || ep.release_date,
+            rating: tmdbEp?.vote_average || ep.rating,
+            runtime: tmdbEp?.runtime || ep.runtime
           };
         })
       }));
@@ -1401,12 +1404,78 @@ end $$;
                         <div className="space-y-4 pt-4 border-t border-gray-800">
                           <div className="flex justify-between items-center">
                             <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">Episódios ({editForm.episodes.length})</h4>
-                            <button 
-                              onClick={() => setEditForm({...editForm, episodes: [...editForm.episodes, { id: Date.now().toString(), title: '', season: 1, episode: editForm.episodes.length + 1, videoUrl: '' }]})}
-                              className="text-[10px] bg-blue-600/20 text-blue-400 border border-blue-500/30 px-3 py-1 rounded-full hover:bg-blue-600 hover:text-white transition-all"
-                            >
-                              + Add Ep
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={async () => {
+                                  if (!editForm.title.trim()) {
+                                    alert('Nome da série não pode estar vazio para buscar episódios no TMDB.');
+                                    return;
+                                  }
+                                  try {
+                                    const searchRes = await tmdb.get(requests.searchTv, { params: { query: editForm.title } });
+                                    if (searchRes.data.results.length === 0) {
+                                      alert('Série não encontrada no TMDB.');
+                                      return;
+                                    }
+                                    const result = searchRes.data.results[0]; // Pegamos o primeiro resultado
+                                    
+                                    const uniqueSeasons = Array.from(new Set(editForm.episodes.map(e => e.season))) as number[];
+                                    const seasonDetails: Record<number, any[]> = {};
+                                    
+                                    for (const s of uniqueSeasons) {
+                                      try {
+                                        const res = await tmdb.get(requests.tvSeasonDetails(result.id, s));
+                                        let episodes = res.data.episodes;
+                                        
+                                        const hasEmptyOverviews = episodes.some((ep: any) => !ep.overview);
+                                        if (hasEmptyOverviews) {
+                                          try {
+                                            const enRes = await tmdb.get(requests.tvSeasonDetails(result.id, s), { params: { language: 'en-US' } });
+                                            const enEpisodes = enRes.data.episodes;
+                                            episodes = episodes.map((ep: any, idx: number) => ({
+                                              ...ep,
+                                              overview: ep.overview || enEpisodes[idx]?.overview || ''
+                                            }));
+                                          } catch (enErr) {}
+                                        }
+                                        seasonDetails[s] = episodes;
+                                      } catch (e) {
+                                        console.error(`Erro ao buscar temporada ${s}:`, e);
+                                      }
+                                    }
+
+                                    setEditForm(prev => ({
+                                      ...prev,
+                                      episodes: prev.episodes.map(ep => {
+                                        const tmdbEp = seasonDetails[ep.season]?.find(te => te.episode_number === ep.episode);
+                                        return {
+                                          ...ep,
+                                          title: tmdbEp?.name || ep.title,
+                                          overview: tmdbEp?.overview || ep.overview || '',
+                                          still_path: tmdbEp?.still_path ? `https://image.tmdb.org/t/p/w500/${tmdbEp.still_path}` : ep.still_path,
+                                          release_date: tmdbEp?.air_date || ep.release_date,
+                                          rating: tmdbEp?.vote_average || ep.rating,
+                                          runtime: tmdbEp?.runtime || ep.runtime
+                                        };
+                                      })
+                                    }));
+                                    alert('Episódios sincronizados com o TMDB com sucesso!');
+                                  } catch (error) {
+                                    console.error('Erro geral na sincronização:', error);
+                                    alert('Ocorreu um erro ao buscar detalhes dos episódios no TMDB.');
+                                  }
+                                }}
+                                className="text-[10px] bg-green-600/20 text-green-400 border border-green-500/30 px-3 py-1 rounded-full hover:bg-green-600 hover:text-white transition-all flex items-center gap-1"
+                              >
+                                <RefreshCw size={12} /> Sync TMDB
+                              </button>
+                              <button 
+                                onClick={() => setEditForm({...editForm, episodes: [...editForm.episodes, { id: Date.now().toString(), title: '', season: 1, episode: editForm.episodes.length + 1, videoUrl: '' }]})}
+                                className="text-[10px] bg-blue-600/20 text-blue-400 border border-blue-500/30 px-3 py-1 rounded-full hover:bg-blue-600 hover:text-white transition-all"
+                              >
+                                + Add Ep
+                              </button>
+                            </div>
                           </div>
                           <div className="space-y-2">
                             {editForm.episodes.map((ep, idx) => (
