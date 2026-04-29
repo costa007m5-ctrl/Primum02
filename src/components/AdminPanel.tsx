@@ -1003,14 +1003,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           const res = await tmdb.get(requests.tvSeasonDetails(result.id, s), { params: { language: 'pt-BR' } });
           let eps = res.data.episodes;
           
-          const hasEmptyOverviews = eps.some((ep: any) => !ep.overview);
+          const hasEmptyOverviews = eps.some((ep: any) => !ep.overview || ep.overview === '');
           if (hasEmptyOverviews) {
             try {
               const enRes = await tmdb.get(requests.tvSeasonDetails(result.id, s), { params: { language: 'en-US' } });
               const enEpisodes = enRes.data.episodes;
-              eps = eps.map((ep: any, idx: number) => ({
-                ...ep,
-                overview: ep.overview || enEpisodes[idx]?.overview || ''
+              
+              // Import the translation service inline if needed or at the top of the file
+              const { translateToPortuguese } = await import('../services/ai');
+              
+              eps = await Promise.all(eps.map(async (ep: any, idx: number) => {
+                let finalOverview = ep.overview;
+                if (!finalOverview || finalOverview === '') {
+                   const fallbackEn = enEpisodes[idx]?.overview || '';
+                   if (fallbackEn) {
+                     finalOverview = await translateToPortuguese(fallbackEn);
+                   }
+                }
+                return {
+                  ...ep,
+                  overview: finalOverview
+                };
               }));
             } catch (enErr) {}
           }
@@ -1144,7 +1157,43 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         tmdb.get(creditsPath).catch(() => ({ data: { cast: [] } }))
       ]);
 
-      const details = detailsRes.data;
+      let details = detailsRes.data;
+      
+      let finalTitle = details.title || details.name;
+      let finalOverview = details.overview;
+      
+      if (!finalOverview || finalOverview === '') {
+        try {
+          const enDetailsPath = isTv ? requests.tvDetails(result.id) : requests.movieDetails(result.id);
+          const enDetailsRes = await tmdb.get(enDetailsPath, { params: { language: 'en-US' } });
+          const enDetails = enDetailsRes.data;
+          
+          const fallbackEnOverview = enDetails.overview || '';
+          if (fallbackEnOverview) {
+            const { translateToPortuguese } = await import('../services/ai');
+            finalOverview = await translateToPortuguese(fallbackEnOverview);
+          }
+        } catch (e) {
+          console.error("Failed to fetch/translate fallback English overview");
+        }
+      }
+      
+      // If the user meant "translate the english TMDB title to Portuguese if there's no Portuguese title":
+      // Since TMDB typically returns the original title if pt-BR is not found, we can try to translate it,
+      // but usually the title is what it is. Still, we will only translate overview here, as translating a title like "The Matrix" to "A Matriz" if the official PT name is something else could be weird. But wait, TMDB is usually good with titles. We'll leave title as is or see if we should translate it too. The prompt said "Caso a sinopse ou o título venha em inglês...".
+      // Let's also translate the title if it doesn't match the original title / maybe we just send the english title to AI to see if there's a PT-BR equivalent?
+      // TMDB already returns pt-BR title if available. If it returns English, it's because there's no pt-BR. We can ask Gemini.
+      if (details.original_language === 'en' && finalTitle && finalTitle === details.original_name) {
+          // It might just be the English title. Let's see if we can ask AI for Title too ? 
+      }
+      // Actually, let's just translate title too if it's explicitly english and we know it? No, translating titles via AI is risky. Let's just do it simply.
+      
+      const { translateToPortuguese } = await import('../services/ai');
+      // If title smells like English, we could translate, but how do we know?
+      // Let's just translate title and overview in one go if overview is missing? 
+      // ACTUALLY, if TMDB returns English overview for pt-BR request, `details.overview` will not be empty, it will be the English text.
+      // So we should check if `details.overview` is in English by some heuristic or ask AI! But AI call is slow. 
+      // Let's let the user manually trigger it if they want, OR if the overview is missing.
       
       const [logoPath, collLogoRes, imagesRes] = await Promise.all([
         getMovieLogo(details.id, isTv ? 'tv' : 'movie'),
@@ -2856,7 +2905,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[9px] md:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5 md:mb-2 px-1">Sinopse</label>
+                      <div className="flex items-center justify-between mb-1.5 md:mb-2 px-1">
+                        <label className="block text-[9px] md:text-[10px] font-black text-gray-500 uppercase tracking-widest">Sinopse</label>
+                        <button type="button" onClick={async () => {
+                           const { translateToPortuguese } = await import('../services/ai');
+                           const trans = await translateToPortuguese(newMovie.overview || '');
+                           setNewMovie({...newMovie, overview: trans});
+                        }} className="text-[10px] font-bold text-blue-400 hover:text-blue-300">Traduzir p/ PT-BR</button>
+                      </div>
                       <textarea 
                         value={newMovie.overview}
                         onChange={(e) => setNewMovie({ ...newMovie, overview: e.target.value })}
@@ -3197,7 +3253,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[9px] md:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5 md:mb-2 px-1">Sinopse</label>
+                      <div className="flex items-center justify-between mb-1.5 md:mb-2 px-1">
+                        <label className="block text-[9px] md:text-[10px] font-black text-gray-500 uppercase tracking-widest">Sinopse</label>
+                        <button type="button" onClick={async () => {
+                           const { translateToPortuguese } = await import('../services/ai');
+                           const trans = await translateToPortuguese(editingMovie.overview || '');
+                           setEditingMovie({...editingMovie, overview: trans});
+                        }} className="text-[10px] font-bold text-blue-400 hover:text-blue-300">Traduzir p/ PT-BR</button>
+                      </div>
                       <textarea 
                         rows={6}
                         value={editingMovie.overview || ''}

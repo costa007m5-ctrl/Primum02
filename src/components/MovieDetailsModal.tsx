@@ -498,7 +498,8 @@ const MovieDetailsModal = React.memo(({
                     whileTap={{ scale: 0.95 }}
                     onClick={() => {
                       const urlToPlay = movie.type === 'series' && movie.episodes && movie.episodes.length > 0 ? movie.episodes[0].videoUrl : movie.videoUrl;
-                      const bgTime = (videoRef.current?.src && videoRef.current.src === window.location.origin + urlToPlay) || videoRef.current?.src === getDriveUrl() || videoRef.current?.src === urlToPlay ? videoRef.current?.currentTime : savedProgress;
+                      const isBgPlaying = (videoRef.current?.src && videoRef.current.src.includes(urlToPlay || '')) || videoRef.current?.src === getDriveUrl();
+                      const bgTime = isBgPlaying ? videoRef.current?.currentTime : 0;
                       onPlay(movie, urlToPlay, bgTime || savedProgress);
                     }}
                     className="bg-white text-black hover:bg-gray-200 flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 rounded-md font-bold uppercase tracking-widest flex items-center justify-center gap-2 md:gap-3 text-xs md:text-sm shadow-xl relative overflow-hidden group"
@@ -533,7 +534,8 @@ const MovieDetailsModal = React.memo(({
                           return;
                         }
                         const urlToPlay = movie.type === 'series' && movie.episodes && movie.episodes.length > 0 ? movie.episodes[0].videoUrl : movie.videoUrl;
-                        const bgTime = (videoRef.current?.src && videoRef.current.src === window.location.origin + urlToPlay) || videoRef.current?.src === getDriveUrl() || videoRef.current?.src === urlToPlay ? videoRef.current?.currentTime : 0;
+                        const isBgPlaying = (videoRef.current?.src && videoRef.current.src.includes(urlToPlay || '')) || videoRef.current?.src === getDriveUrl();
+                        const bgTime = isBgPlaying ? videoRef.current?.currentTime : 0;
                         onPlay(movie, urlToPlay, bgTime || 0);
                       }}
                       className={`${isLocked ? 'bg-zinc-800 text-gray-400 border border-zinc-600' : 'bg-white text-black hover:bg-gray-200'} px-6 md:px-10 py-3 md:py-4 rounded-md font-bold uppercase tracking-widest flex items-center gap-2 md:gap-3 text-xs md:text-sm shadow-xl transition-colors`}
@@ -546,7 +548,7 @@ const MovieDetailsModal = React.memo(({
                       ) : (
                         <>
                           <Play fill="currentColor" size={14} className="md:w-6 md:h-6" /> 
-                          <span className="whitespace-nowrap">Continuar</span>
+                          <span className="whitespace-nowrap">Assistir</span>
                         </>
                       )}
                     </motion.button>
