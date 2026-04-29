@@ -17,9 +17,11 @@ interface VideoPlayerProps {
   onProgress?: (movieId: string | number, time: number) => void;
   appSettings?: AppSettings;
   initialTime?: number;
+  isBackgroundMode?: boolean;
+  onClickBackground?: () => void;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, profile, roomId, isHost, onPlayNext, recommendations = [], onProgress, appSettings, initialTime }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, profile, roomId, isHost, onPlayNext, recommendations = [], onProgress, appSettings, initialTime, isBackgroundMode, onClickBackground }) => {
   const [orientationKey, setOrientationKey] = useState(0);
   const [playerStyle, setPlayerStyle] = useState<'netflix' | 'standard' | 'special' | null>('netflix');
   const [drivePlayMethod, setDrivePlayMethod] = useState<'api' | 'uc' | 'iframe'>('api');
@@ -509,6 +511,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
               }, { onConflict: 'profile_id,movie_id' });
             }
           }}
+          isBackgroundMode={isBackgroundMode}
+          onClickBackground={onClickBackground}
         />
       </div>
     );
@@ -516,6 +520,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
 
   // Player Especial (Iframe do KingX)
   if (playerStyle === 'special' && isKingX) {
+    if (isBackgroundMode) return null; // Background mode not fully supported for special player overlays yet
     return (
       <div className="fixed inset-0 z-[200] bg-black">
         <div className="absolute top-6 left-6 z-[210] flex items-center gap-4">
@@ -548,7 +553,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
   return (
     <div 
       ref={containerRef}
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black overflow-hidden select-none"
+      className={isBackgroundMode ? "absolute inset-0 z-0 bg-black flex items-center justify-center overflow-hidden select-none pointer-events-auto" : "fixed inset-0 z-[200] flex items-center justify-center bg-black overflow-hidden select-none"}
     >
       {/* Banner de Fundo (Papel de Parede) */}
       <div className="absolute inset-0 z-0">

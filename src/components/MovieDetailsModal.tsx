@@ -4,6 +4,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Movie } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import tmdb, { requests, getMovieLogo } from '../services/tmdb';
+import VideoPlayer from './VideoPlayer';
 
 interface MovieDetailsModalProps {
   movie: Movie;
@@ -140,6 +141,7 @@ const MovieDetailsModal = React.memo(({
 }: MovieDetailsModalProps) => {
   const [isMuted, setIsMuted] = useState(true);
   const [showVideo, setShowVideo] = useState(false);
+  const [isPlayingFullscreen, setIsPlayingFullscreen] = useState(false);
   const [activeInfoTab, setActiveInfoTab] = useState<'details' | 'episodes' | 'similar'>('details');
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
   const [showTvShare, setShowTvShare] = useState(false);
@@ -151,6 +153,23 @@ const MovieDetailsModal = React.memo(({
   const [logoUrl, setLogoUrl] = useState<string | null>(movie.logo_path || null);
   const [selectedEpisodeDetails, setSelectedEpisodeDetails] = useState<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (isPlayingFullscreen) {
+      if (screen.orientation && (screen.orientation as any).lock) {
+        (screen.orientation as any).lock('landscape').catch(() => {});
+      }
+    } else {
+      if (screen.orientation && screen.orientation.unlock) {
+        screen.orientation.unlock();
+        try {
+          if ((screen.orientation as any).lock) {
+             (screen.orientation as any).lock('portrait').catch(() => {});
+          }
+        } catch (e) {}
+      }
+    }
+  }, [isPlayingFullscreen]);
 
   useEffect(() => {
     if (movie.id && !logoUrl) {
@@ -411,28 +430,32 @@ const MovieDetailsModal = React.memo(({
                     frameBorder="0"
                   />
                 ) : (
-                  <video
-                    ref={videoRef}
-                    className="w-full h-full object-cover scale-105"
-                    src={finalVideoUrl || undefined}
-                    autoPlay
-                    muted={isMuted}
-                    loop
-                    playsInline
-                    onLoadedMetadata={(e) => {
-                      if (savedProgress > 5) {
-                         (e.target as HTMLVideoElement).currentTime = savedProgress;
-                      }
-                    }}
-                  />
+                  <div className={isPlayingFullscreen ? "fixed inset-0 z-[9999]" : "absolute inset-0"}>
+                    <VideoPlayer
+                      movie={{...movie, videoUrl: finalVideoUrl || movie.videoUrl}}
+                      onClose={() => {
+                        if (isPlayingFullscreen) {
+                           setIsPlayingFullscreen(false);
+                        } else {
+                           onClose();
+                        }
+                      }}
+                      initialTime={savedProgress}
+                      appSettings={appSettings}
+                      isBackgroundMode={!isPlayingFullscreen}
+                      onClickBackground={() => setIsPlayingFullscreen(true)}
+                    />
+                  </div>
                 )}
-                {/* Botão de Mudo */}
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
-                  className="absolute bottom-12 md:bottom-32 right-6 md:right-12 z-[190] bg-white/5 backdrop-blur-2xl text-white p-2 md:p-5 rounded-lg md:rounded-2xl hover:bg-white/10 transition-all border border-white/10 shadow-2xl pointer-events-auto"
-                >
-                  {isMuted ? <VolumeX size={16} className="md:w-7 md:h-7" /> : <Volume2 size={16} className="md:w-7 md:h-7" />}
-                </button>
+                {/* Botão de Mudo (SÓ para youtube/kingx pois NetflixPlayer já tem mudo nativo e hide) */}
+                {!isPlayingFullscreen && (isYouTube || isKingX) && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
+                    className="absolute bottom-12 md:bottom-32 right-6 md:right-12 z-[190] bg-white/5 backdrop-blur-2xl text-white p-2 md:p-5 rounded-lg md:rounded-2xl hover:bg-white/10 transition-all border border-white/10 shadow-2xl pointer-events-auto"
+                  >
+                    {isMuted ? <VolumeX size={16} className="md:w-7 md:h-7" /> : <Volume2 size={16} className="md:w-7 md:h-7" />}
+                  </button>
+                )}
               </div>
             ) : (
               <div 
@@ -497,10 +520,12 @@ const MovieDetailsModal = React.memo(({
                     whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(255,255,255,0.3)' }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => {
-                      const urlToPlay = movie.type === 'series' && movie.episodes && movie.episodes.length > 0 ? movie.episodes[0].videoUrl : movie.videoUrl;
-                      const isBgPlaying = (videoRef.current?.src && videoRef.current.src.includes(urlToPlay || '')) || videoRef.current?.src === getDriveUrl();
-                      const bgTime = isBgPlaying ? videoRef.current?.currentTime : 0;
-                      onPlay(movie, urlToPlay, bgTime || savedProgress);
+                      if (isYouTube || isKingX) {
+                        const urlToPlay = movie.type === 'series' && movie.episodes && movie.episodes.length > 0 ? movie.episodes[0].videoUrl : movie.videoUrl;
+                        onPlay(movie, urlToPlay, savedProgress);
+                      } else {
+                        setIsPlayingFullscreen(true);
+                      }
                     }}
                     className="bg-white text-black hover:bg-gray-200 flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 rounded-md font-bold uppercase tracking-widest flex items-center justify-center gap-2 md:gap-3 text-xs md:text-sm shadow-xl relative overflow-hidden group"
                   >
@@ -513,8 +538,12 @@ const MovieDetailsModal = React.memo(({
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => {
-                      const urlToPlay = movie.type === 'series' && movie.episodes && movie.episodes.length > 0 ? movie.episodes[0].videoUrl : movie.videoUrl;
-                      onPlay(movie, urlToPlay, 0);
+                      if (isYouTube || isKingX) {
+                        const urlToPlay = movie.type === 'series' && movie.episodes && movie.episodes.length > 0 ? movie.episodes[0].videoUrl : movie.videoUrl;
+                        onPlay(movie, urlToPlay, 0);
+                      } else {
+                        setIsPlayingFullscreen(true);
+                      }
                     }}
                     className="bg-white/10 text-white border-2 border-white/20 hover:bg-white/20 px-6 md:px-8 py-3 md:py-4 rounded-md font-bold uppercase tracking-widest flex items-center gap-2 md:gap-3 text-xs md:text-sm shadow-xl backdrop-blur-md transition-all"
                   >
@@ -533,10 +562,12 @@ const MovieDetailsModal = React.memo(({
                           document.dispatchEvent(new CustomEvent('open-plans'));
                           return;
                         }
-                        const urlToPlay = movie.type === 'series' && movie.episodes && movie.episodes.length > 0 ? movie.episodes[0].videoUrl : movie.videoUrl;
-                        const isBgPlaying = (videoRef.current?.src && videoRef.current.src.includes(urlToPlay || '')) || videoRef.current?.src === getDriveUrl();
-                        const bgTime = isBgPlaying ? videoRef.current?.currentTime : 0;
-                        onPlay(movie, urlToPlay, bgTime || 0);
+                        if (isYouTube || isKingX) {
+                          const urlToPlay = movie.type === 'series' && movie.episodes && movie.episodes.length > 0 ? movie.episodes[0].videoUrl : movie.videoUrl;
+                          onPlay(movie, urlToPlay, 0);
+                        } else {
+                          setIsPlayingFullscreen(true);
+                        }
                       }}
                       className={`${isLocked ? 'bg-zinc-800 text-gray-400 border border-zinc-600' : 'bg-white text-black hover:bg-gray-200'} px-6 md:px-10 py-3 md:py-4 rounded-md font-bold uppercase tracking-widest flex items-center gap-2 md:gap-3 text-xs md:text-sm shadow-xl transition-colors`}
                     >

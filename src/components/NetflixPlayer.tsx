@@ -27,6 +27,8 @@ interface NetflixPlayerProps {
   roomId?: string;
   profile?: any;
   maxQualityHeight?: number;
+  isBackgroundMode?: boolean;
+  onClickBackground?: () => void;
 }
 
 const NetflixPlayer: React.FC<NetflixPlayerProps> = ({ 
@@ -49,7 +51,9 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   isHost = true,
   roomId = null,
   profile,
-  maxQualityHeight
+  maxQualityHeight,
+  isBackgroundMode = false,
+  onClickBackground
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -136,7 +140,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(isBackgroundMode);
   const [showControls, setShowControls] = useState(false); // Hidden by default on entry
   const [isLocked, setIsLocked] = useState(false);
   const [showUnlockOverlay, setShowUnlockOverlay] = useState(false);
@@ -154,6 +158,19 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   const [error, setError] = useState<{ message: string; type: 'network' | 'format' | 'unknown' } | null>(null);
   const [bufferedPercentage, setBufferedPercentage] = useState(0);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
+
+  // Sync background mode changes
+  useEffect(() => {
+    setIsMuted(!!isBackgroundMode);
+    if (!isBackgroundMode) {
+      setShowControls(true);
+      resetControlsTimer(true);
+      // tentar full screen nativo ao sair do modo background
+      if (containerRef.current && screenfull.isEnabled) {
+        screenfull.request(containerRef.current).catch(() => {});
+      }
+    }
+  }, [isBackgroundMode]);
   const [hoverPosition, setHoverPosition] = useState<number>(0);
   const [showRecsOverlay, setShowRecsOverlay] = useState(false);
   const [showTvShare, setShowTvShare] = useState(false);
@@ -1162,6 +1179,10 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     // Only toggle if clicking background or the video element
     const target = e.target as HTMLElement;
     if (target === e.currentTarget || target.tagName === 'VIDEO' || target.id === 'player-overlay') {
+      if (isBackgroundMode) {
+         if (onClickBackground) onClickBackground();
+         return;
+      }
       if (isLocked) {
         setShowUnlockOverlay(true);
         setTimeout(() => setShowUnlockOverlay(false), 3000);
@@ -1179,7 +1200,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   return (
     <div 
       ref={containerRef}
-      className="fixed inset-0 bg-black z-[3000] flex items-center justify-center select-none group overflow-hidden"
+      className={isBackgroundMode ? "absolute inset-0 z-0 bg-black flex items-center justify-center select-none overflow-hidden scale-105 pointer-events-auto" : "fixed inset-0 bg-black z-[3000] flex items-center justify-center select-none group overflow-hidden"}
       onMouseMove={handleMouseMove}
       onClick={handleContainerClick}
       onTouchStart={handleMouseMove}
@@ -1645,7 +1666,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       </AnimatePresence>
 
       {/* Overlay de Controles */}
-      <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/60 transition-opacity duration-500 flex flex-col justify-between p-6 z-[305] ${showControls && !isLoading && !isLocked ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+      <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/60 transition-opacity duration-500 flex flex-col justify-between p-6 z-[305] ${showControls && !isLoading && !isLocked && !isBackgroundMode ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
         
         {/* Topo */}
         <div className="flex items-center justify-between">

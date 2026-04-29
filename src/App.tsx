@@ -3631,9 +3631,11 @@ export default function App() {
 
   const handlePlayMovie = useCallback((movie: Movie, episodeUrl?: string, startTime?: number) => {
     // Travamos a orientação e navegamos de forma síncrona
-    if (screen.orientation && (screen.orientation as any).lock) {
-      (screen.orientation as any).lock('landscape').catch(() => {});
-    }
+    try {
+      if (screen.orientation && (screen.orientation as any).lock) {
+        (screen.orientation as any).lock('landscape').catch(() => {});
+      }
+    } catch(e) {}
     
     // Navegação síncrona permite que o autoplay passe no browser sem block
     const search = window.location.search;
@@ -3645,6 +3647,19 @@ export default function App() {
   };
 
   const closePlayer = () => {
+    // Set to portrait upon exit
+    try {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+      if (screen.orientation && screen.orientation.unlock) {
+        screen.orientation.unlock();
+        if ((screen.orientation as any).lock) {
+          (screen.orientation as any).lock('portrait').catch(() => {});
+        }
+      }
+    } catch (e) {}
+
     navigate(state?.backgroundLocation?.pathname || '/menu');
     // Pequeno delay para garantir que a navegação e o unmount do player salvaram o progresso
     setTimeout(() => {
@@ -3654,16 +3669,10 @@ export default function App() {
 
   // Efeito para forçar modo paisagem ao abrir o player
   useEffect(() => {
-    if (selectedMovie) {
+    const isPlaying = location.pathname.includes('/watch') || selectedMovie != null;
+    if (isPlaying) {
       const lockOrientation = async () => {
         try {
-          // Tentar entrar em tela cheia se possível (ajuda no lock)
-          const docEl = document.documentElement;
-          if (docEl.requestFullscreen) {
-            // Não forçamos fullscreen aqui para não assustar o usuário antes do player carregar,
-            // mas o VideoPlayer já faz isso. Apenas tentamos o lock se suportado.
-          }
-          
           if (screen.orientation && (screen.orientation as any).lock) {
             await (screen.orientation as any).lock('landscape').catch(() => {});
           }
@@ -3678,9 +3687,14 @@ export default function App() {
       // Unlock ao fechar
       if (screen.orientation && screen.orientation.unlock) {
         screen.orientation.unlock();
+        try {
+          if ((screen.orientation as any).lock) {
+             (screen.orientation as any).lock('portrait').catch(() => {});
+          }
+        } catch (e) {}
       }
     }
-  }, [selectedMovie]);
+  }, [location.pathname, selectedMovie]);
 
   const handlePlayNextEpisode = (currentMovie: Movie) => {
     if (currentMovie.type !== 'series' || !currentMovie.episodes) return;
