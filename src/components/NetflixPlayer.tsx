@@ -516,13 +516,6 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               hls.on(Hls.Events.FRAG_BUFFERED, () => {
                 setLoadingProgress(prev => Math.min(prev + 5, 90));
               });
-              hls.on(Hls.Events.FRAG_LOADED, (event, data) => {
-                if (data.frag.sn === 0 || isLoading) {
-                  setLoadingProgress(100);
-                  setIsLoading(false);
-                  setShowLogoOverlay(false);
-                }
-              });
               hls.on(Hls.Events.ERROR, (event, data) => {
                 console.warn("HLS Error:", data);
                 if (data.fatal) {
@@ -585,11 +578,6 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               });
               hls.on(Hls.Events.FRAG_BUFFERED, () => {
                 setLoadingProgress(prev => Math.min(prev + 5, 90));
-              });
-              hls.on(Hls.Events.FRAG_LOADED, () => {
-                setLoadingProgress(100);
-                setIsLoading(false);
-                setShowLogoOverlay(false);
               });
               hls.on(Hls.Events.ERROR, (event, data) => {
                 console.warn("HLS Error:", data);

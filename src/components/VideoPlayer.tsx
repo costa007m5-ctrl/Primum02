@@ -22,8 +22,28 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
   const [orientationKey, setOrientationKey] = useState(0);
   const [playerStyle, setPlayerStyle] = useState<'netflix' | 'standard' | 'special' | null>('netflix');
   const [drivePlayMethod, setDrivePlayMethod] = useState<'api' | 'uc' | 'iframe'>('api');
-  const [extractedVideoUrl, setExtractedVideoUrl] = useState<string | null>(null);
-  const [extractedSubtitleUrl, setExtractedSubtitleUrl] = useState<string | null>(null);
+  const getInitialExtracted = (type: 'video' | 'subtitle') => {
+    const url = movie.videoUrl || '';
+    const isKing = url.includes('player.kingx.dev') || url.includes('teradl.kingx.dev');
+    if (isKing) {
+      try {
+        const hash = url.split('#')[1];
+        if (hash) {
+          const params = new URLSearchParams(hash);
+          return params.get(`${type}_url`);
+        }
+      } catch (e) {}
+    }
+    return null;
+  };
+
+  const [extractedVideoUrl, setExtractedVideoUrl] = useState<string | null>(getInitialExtracted('video'));
+  const [extractedSubtitleUrl, setExtractedSubtitleUrl] = useState<string | null>(getInitialExtracted('subtitle'));
+
+  useEffect(() => {
+    setExtractedVideoUrl(getInitialExtracted('video'));
+    setExtractedSubtitleUrl(getInitialExtracted('subtitle'));
+  }, [movie.videoUrl]);
   const [emotes, setEmotes] = useState<{ id: string; emoji: string; x: number; y: number }[]>([]);
   const [showEmotePicker, setShowEmotePicker] = useState(false);
   const [participants, setParticipants] = useState<any[]>([]);
@@ -214,23 +234,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
   const isGDPlayer = url.includes('gdplayer.to') || url.includes('gdplayer.org');
   const driveId = isDriveVideo ? extractDriveId(url) : null;
 
-  // Extrair URLs do KingX/TeraBox Special
-  useEffect(() => {
-    if (isKingX) {
-      try {
-        const hash = url.split('#')[1];
-        if (hash) {
-          const params = new URLSearchParams(hash);
-          const vUrl = params.get('video_url');
-          const sUrl = params.get('subtitle_url');
-          if (vUrl) setExtractedVideoUrl(vUrl);
-          if (sUrl) setExtractedSubtitleUrl(sUrl);
-        }
-      } catch (e) {
-        console.error("Erro ao extrair URLs do KingX:", e);
-      }
-    }
-  }, [url, isKingX]);
+  // Extração inicial foi migrada para estado síncrono.
   
   // Lógica de fallback para Google Drive
   useEffect(() => {
@@ -250,26 +254,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
     return null;
   };
 
-  const [finalVideoUrl, setFinalVideoUrl] = useState<string | null>(null);
+  const getInitialFinalVideoUrl = () => {
+    const defaultUrl = movie.videoUrl || '';
+    const isDrive = defaultUrl.includes('drive.google.com');
+    const dId = isDrive ? extractDriveId(defaultUrl) : null;
+    if (isDrive && dId) return `/api/stream/${dId}`;
+    return defaultUrl;
+  };
+
+  const [finalVideoUrl, setFinalVideoUrl] = useState<string | null>(getInitialFinalVideoUrl);
 
   useEffect(() => {
-    const processVideoUrl = async () => {
-      // Usar a lógica normal
-      const url = movie.videoUrl || '';
-      const isDriveVideo = url.includes('drive.google.com');
-      const driveId = isDriveVideo ? extractDriveId(url) : null;
-      
-      if (isDriveVideo && driveId) {
-        // Usar o proxy do servidor para o Google Drive para maior confiabilidade
-        setFinalVideoUrl(`/api/stream/${driveId}`);
-      } else {
-        setFinalVideoUrl(url);
-      }
-    };
-
-    processVideoUrl();
-
-  }, [movie.id, movie.videoUrl, drivePlayMethod, driveApiKey]);
+    setFinalVideoUrl(getInitialFinalVideoUrl());
+  }, [movie.id, movie.videoUrl]);
 
   const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
   const isHLS = url.includes('.m3u8') || (extractedVideoUrl?.includes('.m3u8') ?? false);

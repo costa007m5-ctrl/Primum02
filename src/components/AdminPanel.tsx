@@ -1001,7 +1001,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       for (const s of uniqueSeasons) {
         try {
           const res = await tmdb.get(requests.tvSeasonDetails(result.id, s));
-          const eps = res.data.episodes;
+          let eps = res.data.episodes;
+          
+          const hasEmptyOverviews = eps.some((ep: any) => !ep.overview);
+          if (hasEmptyOverviews) {
+            try {
+              const enRes = await tmdb.get(requests.tvSeasonDetails(result.id, s), { params: { language: 'en-US' } });
+              const enEpisodes = enRes.data.episodes;
+              eps = eps.map((ep: any, idx: number) => ({
+                ...ep,
+                overview: ep.overview || enEpisodes[idx]?.overview || ''
+              }));
+            } catch (enErr) {}
+          }
           seasonDetails[s] = eps;
         } catch (e) {
           console.error(`Erro ao buscar temporada ${s}:`, e);
