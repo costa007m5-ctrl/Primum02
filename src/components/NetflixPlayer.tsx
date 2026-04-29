@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Play, Pause, RotateCcw, RotateCw, Volume2, VolumeX, Maximize, Minimize, X, ChevronLeft, Settings, Subtitles, FastForward, WifiOff, AlertCircle, Cast, Tv, Share2, Info, Smile, Users, PictureInPicture, ZoomIn, ZoomOut } from 'lucide-react';
+import { Play, Pause, RotateCcw, RotateCw, Volume2, VolumeX, Maximize, Minimize, X, ChevronLeft, Settings, Subtitles, FastForward, WifiOff, AlertCircle, Cast, Tv, Share2, Info, Smile, Users, PictureInPicture, ZoomIn, ZoomOut, Lock, Unlock } from 'lucide-react';
 import screenfull from 'screenfull';
 import Hls from 'hls.js';
 import { motion, AnimatePresence } from 'motion/react';
@@ -138,6 +138,8 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [showControls, setShowControls] = useState(false); // Hidden by default on entry
+  const [isLocked, setIsLocked] = useState(false);
+  const [showUnlockOverlay, setShowUnlockOverlay] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
@@ -384,7 +386,12 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   const MAX_RETRIES = 2;
   const hasSeekedRef = useRef(false);
 
-  const resetControlsTimer = useCallback(() => {
+  const resetControlsTimer = useCallback((forceShow = false) => {
+    // Se o player estiver bloqueado e não estivermos forçando a exibição do cadeado (ex: botão de unlock)
+    // então não mostramos os controles de reprodução (nesse caso `showControls` não deve ser true para o UI normal).
+    if (isLocked && !forceShow) {
+      return; 
+    }
     setShowControls(true);
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     controlsTimeoutRef.current = setTimeout(() => {
@@ -394,10 +401,10 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       setShowQualityMenu(false);
       setShowEmotePicker(false);
     }, 5000); // 5s timeout as requested
-  }, []);
+  }, [isLocked]);
 
   const handleMouseMove = () => {
-    resetControlsTimer();
+    resetControlsTimer(false);
   };
 
   const toggleRotation = () => {
@@ -1163,6 +1170,11 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     // Only toggle if clicking background or the video element
     const target = e.target as HTMLElement;
     if (target === e.currentTarget || target.tagName === 'VIDEO' || target.id === 'player-overlay') {
+      if (isLocked) {
+        setShowUnlockOverlay(true);
+        setTimeout(() => setShowUnlockOverlay(false), 3000);
+        return;
+      }
       if (showControls) {
         setShowControls(false);
         if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
@@ -1582,8 +1594,59 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         </div>
       )}
 
+      {/* Overlay de Desbloqueio (Lock Screen) */}
+      <AnimatePresence>
+        {isLocked && showUnlockOverlay && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[4000] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            onClick={(e) => e.stopPropagation()} // Prevent bubbling to container which might re-trigger
+          >
+            <motion.div
+              drag
+              dragConstraints={{ top: -100, bottom: 0, left: -100, right: 100 }}
+              dragElastic={0.2}
+              onDragEnd={(e, info) => {
+                if (info.offset.y < -50 || Math.abs(info.offset.x) > 50) {
+                  setIsLocked(false);
+                  setShowUnlockOverlay(false);
+                  resetControlsTimer(true);
+                }
+              }}
+              className="flex flex-col items-center gap-4 cursor-grab active:cursor-grabbing p-8 rounded-3xl bg-black/80 border border-white/20 shadow-2xl pointer-events-auto relative overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-t from-red-600/10 to-transparent pointer-events-none" />
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ repeat: Infinity, duration: 1.5 }}
+                className="flex flex-col items-center opacity-50"
+              >
+                <ChevronLeft className="text-white rotate-90 translate-y-2" size={24} />
+                <ChevronLeft className="text-white rotate-90" size={24} />
+              </motion.div>
+              <div className="flex items-center gap-4">
+                 <motion.div animate={{ x: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 1.5 }} className="opacity-50 hidden md:block">
+                    <ChevronLeft className="text-white" size={24} />
+                 </motion.div>
+                 <div className="w-20 h-20 bg-red-600/20 rounded-full flex items-center justify-center border-2 border-red-600/50 mb-2 shadow-[0_0_30px_rgba(220,38,38,0.3)] relative z-10">
+                   <Lock size={32} className="text-white" />
+                 </div>
+                 <motion.div animate={{ x: [0, 10, 0] }} transition={{ repeat: Infinity, duration: 1.5 }} className="opacity-50 hidden md:block">
+                    <ChevronLeft className="text-white rotate-180" size={24} />
+                 </motion.div>
+              </div>
+              <p className="text-white font-black uppercase tracking-widest text-[10px] md:text-xs relative z-10">
+                Arraste para desbloquear
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Overlay de Controles */}
-      <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/60 transition-opacity duration-500 flex flex-col justify-between p-6 z-[305] ${showControls && !isLoading ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+      <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/60 transition-opacity duration-500 flex flex-col justify-between p-6 z-[305] ${showControls && !isLoading && !isLocked ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
         
         {/* Topo */}
         <div className="flex items-center justify-between">
@@ -1927,6 +1990,18 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 </button>
               )}
               
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsLocked(true);
+                  setShowControls(false);
+                }} 
+                className="text-white hover:text-red-500 transition-colors flex flex-col items-center gap-1 group"
+              >
+                <Lock size={24} className="group-hover:scale-110 transition-transform" />
+                <span className="text-[8px] font-black uppercase tracking-widest hidden md:block">Bloquear</span>
+              </button>
+
               <div className="flex items-center gap-4 group/volume">
                 <button onClick={toggleMute} className="text-white">
                   {isMuted || volume === 0 ? <VolumeX size={32} /> : <Volume2 size={32} />}
