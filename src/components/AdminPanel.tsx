@@ -1000,7 +1000,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       
       for (const s of uniqueSeasons) {
         try {
-          const res = await tmdb.get(requests.tvSeasonDetails(result.id, s));
+          const res = await tmdb.get(requests.tvSeasonDetails(result.id, s), { params: { language: 'pt-BR' } });
           let eps = res.data.episodes;
           
           const hasEmptyOverviews = eps.some((ep: any) => !ep.overview);
@@ -1023,7 +1023,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setForm({
         ...form,
         episodes: episodes.map((ep: any) => {
-          const tmdbEp = seasonDetails[ep.season]?.find(te => te.episode_number === ep.episode);
+          const tmdbEp = seasonDetails[Number(ep.season)]?.find(te => te.episode_number === Number(ep.episode));
           return {
             ...ep,
             title: tmdbEp?.name || ep.title,

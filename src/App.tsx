@@ -1247,6 +1247,7 @@ const PlayerRouteWrapper = ({ myMovies, profile, closePlayer, handleSelectMovie,
       roomId={currentRoomId}
       isHost={isHost}
       appSettings={appSettings}
+      initialTime={startTimeFromState}
     />
   );
 };

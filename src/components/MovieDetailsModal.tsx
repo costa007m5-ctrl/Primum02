@@ -149,6 +149,7 @@ const MovieDetailsModal = React.memo(({
   const [showQualitySelector, setShowQualitySelector] = useState(false);
   const [selectedQuality, setSelectedQuality] = useState<'480p' | '720p' | '1080p'>('720p');
   const [logoUrl, setLogoUrl] = useState<string | null>(movie.logo_path || null);
+  const [selectedEpisodeDetails, setSelectedEpisodeDetails] = useState<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -235,9 +236,10 @@ const MovieDetailsModal = React.memo(({
 
   const provider = currentProvider;
   const savedProgress = useMemo(() => {
-    if (movie.last_position && movie.last_position > 5) return movie.last_position;
     const progress = localStorage.getItem(`netplay_progress_${movie.id}`);
-    return progress ? parseFloat(progress) : 0;
+    if (progress) return parseFloat(progress);
+    if (movie.last_position && movie.last_position > 5) return movie.last_position;
+    return 0;
   }, [movie.id, movie.last_position]);
 
   const formatProgressTime = (time: number) => {
@@ -417,12 +419,17 @@ const MovieDetailsModal = React.memo(({
                     muted={isMuted}
                     loop
                     playsInline
+                    onLoadedMetadata={(e) => {
+                      if (savedProgress > 5) {
+                         (e.target as HTMLVideoElement).currentTime = savedProgress;
+                      }
+                    }}
                   />
                 )}
                 {/* Botão de Mudo */}
                 <button 
-                  onClick={() => setIsMuted(!isMuted)}
-                  className="absolute bottom-12 md:bottom-32 right-6 md:right-12 z-[190] bg-white/5 backdrop-blur-2xl text-white p-2 md:p-5 rounded-lg md:rounded-2xl hover:bg-white/10 transition-all border border-white/10 shadow-2xl"
+                  onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
+                  className="absolute bottom-12 md:bottom-32 right-6 md:right-12 z-[190] bg-white/5 backdrop-blur-2xl text-white p-2 md:p-5 rounded-lg md:rounded-2xl hover:bg-white/10 transition-all border border-white/10 shadow-2xl pointer-events-auto"
                 >
                   {isMuted ? <VolumeX size={16} className="md:w-7 md:h-7" /> : <Volume2 size={16} className="md:w-7 md:h-7" />}
                 </button>
@@ -436,9 +443,9 @@ const MovieDetailsModal = React.memo(({
             )}
           </AnimatePresence>
           
-          <div className="absolute inset-0 bg-gradient-to-t from-[#111] via-[#111]/60 to-transparent z-10" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#111] via-transparent to-transparent z-10" />
-          <div className="absolute inset-0 bg-black/20 z-[5]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#111] via-[#111]/60 to-transparent z-10 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#111] via-transparent to-transparent z-10 pointer-events-none" />
+          <div className="absolute inset-0 bg-black/20 z-[5] pointer-events-none" />
           
           {/* Provider Logo removed as requested */}
 
@@ -491,7 +498,8 @@ const MovieDetailsModal = React.memo(({
                     whileTap={{ scale: 0.95 }}
                     onClick={() => {
                       const urlToPlay = movie.type === 'series' && movie.episodes && movie.episodes.length > 0 ? movie.episodes[0].videoUrl : movie.videoUrl;
-                      onPlay(movie, urlToPlay, savedProgress);
+                      const bgTime = (videoRef.current?.src && videoRef.current.src === window.location.origin + urlToPlay) || videoRef.current?.src === getDriveUrl() || videoRef.current?.src === urlToPlay ? videoRef.current?.currentTime : savedProgress;
+                      onPlay(movie, urlToPlay, bgTime || savedProgress);
                     }}
                     className="bg-white text-black hover:bg-gray-200 flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 rounded-md font-bold uppercase tracking-widest flex items-center justify-center gap-2 md:gap-3 text-xs md:text-sm shadow-xl relative overflow-hidden group"
                   >
@@ -525,7 +533,8 @@ const MovieDetailsModal = React.memo(({
                           return;
                         }
                         const urlToPlay = movie.type === 'series' && movie.episodes && movie.episodes.length > 0 ? movie.episodes[0].videoUrl : movie.videoUrl;
-                        onPlay(movie, urlToPlay, 0);
+                        const bgTime = (videoRef.current?.src && videoRef.current.src === window.location.origin + urlToPlay) || videoRef.current?.src === getDriveUrl() || videoRef.current?.src === urlToPlay ? videoRef.current?.currentTime : 0;
+                        onPlay(movie, urlToPlay, bgTime || 0);
                       }}
                       className={`${isLocked ? 'bg-zinc-800 text-gray-400 border border-zinc-600' : 'bg-white text-black hover:bg-gray-200'} px-6 md:px-10 py-3 md:py-4 rounded-md font-bold uppercase tracking-widest flex items-center gap-2 md:gap-3 text-xs md:text-sm shadow-xl transition-colors`}
                     >
@@ -584,7 +593,7 @@ const MovieDetailsModal = React.memo(({
                 <motion.button 
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => onWatchParty()}
+                  onClick={() => onWatchParty(movie)}
                   className="w-10 h-10 md:w-14 md:h-14 rounded-full bg-transparent border-2 border-white text-white hover:bg-white hover:text-black transition-all flex items-center justify-center"
                   title="Assistir em Grupo"
                 >
@@ -949,13 +958,14 @@ const MovieDetailsModal = React.memo(({
                     <motion.div 
                       key={ep.id || idx}
                       whileHover={{ x: 10, backgroundColor: 'rgba(255,255,255,0.03)' }}
+                      onClick={() => setSelectedEpisodeDetails(ep)}
                       className="flex flex-col md:flex-row items-center gap-8 p-6 rounded-[2rem] bg-white/5 border border-white/5 hover:border-red-600/30 transition-all cursor-pointer group"
                     >
                       <div className="text-4xl font-black text-gray-800 group-hover:text-red-600 w-12 text-center italic transition-colors">
                         {ep.episode}
                       </div>
                       
-                      <div className="relative w-full md:w-64 aspect-video rounded-2xl overflow-hidden flex-shrink-0 bg-gray-900 shadow-xl group/ep" onClick={() => onPlay(movie, ep.videoUrl)}>
+                      <div className="relative w-full md:w-64 aspect-video rounded-2xl overflow-hidden flex-shrink-0 bg-gray-900 shadow-xl group/ep" onClick={(e) => { e.stopPropagation(); onPlay(movie, ep.videoUrl); }}>
                         <img 
                           src={ep.still_path || backgroundUrl} 
                           alt={ep.title} 
@@ -1088,6 +1098,89 @@ const MovieDetailsModal = React.memo(({
           </AnimatePresence>
         </div>
       </div>
+      
+      {/* Overlay de Detalhes do Episódio */}
+      <AnimatePresence>
+        {selectedEpisodeDetails && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+            onClick={() => setSelectedEpisodeDetails(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="relative w-full max-w-3xl bg-[#111] border border-white/10 rounded-[2rem] overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button 
+                onClick={() => setSelectedEpisodeDetails(null)}
+                className="absolute top-4 right-4 z-10 p-2 bg-black/50 hover:bg-red-600 rounded-full text-white transition-colors backdrop-blur-md border border-white/10"
+              >
+                <X size={24} />
+              </button>
+              
+              <div className="relative aspect-video w-full group">
+                <img 
+                  src={selectedEpisodeDetails.still_path || backgroundUrl} 
+                  alt={selectedEpisodeDetails.title}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#111] via-transparent to-transparent" />
+                <button 
+                  onClick={() => onPlay(movie, selectedEpisodeDetails.videoUrl)}
+                  className="absolute inset-0 flex items-center justify-center group-hover:bg-black/20 transition-all"
+                >
+                  <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center shadow-2xl scale-90 group-hover:scale-100 transition-transform">
+                    <Play size={40} className="text-white fill-white ml-2" />
+                  </div>
+                </button>
+              </div>
+              
+              <div className="p-8 space-y-4">
+                <div className="flex items-center gap-4 text-xs font-black uppercase tracking-widest text-gray-500">
+                  <span className="text-red-500">Temporada {selectedEpisodeDetails.season}</span>
+                  <span>Episódio {selectedEpisodeDetails.episode}</span>
+                  {selectedEpisodeDetails.runtime && <span>{selectedEpisodeDetails.runtime} min</span>}
+                </div>
+                <h3 className="text-3xl font-black text-white uppercase tracking-tighter italic">
+                  {selectedEpisodeDetails.title || `Episódio ${selectedEpisodeDetails.episode}`}
+                </h3>
+                  {selectedEpisodeDetails.rating && selectedEpisodeDetails.rating > 0 && (
+                    <span className="inline-block bg-red-600/20 text-red-500 px-3 py-1 rounded-lg text-xs font-black italic border border-red-500/20 mb-2">
+                       Aprovação: {(selectedEpisodeDetails.rating * 10).toFixed(0)}%
+                    </span>
+                  )}
+                <p className="text-gray-400 text-lg leading-relaxed italic">
+                  {selectedEpisodeDetails.overview || 'Nenhuma sinopse disponível para este episódio.'}
+                </p>
+                
+                <div className="pt-4 flex gap-4">
+                   <button
+                     onClick={(e) => { e.stopPropagation(); onPlay(movie, selectedEpisodeDetails.videoUrl); }}
+                     className="bg-white hover:bg-gray-200 text-black px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest italic flex items-center gap-2 transition-all"
+                   >
+                      <Play size={16} fill="black" /> {getVideoSourceType(selectedEpisodeDetails.videoUrl)}
+                   </button>
+                   {selectedEpisodeDetails.videoUrl2 && (
+                     <button
+                       onClick={(e) => { e.stopPropagation(); onPlay(movie, selectedEpisodeDetails.videoUrl2); }}
+                       className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest italic flex items-center gap-2 transition-all"
+                     >
+                        <Play size={16} fill="white" /> {getVideoSourceType(selectedEpisodeDetails.videoUrl2)}
+                     </button>
+                   )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </motion.div>
   );
 });

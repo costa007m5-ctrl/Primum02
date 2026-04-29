@@ -146,6 +146,8 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [showSubtitles, setShowSubtitles] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [isBuffering, setIsBuffering] = useState(false);
+
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const [showStuckButton, setShowStuckButton] = useState(false);
@@ -709,13 +711,13 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         const bufferedEnd = video.buffered.end(video.buffered.length - 1);
         if (bufferedEnd > video.currentTime + 1.5) return;
       }
-      setIsLoading(true);
-      setLoadingProgress(prev => prev > 90 ? 98 : prev);
+      setIsBuffering(true);
     };
 
     const handlePlaying = () => {
       hasStartedPlayedRef.current = true;
       setIsLoading(false);
+      setIsBuffering(false);
       setIsPlaying(true);
       setLoadingProgress(100);
       setShowStuckButton(false);
@@ -811,6 +813,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('seeked', () => setIsBuffering(false));
     video.addEventListener('waiting', handleWaiting);
     video.addEventListener('playing', handlePlaying);
     video.addEventListener('pause', handlePause);
@@ -827,6 +830,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('seeked', () => setIsBuffering(false));
       video.removeEventListener('waiting', handleWaiting);
       video.removeEventListener('playing', handlePlaying);
       video.removeEventListener('pause', handlePause);
@@ -1405,6 +1409,13 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
           ))}
         </AnimatePresence>
       </div>
+
+      {/* Overlay de Buffering Menor */}
+      {isBuffering && !isLoading && !error && (
+        <div className="absolute inset-0 z-[309] flex flex-col items-center justify-center p-4 pointer-events-none">
+           <div className="w-16 h-16 border-4 border-white/20 border-t-red-600 rounded-full animate-spin shadow-[0_0_15px_rgba(220,38,38,0.5)]"></div>
+        </div>
+      )}
 
       {/* Overlay de Carregamento Circular (1-100%) */}
       {isLoading && !error && (

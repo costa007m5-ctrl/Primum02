@@ -16,9 +16,10 @@ interface VideoPlayerProps {
   recommendations?: Movie[];
   onProgress?: (movieId: string | number, time: number) => void;
   appSettings?: AppSettings;
+  initialTime?: number;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, profile, roomId, isHost, onPlayNext, recommendations = [], onProgress, appSettings }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, profile, roomId, isHost, onPlayNext, recommendations = [], onProgress, appSettings, initialTime }) => {
   const [orientationKey, setOrientationKey] = useState(0);
   const [playerStyle, setPlayerStyle] = useState<'netflix' | 'standard' | 'special' | null>('netflix');
   const [drivePlayMethod, setDrivePlayMethod] = useState<'api' | 'uc' | 'iframe'>('api');
@@ -447,6 +448,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
     const currentIndex = movie.type === 'series' && movie.episodes 
       ? movie.episodes.findIndex(ep => ep.videoUrl === movie.videoUrl)
       : -1;
+    const currentEpisode = currentIndex !== -1 && movie.episodes ? movie.episodes[currentIndex] : null;
+    const episodeTitle = currentEpisode ? (currentEpisode.title || `Episódio ${currentEpisode.episode}`) : "";
+    const displayTitle = movie.type === 'series' && episodeTitle 
+       ? `${movie.title || movie.name} - ${episodeTitle}` 
+       : (movie.title || movie.name || "");
     const hasNextEpisode = currentIndex !== -1 && movie.episodes && currentIndex < movie.episodes.length - 1;
 
     const videoUrlOptions = [];
@@ -462,11 +468,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
         <NetflixPlayer 
           src={extractedVideoUrl || finalVideoUrl || ""}
           subtitleUrl={extractedSubtitleUrl || undefined}
-          title={movie.title || movie.name || ""}
+          title={displayTitle}
           backdropUrl={movie.backdrop_path}
           logoUrl={movieLogo || undefined}
           onClose={onClose}
-          initialTime={movie.last_position || 0}
+          initialTime={initialTime ?? movie.last_position ?? 0}
           hasNextEpisode={hasNextEpisode}
           recommendations={recommendations}
           onSelectRecommendation={(rec) => {
