@@ -1219,7 +1219,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               <img 
                 src={backdropUrl.startsWith('http') ? backdropUrl : `https://image.tmdb.org/t/p/original/${backdropUrl}`}
                 alt=""
-                className={`w-full h-full object-cover transition-opacity duration-1000 ${logoUrl && !showAutoNext ? 'opacity-40' : 'opacity-90'} ${showAutoNext ? 'blur-sm scale-105 brightness-50' : ''}`}
+                className={`w-full h-full object-cover transition-opacity duration-1000 ${logoUrl && !showAutoNext ? 'opacity-40' : 'opacity-90'} ${showAutoNext ? 'scale-105 brightness-[0.7]' : ''}`}
                 referrerPolicy="no-referrer"
               />
             )}
