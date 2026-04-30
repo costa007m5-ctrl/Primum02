@@ -3638,6 +3638,9 @@ export default function App() {
   const handlePlayMovie = useCallback((movie: Movie, episodeUrl?: string, startTime?: number) => {
     // Travamos a orientação e navegamos de forma síncrona
     try {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
       if (screen.orientation && (screen.orientation as any).lock) {
         (screen.orientation as any).lock('landscape').catch(() => {});
       }

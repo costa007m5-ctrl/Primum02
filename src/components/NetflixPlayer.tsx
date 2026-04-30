@@ -1444,7 +1444,6 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       </AnimatePresence>
 
       <video
-        key={`${activeSrc}-${sessionKey}-${playerMode}`}
         ref={videoRef}
         className={`relative z-[10] w-full h-full transition-all duration-700 ${objectFit === 'cover' ? 'object-cover' : 'object-contain'} ${(showAutoNext || showRecsOverlay) ? 'scale-[0.7] -translate-x-[15%] origin-center' : ''}`}
         autoPlay
