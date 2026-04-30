@@ -930,17 +930,6 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
 
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      if (screen.orientation && screen.orientation.unlock) {
-        screen.orientation.unlock();
-        // Fallback: try to lock back to portrait if it was landscape
-        try {
-          if ((screen.orientation as any).lock) {
-            (screen.orientation as any).lock('portrait').catch(() => {});
-          }
-        } catch (e) {}
-      }
-      
-      setMedianOrientation('unlocked');
     };
   }, [autoRotate]);
 

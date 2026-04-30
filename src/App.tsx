@@ -3664,6 +3664,19 @@ export default function App() {
           (screen.orientation as any).lock('portrait').catch(() => {});
         }
       }
+      
+      if (typeof window !== 'undefined') {
+        const ua = navigator.userAgent.toLowerCase();
+        if (ua.includes('median') || ua.includes('gonative')) {
+          if ((window as any).median) {
+            (window as any).median.screen.setOrientation({orientation: 'portrait'});
+          } else if ((window as any).gonative) {
+            (window as any).gonative.screen.setOrientation({orientation: 'portrait'});
+          } else {
+            window.location.href = `median://screen/setOrientation?orientation=portrait`;
+          }
+        }
+      }
     } catch (e) {}
 
     navigate(state?.backgroundLocation?.pathname || '/menu');
@@ -3683,6 +3696,21 @@ export default function App() {
             await (screen.orientation as any).lock('landscape').catch(() => {});
           }
         } catch (e) {}
+        
+        try {
+          if (typeof window !== 'undefined') {
+            const ua = navigator.userAgent.toLowerCase();
+            if (ua.includes('median') || ua.includes('gonative')) {
+              if ((window as any).median) {
+                (window as any).median.screen.setOrientation({orientation: 'landscape'});
+              } else if ((window as any).gonative) {
+                (window as any).gonative.screen.setOrientation({orientation: 'landscape'});
+              } else {
+                window.location.href = `median://screen/setOrientation?orientation=landscape`;
+              }
+            }
+          }
+        } catch (e) {}
       };
       lockOrientation();
       
@@ -3699,6 +3727,21 @@ export default function App() {
           }
         } catch (e) {}
       }
+      
+      try {
+        if (typeof window !== 'undefined') {
+          const ua = navigator.userAgent.toLowerCase();
+          if (ua.includes('median') || ua.includes('gonative')) {
+            if ((window as any).median) {
+              (window as any).median.screen.setOrientation({orientation: 'portrait'});
+            } else if ((window as any).gonative) {
+              (window as any).gonative.screen.setOrientation({orientation: 'portrait'});
+            } else {
+              window.location.href = `median://screen/setOrientation?orientation=portrait`;
+            }
+          }
+        }
+      } catch (e) {}
     }
   }, [location.pathname, selectedMovie]);
 

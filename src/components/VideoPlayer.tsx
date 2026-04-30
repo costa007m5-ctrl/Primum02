@@ -406,9 +406,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
       } else if (document.fullscreenElement) {
         document.exitFullscreen().catch(() => {});
       }
-      if (screen.orientation && screen.orientation.unlock) {
-        screen.orientation.unlock();
-      }
     };
   }, [playerStyle]);
 
@@ -427,9 +424,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
       } else {
         if (document.exitFullscreen) {
           await document.exitFullscreen();
-        }
-        if (screen.orientation && screen.orientation.unlock) {
-          screen.orientation.unlock();
         }
       }
       setOrientationKey(prev => prev + 1);
