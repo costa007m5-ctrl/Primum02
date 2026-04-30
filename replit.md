@@ -46,3 +46,16 @@ Optional:
 ### Deferred from migration
 
 - Socket.io watch party (`.migration-backup/server.ts`) — not yet ported. Frontend has no `socket.io-client` import so nothing fails. Re-add as a separate service if needed.
+
+### Vercel deployment (parallel to Replit)
+
+The project also deploys to Vercel out-of-the-box. Files at the monorepo root:
+
+- `vercel.json` — buildCommand runs `pnpm install && pnpm --filter @workspace/netpremium build`, outputs to `artifacts/netpremium/dist/public`. Rewrites `/api/*` → serverless function and everything else → SPA `index.html`.
+- `api/index.ts` — Vercel serverless entry. Exports an Express app exposing the same NetPremium routes (admin/users, referrals, MercadoPago, OneSignal, Drive stream, TeraBox).
+- `api/package.json` — declares serverless function deps (express, axios, mercadopago, @supabase/supabase-js, dotenv). Registered as `@workspace/vercel-api` workspace member.
+- `.vercelignore` — excludes Replit-only files (`.local/`, `.migration-backup/`, sibling artifacts, scripts) from the Vercel upload.
+
+**To deploy on Vercel:** import the repo in the Vercel dashboard (root = repo root), add the same env vars listed above (without `VITE_` for server-side keys), and Vercel will build automatically. No project-level config needed in the dashboard.
+
+`vite.config.ts` defaults `PORT=5173` and `BASE_PATH="/"` when env vars are absent (Vercel build doesn't set them); Replit workflows still pass real values.
