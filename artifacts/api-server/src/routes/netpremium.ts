@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import axios from "axios";
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 import { createClient } from "@supabase/supabase-js";
@@ -10,20 +10,60 @@ const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL |
 const supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").replace(/['"]/g, "").trim();
 const supabaseAdmin = supabaseUrl && supabaseServiceKey ? createClient(supabaseUrl, supabaseServiceKey) : null;
 
+const ADMIN_EMAILS: string[] = (process.env.ADMIN_EMAILS || "")
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
+const SUPABASE_WEBHOOK_SECRET = (process.env.SUPABASE_WEBHOOK_SECRET || "").trim();
+const ENABLE_DEBUG_ENV = process.env.ENABLE_DEBUG_ENV === "1";
+
+async function getUserFromAuthHeader(req: Request) {
+  if (!supabaseAdmin) return { user: null, error: "Supabase service key not configured" };
+  const auth = (req.headers.authorization as string | undefined) || "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : null;
+  if (!token) return { user: null, error: "Missing Authorization Bearer token" };
+  try {
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !user) return { user: null, error: "Invalid or expired token" };
+    return { user, error: null };
+  } catch (e: any) {
+    return { user: null, error: e.message || "Auth lookup failed" };
+  }
+}
+
+async function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  const { user, error } = await getUserFromAuthHeader(req);
+  if (!user) return res.status(401).json({ error });
+  if (ADMIN_EMAILS.length === 0) {
+    return res.status(403).json({ error: "Admin endpoints disabled. Set ADMIN_EMAILS env var to a comma-separated allowlist." });
+  }
+  if (!ADMIN_EMAILS.includes((user.email || "").toLowerCase())) {
+    return res.status(403).json({ error: "Admin only" });
+  }
+  (req as any).user = user;
+  next();
+}
+
+async function requireUser(req: Request, res: Response, next: NextFunction) {
+  const { user, error } = await getUserFromAuthHeader(req);
+  if (!user) return res.status(401).json({ error });
+  (req as any).user = user;
+  next();
+}
+
 router.get("/debug-env", (req, res) => {
+  if (!ENABLE_DEBUG_ENV) return res.status(404).json({ error: "Not found" });
   res.json({
     hasUrl: !!process.env.SUPABASE_URL || !!process.env.VITE_SUPABASE_URL,
     hasKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
     hasMPToken: !!process.env.MERCADO_PAGO_ACCESS_TOKEN || !!process.env.MERCADOPAGO_ACCESS_TOKEN,
+    adminAllowlistConfigured: ADMIN_EMAILS.length > 0,
     NODE_ENV: process.env.NODE_ENV,
     host: req.headers.host,
   });
 });
 
-router.get("/admin/users", async (req, res) => {
-  if (!supabaseAdmin) {
-    return res.status(500).json({ error: "Supabase service key not configured" });
-  }
+router.get("/admin/users", requireAdmin, async (req, res) => {
   try {
     const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
     if (error) return res.status(500).json({ error: error.message });
@@ -34,8 +74,7 @@ router.get("/admin/users", async (req, res) => {
   }
 });
 
-router.post("/admin/updatesettings", async (req, res) => {
-  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase service key not configured" });
+router.post("/admin/updatesettings", requireAdmin, async (req, res) => {
   const { userId, plan, status, expiresAt } = req.body;
   if (!userId) return res.status(400).json({ error: "userId required" });
   try {
@@ -59,22 +98,21 @@ router.post("/admin/updatesettings", async (req, res) => {
   }
 });
 
-router.get("/referrals", async (req, res) => {
-  const { userId } = req.query;
+router.get("/referrals", requireUser, async (req, res) => {
+  const callerId = (req as any).user.id;
   if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin not configured" });
-  if (!userId) return res.status(400).json({ error: "userId required" });
   try {
     const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
     if (error) throw error;
     const userList = users as any[];
-    const referredUsers = userList.filter(u => u.user_metadata?.referred_by === userId);
+    const referredUsers = userList.filter((u) => u.user_metadata?.referred_by === callerId);
     const count = referredUsers.length;
     const credits = count * 3;
     const freeMonths = Math.floor(count / 5);
     const { data: pendingReq } = await supabaseAdmin
       .from("referral_requests")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", callerId)
       .eq("status", "pending");
     res.json({ count, credits, freeMonths, pending: pendingReq?.length ? pendingReq[0] : null });
   } catch (err: any) {
@@ -85,16 +123,14 @@ router.get("/referrals", async (req, res) => {
   }
 });
 
-router.post("/referrals/redeem", async (req, res) => {
-  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin not configured" });
-  const { userId, count, credits, freeMonths } = req.body;
+router.post("/referrals/redeem", requireUser, async (req, res) => {
+  const callerUser = (req as any).user;
+  const { count, credits, freeMonths } = req.body;
   try {
-    const { data: { user }, error: uErr } = await supabaseAdmin.auth.admin.getUserById(userId);
-    if (uErr) throw uErr;
     const { error } = await supabaseAdmin.from("referral_requests").insert({
-      user_id: userId,
-      email: user.email,
-      whatsapp: user.user_metadata?.whatsapp || "",
+      user_id: callerUser.id,
+      email: callerUser.email,
+      whatsapp: callerUser.user_metadata?.whatsapp || "",
       referral_count: count,
       credits,
       free_months: freeMonths,
@@ -107,8 +143,7 @@ router.post("/referrals/redeem", async (req, res) => {
   }
 });
 
-router.get("/admin/referrals/requests", async (req, res) => {
-  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin not configured" });
+router.get("/admin/referrals/requests", requireAdmin, async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin.from("referral_requests").select("*").order("created_at", { ascending: false });
     if (error) throw error;
@@ -118,8 +153,7 @@ router.get("/admin/referrals/requests", async (req, res) => {
   }
 });
 
-router.post("/admin/referrals/approve", async (req, res) => {
-  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin not configured" });
+router.post("/admin/referrals/approve", requireAdmin, async (req, res) => {
   const { requestId, status } = req.body;
   try {
     const { error } = await supabaseAdmin.from("referral_requests").update({ status }).eq("id", requestId);
@@ -130,8 +164,9 @@ router.post("/admin/referrals/approve", async (req, res) => {
   }
 });
 
-router.post("/payments/create-preference", async (req, res) => {
-  const { title, price, planId, userId, email } = req.body;
+router.post("/payments/create-preference", requireUser, async (req, res) => {
+  const { title, price, planId, email } = req.body;
+  const callerId = (req as any).user.id;
   const mpToken = (process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN || "").replace(/['"]/g, "").trim();
   if (!mpToken) return res.status(500).json({ error: "MERCADO_PAGO_ACCESS_TOKEN não configurado." });
   try {
@@ -141,14 +176,14 @@ router.post("/payments/create-preference", async (req, res) => {
     const response = await preference.create({
       body: {
         items: [{ id: planId || "hub", title: title || "Assinatura", quantity: 1, unit_price: Number(price) || 15.9, currency_id: "BRL" }],
-        payer: { email: email || "test@test.com" },
+        payer: { email: email || (req as any).user.email || "test@test.com" },
         back_urls: {
           success: `${APP_URL}/menu?payment=success&plan=${planId}`,
           failure: `${APP_URL}/menu?payment=failure`,
           pending: `${APP_URL}/menu?payment=pending`,
         },
         auto_return: "approved",
-        external_reference: `${userId}_${planId}_${Date.now()}`,
+        external_reference: `${callerId}_${planId}_${Date.now()}`,
         notification_url: `${APP_URL}/api/payments/webhook`,
         payment_methods: { excluded_payment_methods: [], excluded_payment_types: [], installments: 1 },
       },
@@ -159,8 +194,9 @@ router.post("/payments/create-preference", async (req, res) => {
   }
 });
 
-router.post("/payments/create-payment", async (req, res) => {
-  const { title, price, planId, userId, email, payer, token, installments, payment_method_id, issuer_id, method } = req.body;
+router.post("/payments/create-payment", requireUser, async (req, res) => {
+  const { title, price, planId, email, payer, token, installments, payment_method_id, issuer_id, method } = req.body;
+  const callerId = (req as any).user.id;
   const mpToken = (process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN || "").replace(/['"]/g, "").trim();
   if (!mpToken) return res.status(500).json({ error: "MERCADO_PAGO_ACCESS_TOKEN não configurado." });
   try {
@@ -175,11 +211,11 @@ router.post("/payments/create-payment", async (req, res) => {
         token,
         installments: installments || 1,
         issuer_id,
-        external_reference: `${userId}_${planId}_${Date.now()}`,
+        external_reference: `${callerId}_${planId}_${Date.now()}`,
         notification_url: `${APP_URL}/api/payments/webhook`,
-        payer: { ...payer, email: email || payer?.email || "user@example.com" },
+        payer: { ...payer, email: email || payer?.email || (req as any).user.email || "user@example.com" },
       },
-      requestOptions: { idempotencyKey: `${userId}_${planId}_${Date.now()}_${Math.random()}` },
+      requestOptions: { idempotencyKey: `${callerId}_${planId}_${Date.now()}_${Math.random()}` },
     });
     res.json(response);
   } catch (error: any) {
@@ -187,6 +223,10 @@ router.post("/payments/create-payment", async (req, res) => {
   }
 });
 
+// MercadoPago webhook: cannot require user auth (called by MP). Instead, fetch
+// the payment from MP using the service token before trusting any data, so an
+// attacker calling this endpoint can't fake an "approved" status. We only act
+// on the verified API response.
 router.post("/payments/webhook", async (req, res) => {
   const paymentId = req.query.id || req.body?.data?.id;
   const type = req.query.topic || req.body?.type;
@@ -216,7 +256,7 @@ router.post("/payments/webhook", async (req, res) => {
   res.status(200).send("OK");
 });
 
-router.post("/notifications/send", async (req, res) => {
+router.post("/notifications/send", requireAdmin, async (req, res) => {
   const { title, message, imageUrl, data } = req.body;
   const appId = process.env.VITE_ONESIGNAL_APP_ID || "581f23c1-2b57-4646-8780-6cd2ccbba30e";
   const restApiKey = process.env.ONESIGNAL_REST_API_KEY;
@@ -241,7 +281,18 @@ router.post("/notifications/send", async (req, res) => {
   }
 });
 
+// Supabase webhook → OneSignal. Protected by a shared secret header that
+// Supabase sends with every webhook invocation. Configure in both Supabase
+// and the SUPABASE_WEBHOOK_SECRET env var. If the secret is not set, the
+// endpoint is disabled (fail closed).
 router.post("/webhooks/supabase/onesignal", async (req, res) => {
+  if (!SUPABASE_WEBHOOK_SECRET) {
+    return res.status(503).json({ error: "Webhook disabled. Set SUPABASE_WEBHOOK_SECRET env var." });
+  }
+  const provided = (req.headers["x-webhook-secret"] || req.headers["x-supabase-webhook-secret"] || "").toString();
+  if (provided !== SUPABASE_WEBHOOK_SECRET) {
+    return res.status(401).json({ error: "Invalid webhook secret" });
+  }
   const { type, table, record } = req.body;
   if (type !== "INSERT" || (table !== "movies" && table !== "series")) {
     return res.status(200).send("Ignored");
@@ -279,7 +330,7 @@ router.post("/webhooks/supabase/onesignal", async (req, res) => {
   }
 });
 
-router.get("/stream/:fileId", async (req, res) => {
+router.get("/stream/:fileId", requireUser, async (req, res) => {
   const { fileId } = req.params;
   const apiKey = process.env.GOOGLE_DRIVE_API_KEY;
   if (!apiKey) {
@@ -324,7 +375,7 @@ router.get("/stream/:fileId", async (req, res) => {
   }
 });
 
-router.post("/terabox/convert", async (req, res) => {
+router.post("/terabox/convert", requireUser, async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: "URL do TeraBox é obrigatória." });
   if (url.includes("player.kingx.dev/#")) {

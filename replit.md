@@ -43,6 +43,14 @@ Optional:
 - `VITE_GOOGLE_DRIVE_API_KEY` + `GOOGLE_DRIVE_API_KEY` — Drive video streaming
 - `ONESIGNAL_REST_API_KEY` — push notifications (OneSignal app id is hardcoded fallback)
 
+### Backend authorization (must-set in production)
+
+Imported v0/Vercel app shipped admin endpoints with no auth. Migration hardened them:
+- `ADMIN_EMAILS` — comma-separated allowlist of admin user emails. Empty = admin endpoints disabled (fail-closed). Required to use `/api/admin/*` and `/api/notifications/send`.
+- `SUPABASE_WEBHOOK_SECRET` — shared secret for the Supabase → OneSignal webhook. Empty = webhook returns 503. Configure in Supabase webhook headers as `x-webhook-secret`.
+- `ENABLE_DEBUG_ENV` — set to `1` to expose `/api/debug-env`. Default off (returns 404).
+- All admin and user-scoped routes now require a Supabase JWT in the `Authorization: Bearer <token>` header. Frontend code that calls these endpoints must forward `supabase.auth.getSession().access_token`.
+
 ### Deferred from migration
 
 - Socket.io watch party (`.migration-backup/server.ts`) — not yet ported. Frontend has no `socket.io-client` import so nothing fails. Re-add as a separate service if needed.
