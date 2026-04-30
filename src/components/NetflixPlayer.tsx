@@ -176,6 +176,8 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   const [showTvShare, setShowTvShare] = useState(false);
   const [showLogoOverlay, setShowLogoOverlay] = useState(false);
   const [showAutoNext, setShowAutoNext] = useState(false);
+  const showSkipIntro = hasNextEpisode !== undefined && currentTime >= 10 && currentTime <= 180;
+  const [autoNextCounter, setAutoNextCounter] = useState(10);
   const [isLandscape, setIsLandscape] = useState(false);
   const [qualityLevels, setQualityLevels] = useState<{ id: number; height: number; bitrate: number }[]>([]);
   const [currentQuality, setCurrentQuality] = useState<string>(() => {
@@ -531,6 +533,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 }
                 setQualityLevels(parsedLevels);
                 setLoadingProgress(50);
+                video.play().catch(() => {});
               });
               hls.on(Hls.Events.FRAG_BUFFERED, () => {
                 setLoadingProgress(prev => Math.min(prev + 5, 90));
@@ -594,6 +597,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 }
                 setQualityLevels(parsedLevels);
                 setLoadingProgress(50);
+                video.play().catch(() => {});
               });
               hls.on(Hls.Events.FRAG_BUFFERED, () => {
                 setLoadingProgress(prev => Math.min(prev + 5, 90));
@@ -656,7 +660,15 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       }
 
       if (hasNextEpisode && video.duration > 0) {
-        if (video.duration - time <= 30) setShowAutoNext(true);
+        const timeFromEnd = video.duration - time;
+        if (timeFromEnd <= 15 && timeFromEnd > 0) {
+          setShowAutoNext(true);
+          const nextCounter = Math.ceil(timeFromEnd);
+          setAutoNextCounter(nextCounter);
+          if (nextCounter === 1 && onNextEpisode) {
+             onNextEpisode();
+          }
+        }
         else setShowAutoNext(false);
       }
 
@@ -1316,23 +1328,55 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Botão Próximo Episódio Automático */}
-      {showAutoNext && hasNextEpisode && (
-        <div className="absolute bottom-32 right-12 z-[310] animate-in slide-in-from-right duration-500">
-          <button 
-            onClick={onNextEpisode}
-            className="group relative flex items-center gap-4 bg-white text-black p-1 pr-6 rounded-full font-black hover:scale-105 transition-all shadow-2xl"
+      {/* Botão Próximo Episódio Automático e Skip Intro */}
+      <AnimatePresence>
+        {showAutoNext && hasNextEpisode && (
+          <motion.div 
+            initial={{ opacity: 0, x: 50, scale: 0.9 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute right-[5%] top-1/2 -translate-y-1/2 z-[310] w-[30%] max-w-sm flex flex-col items-center justify-center gap-6 pointer-events-auto"
           >
-            <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center text-white">
-              <FastForward size={24} fill="white" />
+            <div className="text-center">
+              <h3 className="text-white text-2xl md:text-3xl font-black mb-2 shadow-black drop-shadow-xl">Próximo Episódio</h3>
+              <p className="text-gray-300 text-sm md:text-base font-bold shadow-black drop-shadow-lg">Começando em {autoNextCounter}...</p>
             </div>
-            <div className="text-left">
-              <p className="text-[10px] uppercase tracking-widest text-gray-500">Próximo Episódio em breve</p>
-              <p className="text-sm">Assistir Agora</p>
-            </div>
-          </button>
-        </div>
-      )}
+            <button 
+              onClick={(e) => {
+                 e.stopPropagation();
+                 if (onNextEpisode) onNextEpisode();
+              }}
+              className="group relative flex items-center gap-4 bg-white text-black p-2 pr-8 rounded-full font-black hover:scale-105 transition-all shadow-2xl overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-red-600 w-0 group-hover:w-full transition-all duration-500 z-0"></div>
+              <div className="w-14 h-14 bg-red-600 rounded-full flex items-center justify-center text-white z-10 shadow-lg group-hover:bg-white group-hover:text-red-600 transition-colors">
+                <FastForward size={28} fill="currentColor" />
+              </div>
+              <div className="text-left z-10 group-hover:text-white transition-colors duration-500">
+                <p className="text-lg">Assistir Agora</p>
+              </div>
+            </button>
+          </motion.div>
+        )}
+        
+        {showSkipIntro && !showAutoNext && (
+          <motion.button
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            onClick={(e) => {
+               e.stopPropagation();
+               if (videoRef.current) {
+                 videoRef.current.currentTime += 85; 
+                 // Pular abertura genérico de 85s
+               }
+            }}
+            className="absolute bottom-32 right-12 z-[310] bg-white/10 hover:bg-white text-white hover:text-black border border-white/20 px-6 py-3 rounded-md font-bold uppercase tracking-widest text-xs md:text-sm shadow-2xl backdrop-blur-md transition-all pointer-events-auto flex items-center gap-2"
+          >
+            <FastForward size={18} /> Pular Abertura
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* Classificação Indicativa (Netflix Style) */}
       <AnimatePresence>
@@ -1362,7 +1406,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       <video
         key={`${activeSrc}-${sessionKey}-${playerMode}`}
         ref={videoRef}
-        className={`w-full h-full transition-all duration-300 ${objectFit === 'cover' ? 'object-cover' : 'object-contain'}`}
+        className={`w-full h-full transition-all duration-700 ${objectFit === 'cover' ? 'object-cover' : 'object-contain'} ${showAutoNext ? 'scale-[0.7] -translate-x-[15%] origin-center' : ''}`}
         autoPlay
         playsInline
         crossOrigin="anonymous"
