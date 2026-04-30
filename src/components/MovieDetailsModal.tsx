@@ -440,6 +440,7 @@ const MovieDetailsModal = React.memo(({
                            onClose();
                         }
                       }}
+                      onPlayNext={(m, epUrl) => onPlay(m, epUrl, 0)}
                       initialTime={savedProgress}
                       appSettings={appSettings}
                       isBackgroundMode={!isPlayingFullscreen}

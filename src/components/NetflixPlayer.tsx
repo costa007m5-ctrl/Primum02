@@ -928,19 +928,8 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     let safetyTimeout: NodeJS.Timeout;
 
     if (isLoading) {
-      // Safety timeout ajustado para 12s: se o manifesto HLS falhar, tentamos o modo nativo
       safetyTimeout = setTimeout(() => {
-        if (isLoading && loadingProgress <= 30) {
-          console.log("Watchdog: HLS lento demais. Tentando fallback nativo...");
-          if (hlsRef.current) {
-            hlsRef.current.destroy();
-            hlsRef.current = null;
-          }
-          if (videoRef.current) {
-            videoRef.current.src = activeSrc;
-            videoRef.current.play().catch(() => {});
-          }
-        } else if (isLoading && isPlaying) {
+        if (isLoading && isPlaying) {
           setIsLoading(false);
           setLoadingProgress(100);
         }
