@@ -572,6 +572,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
             if (Hls.isSupported()) {
               const hls = new Hls({
                 enableWorker: true,
+                startPosition: initialTime,
                 maxBufferLength: 60,
                 maxMaxBufferLength: 600,
                 xhrSetup: (xhr) => { 
@@ -580,7 +581,6 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               });
               hls.attachMedia(video);
               hls.on(Hls.Events.MEDIA_ATTACHED, () => {
-                video.currentTime = initialTime;
                 hls.loadSource(videoToPlay);
               });
               hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
@@ -658,10 +658,11 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       if (video.duration > 0) {
         const timeFromEnd = video.duration - time;
         if (hasNextEpisode) {
-          if (timeFromEnd <= 75 && timeFromEnd > 0) {
+          if (timeFromEnd <= 15 && timeFromEnd > 0) {
             setShowAutoNext(true);
-            const nextCounter = Math.max(0, Math.ceil(timeFromEnd - 60));
+            const nextCounter = Math.max(0, Math.ceil(timeFromEnd));
             setAutoNextCounter(nextCounter);
+            // Automatic switch to next episode at 0
             if (nextCounter === 0 && onNextEpisode) {
                onNextEpisode();
             }
@@ -1207,22 +1208,22 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     >
       {/* Backdrop de fundo enquanto carrega ou como papel de parede */}
       <AnimatePresence>
-        {(isLoading || showLogoOverlay) && (
+        {(isLoading || showLogoOverlay || showAutoNext) && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[5]"
+            className={`absolute inset-0 ${showAutoNext ? 'z-[2]' : 'z-[5]'}`}
           >
             {backdropUrl && (
               <img 
                 src={backdropUrl.startsWith('http') ? backdropUrl : `https://image.tmdb.org/t/p/original/${backdropUrl}`}
                 alt=""
-                className={`w-full h-full object-cover transition-opacity duration-1000 ${logoUrl ? 'opacity-40' : 'opacity-90'}`}
+                className={`w-full h-full object-cover transition-opacity duration-1000 ${logoUrl && !showAutoNext ? 'opacity-40' : 'opacity-90'} ${showAutoNext ? 'blur-sm scale-105 brightness-50' : ''}`}
                 referrerPolicy="no-referrer"
               />
             )}
-            {posterUrl && (
+            {posterUrl && !showAutoNext && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-12 md:p-20">
                  <motion.img 
                    src={posterUrl.startsWith('http') ? posterUrl : `https://image.tmdb.org/t/p/w780/${posterUrl}`}

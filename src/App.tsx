@@ -1196,7 +1196,7 @@ const MovieDetailRouteWrapper = ({
   );
 };
 
-const PlayerRouteWrapper = ({ myMovies, profile, closePlayer, handleSelectMovie, onProgress, activeRoomId, isAppHost, appSettings }: any) => {
+const PlayerRouteWrapper = ({ myMovies, profile, closePlayer, handleSelectMovie, handlePlayMovie, onProgress, activeRoomId, isAppHost, appSettings }: any) => {
   const { movieId } = useParams();
   const location = useLocation();
   const movieFromState = location.state?.movie;
@@ -1244,10 +1244,13 @@ const PlayerRouteWrapper = ({ myMovies, profile, closePlayer, handleSelectMovie,
       profile={profile}
       recommendations={myMovies.slice(0, 10)}
       onProgress={onProgress}
+      onPlayNext={(m, url) => {
+         if (handlePlayMovie) handlePlayMovie(m, url, 0);
+      }}
       roomId={currentRoomId}
       isHost={isHost}
       appSettings={appSettings}
-      initialTime={startTimeFromState}
+      initialTime={startTimeFromState !== undefined ? startTimeFromState : savedProgress}
     />
   );
 };
@@ -4209,6 +4212,7 @@ export default function App() {
                 profile={profile}
                 closePlayer={closePlayer}
                 handleSelectMovie={handleSelectMovie}
+                handlePlayMovie={handlePlayMovie}
                 onProgress={updateProgress}
                 activeRoomId={activeRoomId}
                 isAppHost={isHost}
