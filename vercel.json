@@ -1,17 +1,12 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm install --no-frozen-lockfile && pnpm --filter @workspace/netpremium build",
-  "outputDirectory": "artifacts/netpremium/dist/public",
-  "installCommand": "echo 'install handled by buildCommand'",
-  "framework": null,
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" },
-    { "source": "/((?!api/|assets/|favicon.ico|manifest.json|OneSignalSDKWorker.js|OneSignalSDKUpdaterWorker.js).*)", "destination": "/index.html" }
-  ],
-  "functions": {
-    "api/index.ts": {
-      "memory": 1024,
-      "maxDuration": 30
+    {
+      "source": "/api/(.*)",
+      "destination": "/api"
+    },
+    {
+      "source": "/((?!api/|assets/|favicon.ico|manifest.json|OneSignalSDKWorker.js|OneSignalSDKUpdaterWorker.js).*)",
+      "destination": "/index.html"
     }
-  }
+  ]
 }
