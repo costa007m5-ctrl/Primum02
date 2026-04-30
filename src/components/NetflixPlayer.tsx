@@ -600,6 +600,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 setLoadingProgress(50);
                 
                 if (initialTime > 0) {
+                  video.currentTime = Math.max(0, initialTime - 2);
                   hls.startLoad(Math.max(0, initialTime - 2));
                 } else {
                   hls.startLoad();
@@ -1273,57 +1274,62 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Overlay de Recomendações (Menor e menos intrusivo) */}
+      {/* Overlay de Recomendações (Elegante e horizontal) */}
       {showRecsOverlay && recommendations.length > 0 && !isLoading && (
-        <div className="absolute right-[2%] md:right-[5%] top-1/2 -translate-y-1/2 z-[315] w-[45%] md:w-[35%] max-w-lg bg-black/60 backdrop-blur-xl flex flex-col p-4 md:p-6 rounded-2xl md:rounded-3xl border border-white/10 animate-in slide-in-from-right duration-500 max-h-[85vh] md:max-h-[80vh]">
-          <div className="flex justify-between items-center mb-4 md:mb-6">
-            <h2 className="text-white text-lg md:text-2xl font-black uppercase tracking-tighter italic shadow-black drop-shadow-md">
-              Descubra
-            </h2>
-            <button 
-              onClick={() => {
-                setShowRecsOverlay(false);
-                recsDismissedRef.current = true;
-              }}
-              className="text-gray-400 hover:text-white bg-white/10 rounded-full p-2 transition-colors"
-            >
-              <X size={16} className="md:w-5 md:h-5" />
-            </button>
-          </div>
+        <div className="absolute top-0 right-0 bottom-0 w-[90%] sm:w-[75%] md:w-[60%] lg:w-[50%] bg-gradient-to-l from-black/95 via-black/80 to-transparent z-[315] flex flex-col justify-end animate-in slide-in-from-right duration-[800ms] p-6 md:p-12 overflow-hidden pointer-events-none">
           
-          <div className="flex flex-col gap-3 md:gap-4 overflow-y-auto pr-2 scrollbar-hide flex-1 pb-4">
-            {recommendations.slice(0, Math.min(8, recommendations.length)).map((rec, index) => (
-              <div 
-                key={rec.id}
-                onClick={() => onSelectRecommendation?.(rec)}
-                className={`relative flex items-center gap-3 md:gap-4 w-full rounded-xl overflow-hidden cursor-pointer group transition-all duration-300 p-2 shadow-lg backdrop-blur-md ${index === 0 ? 'bg-white/10 border border-white/20 hover:bg-white/20' : 'bg-black/40 border border-white/5 hover:bg-white/10'}`}
+          <div className="pointer-events-auto flex flex-col justify-end h-full">
+            <div className="flex justify-between items-end mb-4 md:mb-6 mt-auto">
+              <h2 className="text-white text-2xl md:text-4xl font-black uppercase tracking-tighter italic shadow-black drop-shadow-lg">
+                Descubra a Seguir
+              </h2>
+              <button 
+                onClick={() => {
+                  setShowRecsOverlay(false);
+                  recsDismissedRef.current = true;
+                }}
+                className="text-gray-400 hover:text-white bg-white/10 rounded-full p-2 md:p-3 transition-colors mb-1 md:mb-2"
               >
-                <div className="relative flex-none w-14 md:w-20 aspect-[2/3] rounded-md overflow-hidden border border-white/10 shadow-lg shrink-0">
+                <X size={20} className="md:w-6 md:h-6" />
+              </button>
+            </div>
+            
+            <div className="flex overflow-x-auto snap-x scrollbar-hide gap-3 md:gap-4 pb-8 -mr-6 md:-mr-12 pr-6 md:pr-12 pointer-events-auto">
+              {recommendations.slice(0, 10).map((rec, index) => (
+                <div 
+                  key={rec.id}
+                  onClick={() => onSelectRecommendation?.(rec)}
+                  className={`flex-none w-[160px] md:w-[240px] aspect-video relative rounded-xl overflow-hidden cursor-pointer group transition-all duration-500 shadow-2xl snap-start ${index === 0 ? 'ring-2 ring-red-600 scale-100 hover:scale-105 opacity-100' : 'opacity-70 hover:opacity-100 scale-95 hover:scale-100'}`}
+                >
                   <img 
-                    src={`https://image.tmdb.org/t/p/w342${rec.poster_path}`}
+                    src={`https://image.tmdb.org/t/p/w500${rec.backdrop_path || rec.poster_path}`}
                     alt={rec.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                     referrerPolicy="no-referrer"
                   />
-                  {index === 0 && (
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Play fill="white" size={24} className="text-white drop-shadow-lg" />
-                    </div>
-                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-3 md:p-4">
+                    <h4 className="text-white font-bold text-xs md:text-sm line-clamp-2 drop-shadow-md leading-tight">{rec.title || rec.name}</h4>
+                    
+                    {index === 0 && !hasNextEpisode && autoNextCounter > 0 && (
+                       <div className="mt-2 flex items-center gap-2">
+                         <div className="w-3 h-3 md:w-4 md:h-4 rounded-full border-2 border-red-500 border-t-transparent animate-spin"/>
+                         <span className="text-red-500 font-bold text-[9px] md:text-[10px] tracking-widest uppercase drop-shadow-md">
+                           Em {autoNextCounter}s
+                         </span>
+                       </div>
+                    )}
+                    {index === 0 && (!autoNextCounter || autoNextCounter <= 0) && (
+                       <div className="mt-2 flex items-center gap-1 md:gap-2 text-red-500 font-bold text-[9px] md:text-[10px] tracking-widest uppercase drop-shadow-md">
+                          <Play size={10} className="md:w-3 md:h-3" fill="currentColor" /> Reproduzir
+                       </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1 flex flex-col justify-center overflow-hidden">
-                   <h4 className="text-white font-bold text-xs md:text-sm line-clamp-2 drop-shadow-md">{rec.title || rec.name}</h4>
-                   <p className="text-gray-400 text-[10px] md:text-xs mt-1">
-                     {rec.release_date?.substring(0, 4) || rec.first_air_date?.substring(0, 4) || ''}
-                   </p>
-                   {index === 0 && !hasNextEpisode && autoNextCounter > 0 && (
-                     <div className="mt-2 text-red-500 font-bold text-[10px] md:text-xs tracking-widest uppercase animate-pulse drop-shadow-md">
-                       Começando em {autoNextCounter}s...
-                     </div>
-                   )}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            
+            {/* Espaçador para não grudar no bottom dos controllers invisíveis */}
+            <div className="h-6 md:h-12 border-t border-transparent" />
           </div>
         </div>
       )}

@@ -478,7 +478,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
           hasNextEpisode={hasNextEpisode}
           recommendations={recommendations}
           onSelectRecommendation={(rec) => {
-            if (onPlayNext) onPlayNext(rec, rec.videoUrl || "");
+            const defaultRecUrl = rec.type === 'series' && rec.episodes && rec.episodes.length > 0 ? rec.episodes[0].videoUrl : rec.videoUrl;
+            if (onPlayNext) onPlayNext(rec, defaultRecUrl || "");
           }}
           onNextEpisode={() => {
             if (hasNextEpisode && movie.episodes && onPlayNext) {
