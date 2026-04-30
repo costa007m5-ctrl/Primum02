@@ -658,9 +658,9 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       if (video.duration > 0) {
         const timeFromEnd = video.duration - time;
         if (hasNextEpisode) {
-          if (timeFromEnd <= 15 && timeFromEnd > 0) {
+          if (timeFromEnd <= 60 && timeFromEnd > 0) {
             setShowAutoNext(true);
-            const nextCounter = Math.max(0, Math.ceil(timeFromEnd));
+            const nextCounter = Math.max(0, Math.ceil(timeFromEnd - 45));
             setAutoNextCounter(nextCounter);
             // Automatic switch to next episode at 0
             if (nextCounter === 0 && onNextEpisode) {
@@ -671,7 +671,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
           }
         }
 
-        if (!hasNextEpisode && timeFromEnd <= 15) {
+        if (!hasNextEpisode && timeFromEnd <= 60) {
           setShowRecsOverlay(true);
         }
       }
@@ -1208,22 +1208,22 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     >
       {/* Backdrop de fundo enquanto carrega ou como papel de parede */}
       <AnimatePresence>
-        {(isLoading || showLogoOverlay || showAutoNext) && (
+        {(isLoading || showLogoOverlay || showAutoNext || showRecsOverlay) && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className={`absolute inset-0 ${showAutoNext ? 'z-[2]' : 'z-[5]'}`}
+            className={`absolute inset-0 ${(showAutoNext || showRecsOverlay) ? 'z-[2]' : 'z-[5]'}`}
           >
             {backdropUrl && (
               <img 
                 src={backdropUrl.startsWith('http') ? backdropUrl : `https://image.tmdb.org/t/p/original/${backdropUrl}`}
                 alt=""
-                className={`w-full h-full object-cover transition-opacity duration-1000 ${logoUrl && !showAutoNext ? 'opacity-40' : 'opacity-90'} ${showAutoNext ? 'scale-105 brightness-[0.7]' : ''}`}
+                className={`w-full h-full object-cover transition-opacity duration-1000 ${logoUrl && !(showAutoNext || showRecsOverlay) ? 'opacity-40' : 'opacity-90'} ${(showAutoNext || showRecsOverlay) ? 'scale-105 brightness-[0.7]' : ''}`}
                 referrerPolicy="no-referrer"
               />
             )}
-            {posterUrl && !showAutoNext && (
+            {posterUrl && !(showAutoNext || showRecsOverlay) && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-12 md:p-20">
                  <motion.img 
                    src={posterUrl.startsWith('http') ? posterUrl : `https://image.tmdb.org/t/p/w780/${posterUrl}`}
@@ -1242,30 +1242,38 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
 
       {/* Overlay de Recomendações (Menor e menos intrusivo) */}
       {showRecsOverlay && recommendations.length > 0 && !isLoading && (
-        <div className="absolute bottom-24 left-6 right-6 z-[315] bg-black/60 backdrop-blur-xl flex flex-col p-4 rounded-3xl border border-white/10 animate-in slide-in-from-bottom duration-500 max-w-4xl mx-auto">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-white text-lg font-black uppercase tracking-tighter italic">Recomendados</h2>
+        <div className="absolute right-[2%] md:right-[5%] top-1/2 -translate-y-1/2 z-[315] w-[35%] max-w-lg bg-black/60 backdrop-blur-xl flex flex-col p-6 rounded-3xl border border-white/10 animate-in slide-in-from-right duration-500 max-h-[80vh]">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-white text-xl md:text-2xl font-black uppercase tracking-tighter italic">Recomendados</h2>
             <button 
               onClick={() => setShowRecsOverlay(false)}
-              className="text-gray-400 hover:text-white"
+              className="text-gray-400 hover:text-white bg-white/10 rounded-full p-2"
             >
               <X size={20} />
             </button>
           </div>
           
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {recommendations.slice(0, 8).map((rec) => (
+          <div className="flex flex-col gap-4 overflow-y-auto pr-2 scrollbar-hide flex-1">
+            {recommendations.slice(0, Math.min(8, recommendations.length)).map((rec) => (
               <div 
                 key={rec.id}
                 onClick={() => onSelectRecommendation?.(rec)}
-                className="relative flex-none w-24 md:w-32 aspect-[2/3] rounded-xl overflow-hidden cursor-pointer group hover:scale-105 transition-all duration-300 border border-white/10"
+                className="flex items-center gap-4 w-full rounded-xl overflow-hidden cursor-pointer group hover:bg-white/10 transition-all duration-300 p-2"
               >
-                <img 
-                  src={`https://image.tmdb.org/t/p/w342${rec.poster_path}`}
-                  alt={rec.title}
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
+                <div className="relative flex-none w-16 md:w-24 aspect-[2/3] rounded-lg overflow-hidden border border-white/10 shadow-lg">
+                  <img 
+                    src={`https://image.tmdb.org/t/p/w342${rec.poster_path}`}
+                    alt={rec.title}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+                <div className="flex-1">
+                   <h4 className="text-white font-bold text-sm md:text-base line-clamp-2">{rec.title || rec.name}</h4>
+                   <p className="text-gray-400 text-xs mt-1">
+                     {rec.release_date?.substring(0, 4) || rec.first_air_date?.substring(0, 4) || ''}
+                   </p>
+                </div>
               </div>
             ))}
           </div>
@@ -1395,7 +1403,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       <video
         key={`${activeSrc}-${sessionKey}-${playerMode}`}
         ref={videoRef}
-        className={`w-full h-full transition-all duration-700 ${objectFit === 'cover' ? 'object-cover' : 'object-contain'} ${showAutoNext ? 'scale-[0.7] -translate-x-[15%] origin-center' : ''}`}
+        className={`relative z-[10] w-full h-full transition-all duration-700 ${objectFit === 'cover' ? 'object-cover' : 'object-contain'} ${(showAutoNext || showRecsOverlay) ? 'scale-[0.7] -translate-x-[15%] origin-center' : ''}`}
         autoPlay
         playsInline
         crossOrigin="anonymous"
