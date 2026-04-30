@@ -514,10 +514,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
             if (Hls.isSupported()) {
               const hls = new Hls({
                 enableWorker: true,
-                capLevelToPlayerSize: true,
-                startLevel: -1,
-                autoStartLoad: true, // Auto start for faster loading
-                maxBufferLength: 30, // Keep buffer small for faster initial load
+                maxBufferLength: 60,
                 maxMaxBufferLength: 600,
                 xhrSetup: (xhr) => { 
                   xhr.withCredentials = false;
@@ -575,10 +572,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
             if (Hls.isSupported()) {
               const hls = new Hls({
                 enableWorker: true,
-                capLevelToPlayerSize: true,
-                startLevel: -1,
-                autoStartLoad: true, // Auto start for faster loading
-                maxBufferLength: 30, // Keep buffer small for faster initial load
+                maxBufferLength: 60,
                 maxMaxBufferLength: 600,
                 xhrSetup: (xhr) => { 
                   xhr.withCredentials = false;
@@ -653,27 +647,32 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         }
       }
 
-      if ((time > 0.1 || video.currentTime > 0) && isLoading) {
-        setIsLoading(false);
-        setLoadingProgress(100);
-        setShowLogoOverlay(false);
+      if (time > 0.1 || video.currentTime > 0) {
+        if (isLoading) {
+          setIsLoading(false);
+          setLoadingProgress(100);
+          setShowLogoOverlay(false);
+        }
       }
 
-      if (hasNextEpisode && video.duration > 0) {
+      if (video.duration > 0) {
         const timeFromEnd = video.duration - time;
-        if (timeFromEnd <= 15 && timeFromEnd > 0) {
-          setShowAutoNext(true);
-          const nextCounter = Math.ceil(timeFromEnd);
-          setAutoNextCounter(nextCounter);
-          if (nextCounter === 1 && onNextEpisode) {
-             onNextEpisode();
+        if (hasNextEpisode) {
+          if (timeFromEnd <= 75 && timeFromEnd > 0) {
+            setShowAutoNext(true);
+            const nextCounter = Math.max(0, Math.ceil(timeFromEnd - 60));
+            setAutoNextCounter(nextCounter);
+            if (nextCounter === 0 && onNextEpisode) {
+               onNextEpisode();
+            }
+          } else {
+            setShowAutoNext(false);
           }
         }
-        else setShowAutoNext(false);
-      }
 
-      if (video.duration > 0 && video.duration - time <= 10) {
-        setShowRecsOverlay(true);
+        if (!hasNextEpisode && timeFromEnd <= 15) {
+          setShowRecsOverlay(true);
+        }
       }
     };
 
