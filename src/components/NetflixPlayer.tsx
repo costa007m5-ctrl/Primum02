@@ -514,8 +514,11 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
             if (Hls.isSupported()) {
               const hls = new Hls({
                 enableWorker: true,
-                maxBufferLength: 60,
+                startPosition: -1,
+                maxBufferLength: 30, // Small buffer size reduces memory and bandwidth impact for quick start
                 maxMaxBufferLength: 600,
+                maxBufferSize: 30 * 1000 * 1000, // 30MB
+                lowLatencyMode: true,
                 xhrSetup: (xhr) => { 
                   xhr.withCredentials = false;
                 }
@@ -572,9 +575,12 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
             if (Hls.isSupported()) {
               const hls = new Hls({
                 enableWorker: true,
-                startPosition: initialTime,
-                maxBufferLength: 60,
+                startPosition: Math.max(0, initialTime - 2),
+                autoStartLoad: false, // Don't download first segment!
+                maxBufferLength: 30,
                 maxMaxBufferLength: 600,
+                maxBufferSize: 30 * 1000 * 1000,
+                lowLatencyMode: true,
                 xhrSetup: (xhr) => { 
                   xhr.withCredentials = false;
                 }
@@ -591,6 +597,14 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 }
                 setQualityLevels(parsedLevels);
                 setLoadingProgress(50);
+                
+                if (initialTime > 0) {
+                  // Set current time directly after manifest parsed
+                  video.currentTime = Math.max(0, initialTime - 2);
+                  hls.startLoad(Math.max(0, initialTime - 2));
+                } else {
+                  hls.startLoad();
+                }
                 video.play().catch(() => {});
               });
               hls.on(Hls.Events.FRAG_BUFFERED, () => {
@@ -604,6 +618,9 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                       hls.startLoad();
                    }
                    else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+                   else {
+                      setError({ message: "Erro fatal de carregamento. Verifique sua rede.", type: 'network' });
+                   }
                 }
               });
               hlsRef.current = hls;
@@ -647,7 +664,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         }
       }
 
-      if (time > 0.1 || video.currentTime > 0) {
+      if (time > 0.1 && video.readyState >= 3 && !video.seeking) {
         if (isLoading) {
           setIsLoading(false);
           setLoadingProgress(100);
