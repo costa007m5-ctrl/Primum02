@@ -703,10 +703,10 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         }
 
         if (!hasNextEpisode) {
-          if (timeFromEnd <= 60 && timeFromEnd > 0) {
+          if (timeFromEnd <= 180 && timeFromEnd > 0) {
             if (!recsDismissedRef.current) {
               setShowRecsOverlay(true);
-              const nextCounter = Math.max(0, Math.ceil(timeFromEnd - 45)); // starts at 15
+              const nextCounter = Math.max(0, Math.ceil(timeFromEnd - 165)); // starts at 15
               setAutoNextCounter(nextCounter);
               // Automatic switch to first recommendation at 0
               if (nextCounter === 0 && onSelectRecommendation && recommendations && recommendations.length > 0) {
@@ -714,7 +714,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               }
             }
           } else {
-            if (timeFromEnd > 60) {
+            if (timeFromEnd > 180) {
               setShowRecsOverlay(false);
               recsDismissedRef.current = false;
             }
