@@ -39,6 +39,7 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
   }
   @screen md {
     html, body {
@@ -47,10 +48,38 @@
   }
   body {
     @apply bg-[#080808] text-white font-sans antialiased selection:bg-red-600/30;
+    touch-action: manipulation;
+  }
+  
+  /* Otimização de cliques - remove delay de 300ms em mobile */
+  button, a, [role="button"], .cursor-pointer, [onclick] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
+  }
+  
+  /* GPU acceleration para transições suaves */
+  button, a, img, .transition, [class*="hover:"] {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+  
+  /* Active states mais responsivos */
+  button:active, a:active, [role="button"]:active {
+    transform: scale(0.97);
+    transition: transform 0.1s ease;
   }
   
   img {
     content-visibility: auto;
+    transform: translateZ(0);
+  }
+  
+  /* Scroll suave e otimizado */
+  .overflow-x-auto, .overflow-y-auto, [class*="overflow-"] {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
   }
   
   video:fullscreen {

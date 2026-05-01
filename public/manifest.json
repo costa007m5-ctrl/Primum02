@@ -2,35 +2,42 @@
   "short_name": "NetPremium",
   "name": "NetPremium - Streaming",
   "description": "Assista seus filmes e series favoritos com qualidade premium.",
+  "id": "/",
   "icons": [
     {
       "src": "https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     }
   ],
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "fullscreen"],
   "orientation": "portrait",
-  "theme_color": "#e50914",
+  "theme_color": "#000000",
   "background_color": "#000000",
   "categories": ["entertainment", "video"],
-  "prefer_related_applications": true,
-  "related_applications": [],
+  "prefer_related_applications": false,
+  "related_applications": [
+    {
+      "platform": "play",
+      "id": "app.vercel.primum02.twa"
+    }
+  ],
   "handle_links": "preferred",
   "launch_handler": {
     "client_mode": "navigate-existing"

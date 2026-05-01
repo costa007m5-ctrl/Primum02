@@ -4,21 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="robots" content="noindex, nofollow" />
-    <meta name="theme-color" content="#e50914" />
+    <meta name="theme-color" content="#000000" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="NetPremium" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="format-detection" content="telephone=no" />
     <meta name="msapplication-tap-highlight" content="no" />
+    <meta name="msapplication-TileColor" content="#000000" />
     <meta name="color-scheme" content="dark" />
+    <meta name="application-name" content="NetPremium" />
+    <meta name="full-screen" content="yes" />
+    <meta name="browsermode" content="application" />
     
     <!-- Preconnect para CDNs frequentes -->
     <link rel="preconnect" href="https://image.tmdb.org" crossorigin />
     <link rel="preconnect" href="https://teradl.kingx.dev" crossorigin />
     <link rel="preconnect" href="https://player.kingx.dev" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
     <link rel="dns-prefetch" href="https://image.tmdb.org" />
+    <link rel="dns-prefetch" href="https://api.themoviedb.org" />
     
     <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" />
     <link rel="manifest" href="/manifest.json" />
     <title>NetPremium</title>
     
@@ -34,8 +42,44 @@
     </script>
     
     <style>
-      html, body, #root { margin: 0; padding: 0; background: #000; min-height: 100vh; }
-      body { font-family: system-ui, -apple-system, sans-serif; }
+      /* Otimizações PWA */
+      html, body, #root { 
+        margin: 0; 
+        padding: 0; 
+        background: #000; 
+        min-height: 100vh;
+        min-height: 100dvh;
+        overscroll-behavior: none;
+      }
+      body { 
+        font-family: system-ui, -apple-system, sans-serif;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        touch-action: manipulation;
+      }
+      /* Cliques mais rápidos */
+      button, a, [role="button"], [onclick], .cursor-pointer {
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        cursor: pointer;
+      }
+      /* Safe area para notch */
+      body {
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      }
+      /* Loading placeholder */
+      #root:empty::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: #000 url('https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png') center center no-repeat;
+        background-size: 80px;
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 0.5; }
+        50% { opacity: 1; }
+      }
     </style>
   </head>
   <body>
