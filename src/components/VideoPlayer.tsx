@@ -46,13 +46,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
     return null;
   };
 
-  const [extractedVideoUrl, setExtractedVideoUrl] = useState<string | null>(getInitialExtracted('video'));
-  const [extractedSubtitleUrl, setExtractedSubtitleUrl] = useState<string | null>(getInitialExtracted('subtitle'));
-
-  useEffect(() => {
-    setExtractedVideoUrl(getInitialExtracted('video'));
-    setExtractedSubtitleUrl(getInitialExtracted('subtitle'));
-  }, [movie.videoUrl]);
+  const extractedVideoUrl = getInitialExtracted('video');
+  const extractedSubtitleUrl = getInitialExtracted('subtitle');
+  
   const [emotes, setEmotes] = useState<{ id: string; emoji: string; x: number; y: number }[]>([]);
   const [showEmotePicker, setShowEmotePicker] = useState(false);
   const [participants, setParticipants] = useState<any[]>([]);

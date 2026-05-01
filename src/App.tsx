@@ -1183,7 +1183,7 @@ const MovieDetailRouteWrapper = ({
       onPlay={(m, url, time) => handlePlayMovie(m, url, time)}
       onToggleMyList={() => toggleMyList(movie)}
       onToggleFavorite={() => toggleFavorite(movie)}
-      similarMovies={myMovies.filter((m: any) => m.id !== movie.id).slice(0, 10)}
+      similarMovies={myMovies.filter((m: any) => m.id?.toString() !== movie.id?.toString()).slice(0, 10)}
       onSelectSimilar={(similar) => navigate(`/movie/${similar.id}`, { state: location.state })}
       onWatchParty={() => onWatchParty(movie)}
       isAddedToMyList={myListIds.has(movie.id)}
@@ -3864,14 +3864,14 @@ export default function App() {
 
   const getSimilarMovies = useCallback((movie: Movie) => {
     if (!movie.genres) {
-      return visibleMovies.filter(m => m.id !== movie.id).slice(0, 12);
+      return visibleMovies.filter(m => m.id?.toString() !== movie.id?.toString()).slice(0, 12);
     }
 
     const currentGenres = movie.genres.split(',').map(g => g.trim());
     
     // Calcular pontuação de similaridade baseada em gêneros comuns
     const scoredMovies = visibleMovies
-      .filter(m => m.id !== movie.id)
+      .filter(m => m.id?.toString() !== movie.id?.toString())
       .map(m => {
         let score = 0;
         if (m.genres) {
