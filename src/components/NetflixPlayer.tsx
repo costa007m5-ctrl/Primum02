@@ -456,6 +456,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
 
   const hasStartedPlayedRef = useRef(false);
   const recsDismissedRef = useRef(false);
+  const recsDismissedTimeRef = useRef<number | null>(null);
   const recsTargetTimeRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
 
@@ -575,20 +576,20 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                   if (duration > 0 && safeStartPoint >= duration - 10) { safeStartPoint = 0; }
                   video.currentTime = safeStartPoint;
                 }
-                video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
               }, { once: true });
+              video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
             }
           } else {
             video.src = videoToPlay;
-           video.addEventListener('loadedmetadata', () => {
-                let safeStartPoint = startPoint;
-                if (safeStartPoint > 0) {
-                  const duration = video.duration || 0;
-                  if (duration > 0 && safeStartPoint >= duration - 10) { safeStartPoint = 0; }
-                  video.currentTime = safeStartPoint;
-                }
-                video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
+            video.addEventListener('loadedmetadata', () => {
+                 let safeStartPoint = startPoint;
+                 if (safeStartPoint > 0) {
+                   const duration = video.duration || 0;
+                   if (duration > 0 && safeStartPoint >= duration - 10) { safeStartPoint = 0; }
+                   video.currentTime = safeStartPoint;
+                 }
             }, { once: true });
+            video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
           }
         }, 0);
       };
@@ -645,6 +646,10 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
 
         if (!hasNextEpisode) {
           if (timeFromEnd <= 440 && timeFromEnd > 0) {
+            if (recsDismissedRef.current && recsDismissedTimeRef.current !== null && time > recsDismissedTimeRef.current + 40) {
+               recsDismissedRef.current = false;
+               recsTargetTimeRef.current = null;
+            }
             if (!recsDismissedRef.current) {
               setShowRecsOverlay(true);
               if (recsTargetTimeRef.current === null || didSeek) {
@@ -1228,6 +1233,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 onClick={() => {
                   setShowRecsOverlay(false);
                   recsDismissedRef.current = true;
+                  recsDismissedTimeRef.current = videoRef.current ? videoRef.current.currentTime : 0;
                 }}
                 className="text-gray-400 hover:text-white bg-white/10 rounded-full p-2 md:p-3 transition-colors mb-1 md:mb-2"
               >
@@ -1400,6 +1406,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         className={`relative z-[10] w-full h-full transition-all duration-700 ${objectFit === 'cover' ? 'object-cover' : 'object-contain'} ${(showAutoNext || showRecsOverlay) ? 'scale-[0.7] -translate-x-[15%] origin-center' : ''}`}
         autoPlay
         playsInline
+        preload="auto"
         crossOrigin="anonymous"
         webkit-playsinline="true"
         x-webkit-airplay="allow"
