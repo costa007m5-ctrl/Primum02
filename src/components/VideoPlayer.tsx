@@ -122,6 +122,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
   }, [profileId, movie.id, movie.type, appSettings?.subscription_plan]);
 
   useEffect(() => {
+    if (movie.id && url) {
+      localStorage.setItem(`netplay_progress_url_${movie.id}`, url);
+    }
+  }, [movie.id, url]);
+
+  useEffect(() => {
     const saveToHistory = async () => {
       if (!profileId || !movie.id) return;
       if (appSettings?.subscription_plan === 'hub') return;
