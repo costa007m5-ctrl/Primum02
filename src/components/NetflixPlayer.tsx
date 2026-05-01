@@ -88,24 +88,6 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         // Ignorar se falhar ao decodificar (pode já estar decodificado ou ter '%' legítimos)
       }
       
-      // EXPIRATION CHECK FOR KINGX/TERABOX
-      if (vToPlay.includes('expires=')) {
-         const match = vToPlay.match(/expires=([0-9]+)/);
-         if (match && match[1]) {
-            const expTime = parseInt(match[1], 10) * 1000;
-            if (Date.now() > expTime) {
-               console.warn("KINGX LINK EXPIRED AT: ", new Date(expTime).toISOString());
-               setTimeout(() => {
-                 setError({ 
-                    message: "Este provedor expirou a fonte do vídeo por tempo limite. Estes links (Terabox/KingX) duram poucas horas. Atualize a fonte no painel com um novo link gerado, ou utilize outro provedor que não possua expiração rápida.", 
-                    type: 'network' 
-                 });
-                 setIsLoading(false);
-               }, 100);
-            }
-         }
-      }
-      
     } catch (e) {
       console.warn("URL Extraction failed", e);
     }
