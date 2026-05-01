@@ -25,8 +25,10 @@
     <link rel="dns-prefetch" href="https://image.tmdb.org" />
     <link rel="dns-prefetch" href="https://api.themoviedb.org" />
     
-    <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.jpg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192.jpg" />
+    <link rel="icon" type="image/jpeg" sizes="192x192" href="/icons/icon-192.jpg" />
+    <link rel="icon" type="image/jpeg" sizes="512x512" href="/icons/icon-512.jpg" />
     <link rel="manifest" href="/manifest.json" />
     <title>NetPremium</title>
     
@@ -49,13 +51,10 @@
         background: #000; 
         min-height: 100vh;
         min-height: 100dvh;
-        overscroll-behavior: none;
       }
       body { 
         font-family: system-ui, -apple-system, sans-serif;
         -webkit-tap-highlight-color: transparent;
-        -webkit-touch-callout: none;
-        touch-action: manipulation;
       }
       /* Cliques mais rápidos */
       button, a, [role="button"], [onclick], .cursor-pointer {
@@ -63,16 +62,12 @@
         -webkit-tap-highlight-color: transparent;
         cursor: pointer;
       }
-      /* Safe area para notch */
-      body {
-        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-      }
       /* Loading placeholder */
       #root:empty::after {
         content: "";
         position: fixed;
         inset: 0;
-        background: #000 url('https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png') center center no-repeat;
+        background: #000 url('/icons/icon-192.png') center center no-repeat;
         background-size: 80px;
         animation: pulse 1.5s ease-in-out infinite;
       }
