@@ -517,7 +517,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
             if (Hls.isSupported()) {
               const hls = new Hls({
                 enableWorker: true,
-                startPosition: startPoint,
+                startPosition: -1,
               });
               hls.attachMedia(video);
               hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.loadSource(videoToPlay));
@@ -533,6 +533,18 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               hls.on(Hls.Events.FRAG_BUFFERED, () => {
                 setLoadingProgress(prev => Math.min(prev + 5, 90));
               });
+
+              video.addEventListener('loadedmetadata', () => {
+                let safeStartPoint = startPoint;
+                if (safeStartPoint > 0) {
+                  const duration = video.duration || 0;
+                  // Se o vídeo estiver nos últimos 10 segundos, recomeça (era o final dos créditos)
+                  if (duration > 0 && safeStartPoint >= duration - 10) {
+                     safeStartPoint = 0;
+                  }
+                  video.currentTime = safeStartPoint;
+                }
+              }, { once: true });
               hls.on(Hls.Events.ERROR, (event, data) => {
                 console.warn("HLS Error:", data);
                 if (data.fatal) {
@@ -556,14 +568,24 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
               video.src = videoToPlay;
               video.addEventListener('loadedmetadata', () => {
-                if (startPoint > 0) video.currentTime = startPoint;
+                let safeStartPoint = startPoint;
+                if (safeStartPoint > 0) {
+                  const duration = video.duration || 0;
+                  if (duration > 0 && safeStartPoint >= duration - 10) { safeStartPoint = 0; }
+                  video.currentTime = safeStartPoint;
+                }
                 video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
               }, { once: true });
             }
           } else {
             video.src = videoToPlay;
-            video.addEventListener('loadedmetadata', () => {
-                if (startPoint > 0) video.currentTime = startPoint;
+           video.addEventListener('loadedmetadata', () => {
+                let safeStartPoint = startPoint;
+                if (safeStartPoint > 0) {
+                  const duration = video.duration || 0;
+                  if (duration > 0 && safeStartPoint >= duration - 10) { safeStartPoint = 0; }
+                  video.currentTime = safeStartPoint;
+                }
                 video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
             }, { once: true });
           }
