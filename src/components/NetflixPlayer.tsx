@@ -14,7 +14,7 @@ interface NetflixPlayerProps {
   posterUrl?: string;   // Poster image (portrait)
   logoUrl?: string;     // Movie logo PNG
   onClose: () => void;
-  onProgress?: (currentTime: number) => void;
+  onProgress?: (currentTime: number, duration?: number) => void;
   initialTime?: number;
   onNextEpisode?: () => void;
   hasNextEpisode?: boolean;
@@ -516,7 +516,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
           if (lowerSrc.includes('.m3u8')) {
             if (Hls.isSupported()) {
               const hls = new Hls({
-                enableWorker: true,
+                enableWorker: false,
                 startPosition: -1,
               });
               hls.attachMedia(video);
@@ -544,6 +544,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                   }
                   video.currentTime = safeStartPoint;
                 }
+                video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
               }, { once: true });
               hls.on(Hls.Events.ERROR, (event, data) => {
                 console.warn("HLS Error:", data);
@@ -606,7 +607,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       setCurrentTime(time);
       if (onProgress) {
         if (Math.abs(time - lastProgressTime.current) >= 10) {
-           onProgress(time);
+           onProgress(time, video.duration);
            lastProgressTime.current = time;
         }
       }
@@ -643,7 +644,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         }
 
         if (!hasNextEpisode) {
-          if (timeFromEnd <= 420 && timeFromEnd > 0) {
+          if (timeFromEnd <= 440 && timeFromEnd > 0) {
             if (!recsDismissedRef.current) {
               setShowRecsOverlay(true);
               if (recsTargetTimeRef.current === null || didSeek) {
@@ -657,7 +658,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               }
             }
           } else {
-            if (timeFromEnd > 420) {
+            if (timeFromEnd > 440) {
               setShowRecsOverlay(false);
               recsDismissedRef.current = false;
               recsTargetTimeRef.current = null;

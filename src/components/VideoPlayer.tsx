@@ -58,6 +58,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
   const channelRef = useRef<any>(null);
   const lastSyncTime = useRef<number>(0);
   const currentTimeRef = useRef<number>(0);
+  const durationRef = useRef<number>(0);
 
   const driveApiKey = import.meta.env.VITE_GOOGLE_DRIVE_API_KEY;
 
@@ -83,16 +84,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
   useEffect(() => {
     return () => {
       const finalTime = currentTimeRef.current;
+      const finalDuration = durationRef.current;
       if (profileId && movie.id && finalTime > 0 && appSettings?.subscription_plan !== 'hub') {
-        supabase.from('watch_history').upsert({
-          profile_id: profileId,
-          movie_id: movie.id,
-          last_position: finalTime,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'profile_id,movie_id' }).then(() => {});
+        const isMovie = movie.type !== 'series';
+        const isFinished = finalDuration > 0 && (isMovie ? (finalDuration - finalTime <= 450) : (finalDuration - finalTime <= 30));
+        
+        if (isFinished) {
+           supabase.from('watch_history').delete().match({ profile_id: profileId, movie_id: movie.id }).then(() => {});
+        } else {
+           supabase.from('watch_history').upsert({
+             profile_id: profileId,
+             movie_id: movie.id,
+             last_position: finalTime,
+             updated_at: new Date().toISOString()
+           }, { onConflict: 'profile_id,movie_id' }).then(() => {});
+        }
       }
     };
-  }, [profileId, movie.id, appSettings?.subscription_plan]);
+  }, [profileId, movie.id, movie.type, appSettings?.subscription_plan]);
 
   useEffect(() => {
     const saveToHistory = async () => {
@@ -489,17 +498,26 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
               setPlayerStyle('standard');
             }
           }}
-          onProgress={async (time) => {
+          onProgress={async (time, duration) => {
             currentTimeRef.current = time;
+            if (duration !== undefined) durationRef.current = duration;
             if (onProgress) onProgress(movie.id, time, movie.videoUrl);
             
             if (profileId && movie.id && (Math.floor(time) % 3 === 0) && appSettings?.subscription_plan !== 'hub') {
-              await supabase.from('watch_history').upsert({
-                profile_id: profileId,
-                movie_id: movie.id,
-                last_position: time,
-                updated_at: new Date().toISOString()
-              }, { onConflict: 'profile_id,movie_id' });
+              const finalDuration = duration !== undefined ? duration : durationRef.current;
+              const isMovie = movie.type !== 'series';
+              const isFinished = finalDuration > 0 && (isMovie ? (finalDuration - time <= 450) : (finalDuration - time <= 30));
+
+              if (isFinished) {
+                  await supabase.from('watch_history').delete().match({ profile_id: profileId, movie_id: movie.id });
+              } else {
+                  await supabase.from('watch_history').upsert({
+                    profile_id: profileId,
+                    movie_id: movie.id,
+                    last_position: time,
+                    updated_at: new Date().toISOString()
+                  }, { onConflict: 'profile_id,movie_id' });
+              }
             }
           }}
           isBackgroundMode={isBackgroundMode}
