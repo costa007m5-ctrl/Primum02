@@ -517,7 +517,23 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
           const startPoint = initialTime > 0 ? Math.max(0, initialTime - 2) : -1;
           
           if (lowerSrc.includes('.m3u8')) {
-            if (Hls.isSupported()) {
+            const canPlayNative = video.canPlayType('application/vnd.apple.mpegurl');
+            const isMobileOrSafari = /iP(hone|od|ad)|Android|Mac OS|Safari/i.test(navigator.userAgent) && !/Chrome/i.test(navigator.userAgent) || /Android/i.test(navigator.userAgent);
+            
+            if (canPlayNative && (isMobileOrSafari || !Hls.isSupported())) {
+              video.src = videoToPlay;
+              video.load();
+              video.addEventListener('loadedmetadata', () => {
+                let safeStartPoint = startPoint;
+                if (safeStartPoint > 0) {
+                  const duration = video.duration || 0;
+                  const threshold = isMovie ? 450 : 30;
+                  if (duration > 0 && safeStartPoint >= duration - threshold) { safeStartPoint = 0; }
+                  video.currentTime = safeStartPoint;
+                }
+              }, { once: true });
+              video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
+            } else if (Hls.isSupported()) {
               const hls = new Hls({
                 enableWorker: false,
                 startPosition: -1,
@@ -570,19 +586,6 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 }
               });
               hlsRef.current = hls;
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-              video.src = videoToPlay;
-              video.load();
-              video.addEventListener('loadedmetadata', () => {
-                let safeStartPoint = startPoint;
-                if (safeStartPoint > 0) {
-                  const duration = video.duration || 0;
-                  const threshold = isMovie ? 450 : 30;
-                  if (duration > 0 && safeStartPoint >= duration - threshold) { safeStartPoint = 0; }
-                  video.currentTime = safeStartPoint;
-                }
-              }, { once: true });
-              video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
             }
           } else {
             video.src = videoToPlay;
@@ -1437,7 +1440,6 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
             src={subtitleUrl || activeSubtitleUrl} 
             srcLang="pt" 
             label="Português" 
-            default 
           />
         )}
       </video>
