@@ -474,6 +474,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
           logoUrl={movieLogo || undefined}
           onClose={onClose}
           initialTime={initialTime ?? movie.last_position ?? 0}
+          isMovie={movie.type !== 'series'}
           hasNextEpisode={hasNextEpisode}
           recommendations={recommendations}
           onSelectRecommendation={(rec) => {
@@ -503,7 +504,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
             if (duration !== undefined) durationRef.current = duration;
             if (onProgress) onProgress(movie.id, time, movie.videoUrl);
             
-            if (profileId && movie.id && (Math.floor(time) % 3 === 0) && appSettings?.subscription_plan !== 'hub') {
+            if (profileId && movie.id && appSettings?.subscription_plan !== 'hub') {
               const finalDuration = duration !== undefined ? duration : durationRef.current;
               const isMovie = movie.type !== 'series';
               const isFinished = finalDuration > 0 && (isMovie ? (finalDuration - time <= 450) : (finalDuration - time <= 30));

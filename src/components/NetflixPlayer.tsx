@@ -18,6 +18,7 @@ interface NetflixPlayerProps {
   initialTime?: number;
   onNextEpisode?: () => void;
   hasNextEpisode?: boolean;
+  isMovie?: boolean;
   recommendations?: any[];
   onSelectRecommendation?: (movie: any) => void;
   onSwitchPlayer?: () => void;
@@ -43,6 +44,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   initialTime = 0,
   onNextEpisode,
   hasNextEpisode,
+  isMovie = false,
   recommendations = [],
   onSelectRecommendation,
   onSwitchPlayer,
@@ -539,8 +541,9 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 let safeStartPoint = startPoint;
                 if (safeStartPoint > 0) {
                   const duration = video.duration || 0;
-                  // Se o vídeo estiver nos últimos 10 segundos, recomeça (era o final dos créditos)
-                  if (duration > 0 && safeStartPoint >= duration - 10) {
+                  const threshold = isMovie ? 450 : 30;
+                  // Se o vídeo estiver muito perto do fim, recomeça
+                  if (duration > 0 && safeStartPoint >= duration - threshold) {
                      safeStartPoint = 0;
                   }
                   video.currentTime = safeStartPoint;
@@ -573,7 +576,8 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 let safeStartPoint = startPoint;
                 if (safeStartPoint > 0) {
                   const duration = video.duration || 0;
-                  if (duration > 0 && safeStartPoint >= duration - 10) { safeStartPoint = 0; }
+                  const threshold = isMovie ? 450 : 30;
+                  if (duration > 0 && safeStartPoint >= duration - threshold) { safeStartPoint = 0; }
                   video.currentTime = safeStartPoint;
                 }
               }, { once: true });
@@ -585,7 +589,8 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                  let safeStartPoint = startPoint;
                  if (safeStartPoint > 0) {
                    const duration = video.duration || 0;
-                   if (duration > 0 && safeStartPoint >= duration - 10) { safeStartPoint = 0; }
+                   const threshold = isMovie ? 450 : 30;
+                   if (duration > 0 && safeStartPoint >= duration - threshold) { safeStartPoint = 0; }
                    video.currentTime = safeStartPoint;
                  }
             }, { once: true });
@@ -926,10 +931,15 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     const saveProgress = () => {
       if (videoRef.current) {
         const time = videoRef.current.currentTime;
-        if (time > 10 && time < (videoRef.current.duration - 30)) {
-           localStorage.setItem(`netplay_progress_${movieId}`, time.toString());
-        } else if (time >= (videoRef.current.duration - 30)) {
-           localStorage.removeItem(`netplay_progress_${movieId}`);
+        const duration = videoRef.current.duration;
+        const threshold = isMovie ? 450 : 30;
+        
+        if (duration > 0) {
+          if (time > 10 && time < (duration - threshold)) {
+             localStorage.setItem(`netplay_progress_${movieId}`, time.toString());
+          } else if (time >= (duration - threshold)) {
+             localStorage.removeItem(`netplay_progress_${movieId}`);
+          }
         }
       }
     };

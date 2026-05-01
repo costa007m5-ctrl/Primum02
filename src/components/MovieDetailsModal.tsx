@@ -245,12 +245,14 @@ const MovieDetailsModal = React.memo(({
     : `https://image.tmdb.org/t/p/original/${movie.backdrop_path}`;
 
   const provider = currentProvider;
+  const [userResetProgress, setUserResetProgress] = useState(false);
   const savedProgress = useMemo(() => {
+    if (userResetProgress) return 0;
     const progress = localStorage.getItem(`netplay_progress_${movie.id}`);
     if (progress) return parseFloat(progress);
     if (movie.last_position && movie.last_position > 5) return movie.last_position;
     return 0;
-  }, [movie.id, movie.last_position]);
+  }, [movie.id, movie.last_position, userResetProgress]);
 
   const savedUrl = useMemo(() => {
     return localStorage.getItem(`netplay_progress_url_${movie.id}`);
@@ -543,6 +545,8 @@ const MovieDetailsModal = React.memo(({
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => {
+                      localStorage.removeItem(`netplay_progress_${movie.id}`);
+                      setUserResetProgress(true);
                       if (isYouTube || isKingX) {
                         const urlToPlay = movie.type === 'series' && movie.episodes && movie.episodes.length > 0 ? movie.episodes[0].videoUrl : movie.videoUrl;
                         onPlay(movie, urlToPlay, 0);
