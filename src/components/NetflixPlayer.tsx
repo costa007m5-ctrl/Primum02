@@ -506,20 +506,21 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       const lowerSrc = videoToPlay.toLowerCase();
       let startLoadTimer: NodeJS.Timeout;
 
-      // CAMINHO 1: PLAYER DE INÍCIO (FRESH)
-      const initFreshMode = () => {
-        console.log("Player Independente: FRESH MODE");
-
+      const initUnifiedMode = () => {
         startLoadTimer = setTimeout(() => {
           if (!isMounted || !video) return;
-          setLoadingProgress(25); // Progresso inicial maior para feedback
+          setLoadingProgress(25);
+          
+          const startPoint = initialTime > 0 ? Math.max(0, initialTime - 2) : -1;
+          
           if (lowerSrc.includes('.m3u8')) {
             if (Hls.isSupported()) {
               const hls = new Hls({
                 enableWorker: true,
-                startPosition: -1,
-                autoStartLoad: false,
-                maxBufferLength: 30, // Small buffer size reduces memory and bandwidth impact for quick start
+                startPosition: startPoint,
+                autoStartLoad: true, // SPEED UP: Enable autoStartLoad for the fastest start
+                capLevelToPlayerSize: true, // Automatically limits quality to player size
+                maxBufferLength: 30, // Keep buffer small for quick start
                 maxMaxBufferLength: 600,
                 maxBufferSize: 30 * 1000 * 1000, // 30MB
                 lowLatencyMode: true,
@@ -531,18 +532,17 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.loadSource(videoToPlay));
               hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
                 let parsedLevels = data.levels.map((l, i) => ({ id: i, height: l.height, bitrate: l.bitrate })).sort((a, b) => b.height - a.height);
-                if (maxQualityHeight) {
-                  parsedLevels = parsedLevels.filter(l => l.height <= maxQualityHeight);
-                  if (parsedLevels.length > 0) hls.autoLevelCapping = parsedLevels[0].id;
-                }
                 setQualityLevels(parsedLevels);
                 setLoadingProgress(50);
                 
-                hls.startLoad(-1);
+                // Seek explícito caso o initialTime seja provido 
+                if (startPoint > 0) {
+                   video.currentTime = startPoint;
+                }
 
-                setTimeout(() => {
-                  if (video) video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); });
-                }, 100);
+                if (video) {
+                   video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); });
+                }
               });
               hls.on(Hls.Events.FRAG_BUFFERED, () => {
                 setLoadingProgress(prev => Math.min(prev + 5, 90));
@@ -568,91 +568,16 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               });
               hlsRef.current = hls;
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-              // Safari Native HLS Fallback
               video.src = videoToPlay;
-              video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
-            }
-          } else {
-            video.src = videoToPlay;
-            video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
-          }
-        }, 0);
-      };
-
-      // CAMINHO 2: PLAYER DE RETOMADA (RESUME)
-      const initResumeMode = () => {
-        console.log("Player Independente: RESUME MODE", initialTime);
-
-        startLoadTimer = setTimeout(() => {
-          if (!isMounted || !video) return;
-          setLoadingProgress(25); // Progresso inicial imediato
-          if (lowerSrc.includes('.m3u8')) {
-            if (Hls.isSupported()) {
-              const hls = new Hls({
-                enableWorker: true,
-                startPosition: Math.max(0, initialTime - 2),
-                autoStartLoad: false, // Don't download first segment!
-                maxBufferLength: 30,
-                maxMaxBufferLength: 600,
-                maxBufferSize: 30 * 1000 * 1000,
-                lowLatencyMode: true,
-                xhrSetup: (xhr) => { 
-                  xhr.withCredentials = false;
-                }
-              });
-              hls.attachMedia(video);
-              hls.on(Hls.Events.MEDIA_ATTACHED, () => {
-                hls.loadSource(videoToPlay);
-              });
-              hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-                let parsedLevels = data.levels.map((l, i) => ({ id: i, height: l.height, bitrate: l.bitrate })).sort((a, b) => b.height - a.height);
-                if (maxQualityHeight) {
-                  parsedLevels = parsedLevels.filter(l => l.height <= maxQualityHeight);
-                  if (parsedLevels.length > 0) hls.autoLevelCapping = parsedLevels[0].id;
-                }
-                setQualityLevels(parsedLevels);
-                setLoadingProgress(50);
-                
-                hls.startLoad(-1);
-
-                setTimeout(() => {
-                  if (video) video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); });
-                }, 100);
-              });
-              hls.on(Hls.Events.FRAG_BUFFERED, () => {
-                setLoadingProgress(prev => Math.min(prev + 5, 90));
-              });
-              hls.on(Hls.Events.ERROR, (event, data) => {
-                console.warn("HLS Error:", data);
-                if (data.fatal) {
-                   if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                      if (retryCountRef.current < 5) {
-                        retryCountRef.current++;
-                        setLoadingProgress(prev => Math.max(prev, 15));
-                        hls.startLoad();
-                      } else {
-                        setError({ message: "Falha na conexão com o servidor. Tente outro player.", type: 'network' });
-                        setIsLoading(false);
-                      }
-                   }
-                   else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
-                   else {
-                      setError({ message: "Erro fatal de carregamento. Verifique sua rede.", type: 'network' });
-                   }
-                }
-              });
-              hlsRef.current = hls;
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = videoToPlay;
-                video.addEventListener('loadedmetadata', () => {
-                    video.currentTime = initialTime;
-                    video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); });
-                }, { once: true });
+              video.addEventListener('loadedmetadata', () => {
+                if (startPoint > 0) video.currentTime = startPoint;
+                video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
+              }, { once: true });
             }
           } else {
             video.src = videoToPlay;
             video.addEventListener('loadedmetadata', () => {
-                video.currentTime = initialTime;
+                if (startPoint > 0) video.currentTime = startPoint;
                 video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
             }, { once: true });
           }
@@ -660,11 +585,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       };
 
       // EXECUÇÃO INDEPENDENTE
-      if (playerMode === 'resume') {
-        initResumeMode();
-      } else {
-        initFreshMode();
-      }
+      initUnifiedMode();
 
       return () => {
         clearTimeout(startLoadTimer);
@@ -696,7 +617,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       if (video.duration > 0) {
         const timeFromEnd = video.duration - time;
         if (hasNextEpisode) {
-          if (timeFromEnd <= 300 && timeFromEnd > 0) {
+          if (timeFromEnd <= 120 && timeFromEnd > 0) {
             setShowAutoNext(true);
             if (recsTargetTimeRef.current === null || didSeek) {
                recsTargetTimeRef.current = time + 15;
@@ -714,7 +635,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         }
 
         if (!hasNextEpisode) {
-          if (timeFromEnd <= 300 && timeFromEnd > 0) {
+          if (timeFromEnd <= 420 && timeFromEnd > 0) {
             if (!recsDismissedRef.current) {
               setShowRecsOverlay(true);
               if (recsTargetTimeRef.current === null || didSeek) {
@@ -728,7 +649,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               }
             }
           } else {
-            if (timeFromEnd > 300) {
+            if (timeFromEnd > 420) {
               setShowRecsOverlay(false);
               recsDismissedRef.current = false;
               recsTargetTimeRef.current = null;
