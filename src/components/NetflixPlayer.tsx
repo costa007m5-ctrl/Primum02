@@ -572,6 +572,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               hlsRef.current = hls;
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
               video.src = videoToPlay;
+              video.load();
               video.addEventListener('loadedmetadata', () => {
                 let safeStartPoint = startPoint;
                 if (safeStartPoint > 0) {
@@ -585,6 +586,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
             }
           } else {
             video.src = videoToPlay;
+            video.load();
             video.addEventListener('loadedmetadata', () => {
                  let safeStartPoint = startPoint;
                  if (safeStartPoint > 0) {
@@ -1416,7 +1418,6 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         className={`relative z-[10] w-full h-full transition-all duration-700 ${objectFit === 'cover' ? 'object-cover' : 'object-contain'} ${(showAutoNext || showRecsOverlay) ? 'scale-[0.7] -translate-x-[15%] origin-center' : ''}`}
         autoPlay
         playsInline
-        preload="auto"
         crossOrigin="anonymous"
         webkit-playsinline="true"
         x-webkit-airplay="allow"
