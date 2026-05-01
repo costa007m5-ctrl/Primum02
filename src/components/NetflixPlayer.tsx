@@ -607,12 +607,8 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 setQualityLevels(parsedLevels);
                 setLoadingProgress(50);
                 
-                if (initialTime > 0) {
-                  video.currentTime = Math.max(0, initialTime - 2);
-                  hls.startLoad(Math.max(0, initialTime - 2));
-                } else {
-                  hls.startLoad();
-                }
+                hls.startLoad(-1);
+
                 setTimeout(() => {
                   if (video) video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); });
                 }, 100);
