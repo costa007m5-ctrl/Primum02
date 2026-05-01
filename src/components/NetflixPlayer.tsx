@@ -6,6 +6,49 @@ import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '../lib/supabase';
 
+// Preconnect to CDN domains for faster cold start
+const preconnectToDomain = (url: string) => {
+  try {
+    const urlObj = new URL(url);
+    const domain = urlObj.origin;
+    
+    // Check if link already exists
+    const existingLink = document.querySelector(`link[href="${domain}"][rel="preconnect"]`);
+    if (existingLink) return;
+    
+    // DNS Prefetch
+    const dnsPrefetch = document.createElement('link');
+    dnsPrefetch.rel = 'dns-prefetch';
+    dnsPrefetch.href = domain;
+    document.head.appendChild(dnsPrefetch);
+    
+    // Preconnect (includes DNS + TCP + TLS handshake)
+    const preconnect = document.createElement('link');
+    preconnect.rel = 'preconnect';
+    preconnect.href = domain;
+    preconnect.crossOrigin = 'anonymous';
+    document.head.appendChild(preconnect);
+  } catch (e) {
+    // Invalid URL, ignore
+  }
+};
+
+// Prefetch manifest for faster cold start
+const prefetchManifest = (url: string) => {
+  try {
+    // Use fetch with low priority to warm up the connection
+    fetch(url, { 
+      method: 'GET', 
+      mode: 'cors',
+      credentials: 'omit',
+      priority: 'low' as any,
+      signal: AbortSignal.timeout(5000) // 5s timeout
+    }).catch(() => {}); // Ignore errors, this is just warming
+  } catch (e) {
+    // Ignore
+  }
+};
+
 interface NetflixPlayerProps {
   src: string;
   title: string;
@@ -96,6 +139,24 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   const [activeSrc, setActiveSrc] = useState(parsedUrls.video_url);
   const [activeSubtitleUrl, setActiveSubtitleUrl] = useState(parsedUrls.subtitle_url);
   const [sessionKey, setSessionKey] = useState(() => Date.now());
+  
+  // Preconnect to CDN immediately on component mount for faster cold start
+  useEffect(() => {
+    const videoUrl = parsedUrls.video_url;
+    if (videoUrl) {
+      // Preconnect to all domains in the URL chain
+      preconnectToDomain(videoUrl);
+      
+      // Also preconnect to common KingX/Terabox CDN domains
+      preconnectToDomain('https://teradl.kingx.dev');
+      preconnectToDomain('https://player.kingx.dev');
+      
+      // Prefetch manifest if it's an m3u8 file
+      if (videoUrl.includes('.m3u8')) {
+        prefetchManifest(videoUrl);
+      }
+    }
+  }, [parsedUrls.video_url]);
   
   // Classificação indicativa local e estática para não quebrar dependências externas
   const ageRating = useMemo(() => {
@@ -518,32 +579,39 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               const hls = new Hls({
                 enableWorker: true,
                 startPosition: -1,
-                // Ultra-fast start config for instant playback
-                maxBufferLength: 10, // Reduced for faster initial playback
-                maxMaxBufferLength: 300,
-                maxBufferSize: 15 * 1000 * 1000, // 15MB - smaller for faster start
+                // === COLD START OPTIMIZATIONS ===
+                // Minimal buffer for instant start
+                maxBufferLength: 8, // Even smaller for faster first frame
+                maxMaxBufferLength: 120,
+                maxBufferSize: 10 * 1000 * 1000, // 10MB - minimal for cold start
                 lowLatencyMode: true,
-                backBufferLength: 30, // Keep some back buffer for seeking
-                // Aggressive loading settings for instant start
-                maxLoadingDelay: 2, // Max delay before loading next segment
-                minAutoBitrate: 0, // Start with lowest quality for instant start
-                abrBandWidthFactor: 0.8, // Conservative bandwidth estimation
-                abrBandWidthUpFactor: 0.5, // Slower quality increase
+                backBufferLength: 20,
+                // === AGGRESSIVE LOADING FOR COLD START ===
+                maxLoadingDelay: 1, // 1s max delay - very aggressive
+                minAutoBitrate: 0,
+                abrBandWidthFactor: 0.7, // More conservative for cold start
+                abrBandWidthUpFactor: 0.4, // Slow quality increase
                 abrMaxWithRealBitrate: true,
-                startLevel: 0, // Always start with lowest quality for instant playback
+                startLevel: 0, // ALWAYS lowest quality for instant start
                 autoStartLoad: true,
-                // Fragment loading optimization
-                fragLoadingTimeOut: 10000, // 10s timeout for fragments
-                manifestLoadingTimeOut: 8000, // 8s timeout for manifest
-                levelLoadingTimeOut: 8000, // 8s timeout for level
-                fragLoadingMaxRetry: 4,
-                manifestLoadingMaxRetry: 3,
-                levelLoadingMaxRetry: 3,
+                // === FAST TIMEOUTS FOR COLD START ===
+                fragLoadingTimeOut: 15000, // 15s for slow cold CDN
+                manifestLoadingTimeOut: 12000, // 12s for manifest on cold CDN
+                levelLoadingTimeOut: 12000,
+                // === AGGRESSIVE RETRIES ===
+                fragLoadingMaxRetry: 6, // More retries for cold CDN
+                manifestLoadingMaxRetry: 5,
+                levelLoadingMaxRetry: 5,
+                fragLoadingRetryDelay: 500, // Retry quickly
+                manifestLoadingRetryDelay: 500,
+                levelLoadingRetryDelay: 500,
                 // Progressive loading
                 progressive: true,
-                // XHR setup
+                // === XHR OPTIMIZATIONS ===
                 xhrSetup: (xhr) => { 
                   xhr.withCredentials = false;
+                  // Set shorter timeout for initial requests
+                  xhr.timeout = 12000;
                 }
               });
               hls.attachMedia(video);
@@ -619,30 +687,35 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               const hls = new Hls({
                 enableWorker: true,
                 startPosition: Math.max(0, initialTime - 2),
-                autoStartLoad: true, // Auto start for instant playback
-                // Ultra-fast start config for instant playback
-                maxBufferLength: 10,
-                maxMaxBufferLength: 300,
-                maxBufferSize: 15 * 1000 * 1000, // 15MB
+                autoStartLoad: true,
+                // === COLD START OPTIMIZATIONS ===
+                maxBufferLength: 8,
+                maxMaxBufferLength: 120,
+                maxBufferSize: 10 * 1000 * 1000, // 10MB
                 lowLatencyMode: true,
-                backBufferLength: 30,
-                // Aggressive loading settings
-                maxLoadingDelay: 2,
+                backBufferLength: 20,
+                // === AGGRESSIVE LOADING FOR COLD START ===
+                maxLoadingDelay: 1,
                 minAutoBitrate: 0,
-                abrBandWidthFactor: 0.8,
-                abrBandWidthUpFactor: 0.5,
+                abrBandWidthFactor: 0.7,
+                abrBandWidthUpFactor: 0.4,
                 abrMaxWithRealBitrate: true,
-                startLevel: 0, // Start with lowest quality for instant playback
-                // Fragment loading optimization
-                fragLoadingTimeOut: 10000,
-                manifestLoadingTimeOut: 8000,
-                levelLoadingTimeOut: 8000,
-                fragLoadingMaxRetry: 4,
-                manifestLoadingMaxRetry: 3,
-                levelLoadingMaxRetry: 3,
+                startLevel: 0,
+                // === FAST TIMEOUTS FOR COLD START ===
+                fragLoadingTimeOut: 15000,
+                manifestLoadingTimeOut: 12000,
+                levelLoadingTimeOut: 12000,
+                // === AGGRESSIVE RETRIES ===
+                fragLoadingMaxRetry: 6,
+                manifestLoadingMaxRetry: 5,
+                levelLoadingMaxRetry: 5,
+                fragLoadingRetryDelay: 500,
+                manifestLoadingRetryDelay: 500,
+                levelLoadingRetryDelay: 500,
                 progressive: true,
                 xhrSetup: (xhr) => { 
                   xhr.withCredentials = false;
+                  xhr.timeout = 12000;
                 }
               });
               hls.attachMedia(video);
