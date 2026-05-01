@@ -518,15 +518,6 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               const hls = new Hls({
                 enableWorker: true,
                 startPosition: startPoint,
-                autoStartLoad: true, // SPEED UP: Enable autoStartLoad for the fastest start
-                capLevelToPlayerSize: true, // Automatically limits quality to player size
-                maxBufferLength: 30, // Keep buffer small for quick start
-                maxMaxBufferLength: 600,
-                maxBufferSize: 30 * 1000 * 1000, // 30MB
-                lowLatencyMode: true,
-                xhrSetup: (xhr) => { 
-                  xhr.withCredentials = false;
-                }
               });
               hls.attachMedia(video);
               hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.loadSource(videoToPlay));
@@ -535,11 +526,6 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 setQualityLevels(parsedLevels);
                 setLoadingProgress(50);
                 
-                // Seek explícito caso o initialTime seja provido 
-                if (startPoint > 0) {
-                   video.currentTime = startPoint;
-                }
-
                 if (video) {
                    video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); });
                 }
@@ -669,27 +655,6 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     const handleCanPlay = () => {
       setIsLoading(false);
       setLoadingProgress(100);
-      
-      // Handle "Continue Watching" seek - ONLY for non-HLS formats (HLS uses startPosition)
-      if (initialTime > 0 && !hasSeekedRef.current && !hlsRef.current) {
-        hasSeekedRef.current = true;
-        
-        const applySeek = () => {
-          if (!video) return;
-          try {
-            console.log("NetflixPlayer: Efetuando seek de retomada para:", initialTime);
-            video.currentTime = initialTime;
-          } catch (e) {
-            console.warn("Seek attempt failed", e);
-          }
-        };
-
-        // Múltiplas tentativas de seek para garantir que o navegador aceite a posição
-        applySeek();
-        setTimeout(applySeek, 100);
-        setTimeout(applySeek, 300);
-        setTimeout(applySeek, 600);
-      }
       
       if (video.paused) {
         // Only autoplay if we are host, OR if we are not in a room, OR if we are supposed to be playing.
@@ -909,17 +874,23 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
 
     if (isLoading) {
       safetyTimeout = setTimeout(() => {
-        if (isLoading && isPlaying) {
+        if (isLoading) {
+          console.warn("Safety timeout forcing exit from loading state");
           setIsLoading(false);
           setLoadingProgress(100);
+          setShowLogoOverlay(false);
+          
+          if (videoRef.current && videoRef.current.paused) {
+             videoRef.current.play().catch(e => console.warn("Safety timeout autoplay blocked", e));
+          }
         }
-      }, 12000);
+      }, 10000); // 10 seconds timeout for initial load
     }
 
     return () => {
       if (safetyTimeout) clearTimeout(safetyTimeout);
     };
-  }, [isLoading, isPlaying]);
+  }, [isLoading]);
 
   useEffect(() => {
     if (!videoRef.current || !movieId) return;
