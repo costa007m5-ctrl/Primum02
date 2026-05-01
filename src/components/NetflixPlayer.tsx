@@ -518,6 +518,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               const hls = new Hls({
                 enableWorker: true,
                 startPosition: -1,
+                autoStartLoad: false,
                 maxBufferLength: 30, // Small buffer size reduces memory and bandwidth impact for quick start
                 maxMaxBufferLength: 600,
                 maxBufferSize: 30 * 1000 * 1000, // 30MB
@@ -536,7 +537,12 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 }
                 setQualityLevels(parsedLevels);
                 setLoadingProgress(50);
-                video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
+                
+                hls.startLoad(-1);
+
+                setTimeout(() => {
+                  if (video) video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); });
+                }, 100);
               });
               hls.on(Hls.Events.FRAG_BUFFERED, () => {
                 setLoadingProgress(prev => Math.min(prev + 5, 90));
@@ -929,6 +935,11 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         hlsRef.current.destroy();
         hlsRef.current = null;
       }
+      try {
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+      } catch (e) {}
     };
   }, [activeSrc, sessionKey, movieId, playerMode]);
 
@@ -1555,11 +1566,11 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                <img 
                  src={backdropUrl.startsWith('http') ? backdropUrl : `https://image.tmdb.org/t/p/original/${backdropUrl}`}
                  alt=""
-                 className="w-full h-full object-cover opacity-30 scale-105"
+                 className="w-full h-full object-cover scale-105"
                  referrerPolicy="no-referrer"
                />
              )}
-             <div className="absolute inset-0 bg-[#080808]/80 backdrop-blur-md" />
+             <div className="absolute inset-0 bg-[#080808]/40" />
              <div className="absolute inset-0 bg-gradient-to-t from-[#080808] via-transparent to-[#080808]" />
           </div>
 
