@@ -10,7 +10,6 @@
   --animate-float: float 4s ease-in-out infinite;
   --animate-sheen: sheen 2s infinite;
   --animate-scan: scan 3s linear infinite;
-  --animate-fade-in: fadeIn 0.3s ease-out;
 
   @keyframes scan {
     0% { transform: translateY(-100%); }
@@ -25,21 +24,13 @@
   @keyframes sheen {
     100% { transform: translateX(100%) rotate(35deg); }
   }
-
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
 }
 
 @layer base {
   html, body {
     @apply overflow-x-hidden w-full relative;
+    /* Reduce root font size slightly on mobile for compactness */
     font-size: 14px;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    -webkit-tap-highlight-color: transparent;
-    overscroll-behavior-x: none;
   }
   @screen md {
     html, body {
@@ -50,26 +41,9 @@
     @apply bg-[#080808] text-white font-sans antialiased selection:bg-red-600/30;
   }
   
-  /* Otimização de cliques - remove delay de 300ms em mobile */
-  button, a, [role="button"], .cursor-pointer, [onclick] {
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-    cursor: pointer;
-  }
-  
+  /* Robustness: prevent layout shifts */
   img {
     content-visibility: auto;
-  }
-  
-  /* Scroll suave e otimizado */
-  .overflow-x-auto, .overflow-y-auto {
-    -webkit-overflow-scrolling: touch;
-  }
-  
-  video:fullscreen {
-    object-fit: contain;
-    width: 100%;
-    height: 100%;
   }
 }
 

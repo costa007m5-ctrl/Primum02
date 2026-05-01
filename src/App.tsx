@@ -4153,9 +4153,6 @@ export default function App() {
           <Routes location={state?.backgroundLocation || location}>
             <Route path="/" element={<Navigate to={`/menu${location.search}`} replace />} />
           
-          {/* Rota para deep linking de compartilhamento - redireciona para menu com os params */}
-          <Route path="/share" element={<Navigate to={`/menu${location.search}`} replace />} />
-          
           <Route path="/redefinirsenha" element={<Login initialMode="updatePassword" />} />
           <Route path="/confirmacao" element={<Login initialMode="login" />} />
           <Route path="/invite/:inviteId" element={

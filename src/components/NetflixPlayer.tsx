@@ -6,49 +6,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '../lib/supabase';
 
-// Preconnect to CDN domains for faster cold start
-const preconnectToDomain = (url: string) => {
-  try {
-    const urlObj = new URL(url);
-    const domain = urlObj.origin;
-    
-    // Check if link already exists
-    const existingLink = document.querySelector(`link[href="${domain}"][rel="preconnect"]`);
-    if (existingLink) return;
-    
-    // DNS Prefetch
-    const dnsPrefetch = document.createElement('link');
-    dnsPrefetch.rel = 'dns-prefetch';
-    dnsPrefetch.href = domain;
-    document.head.appendChild(dnsPrefetch);
-    
-    // Preconnect (includes DNS + TCP + TLS handshake)
-    const preconnect = document.createElement('link');
-    preconnect.rel = 'preconnect';
-    preconnect.href = domain;
-    preconnect.crossOrigin = 'anonymous';
-    document.head.appendChild(preconnect);
-  } catch (e) {
-    // Invalid URL, ignore
-  }
-};
-
-// Prefetch manifest for faster cold start
-const prefetchManifest = (url: string) => {
-  try {
-    // Use fetch with low priority to warm up the connection
-    fetch(url, { 
-      method: 'GET', 
-      mode: 'cors',
-      credentials: 'omit',
-      priority: 'low' as any,
-      signal: AbortSignal.timeout(5000) // 5s timeout
-    }).catch(() => {}); // Ignore errors, this is just warming
-  } catch (e) {
-    // Ignore
-  }
-};
-
 interface NetflixPlayerProps {
   src: string;
   title: string;
@@ -139,24 +96,6 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   const [activeSrc, setActiveSrc] = useState(parsedUrls.video_url);
   const [activeSubtitleUrl, setActiveSubtitleUrl] = useState(parsedUrls.subtitle_url);
   const [sessionKey, setSessionKey] = useState(() => Date.now());
-  
-  // Preconnect to CDN immediately on component mount for faster cold start
-  useEffect(() => {
-    const videoUrl = parsedUrls.video_url;
-    if (videoUrl) {
-      // Preconnect to all domains in the URL chain
-      preconnectToDomain(videoUrl);
-      
-      // Also preconnect to common KingX/Terabox CDN domains
-      preconnectToDomain('https://teradl.kingx.dev');
-      preconnectToDomain('https://player.kingx.dev');
-      
-      // Prefetch manifest if it's an m3u8 file
-      if (videoUrl.includes('.m3u8')) {
-        prefetchManifest(videoUrl);
-      }
-    }
-  }, [parsedUrls.video_url]);
   
   // Classificação indicativa local e estática para não quebrar dependências externas
   const ageRating = useMemo(() => {
@@ -520,31 +459,19 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   const recsTargetTimeRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
 
-  // Autoplay automatico quando o carregamento chega a 100%
   useEffect(() => {
     let timer: any;
-    
-    // Se chegou a 100% e ainda nao esta tocando, forcar play automaticamente
-    if (loadingProgress === 100 && !isPlaying && !hasStartedPlayedRef.current) {
-      const video = videoRef.current;
-      if (video && video.paused) {
-        // Tentar play automaticamente (sem mutar)
-        video.play().catch(e => {
-          console.warn("Autoplay blocked:", e);
-          // Se falhar, mostrar botao apos 2s
-          timer = setTimeout(() => {
-            if (!hasStartedPlayedRef.current) {
-              setShowStuckButton(true);
-            }
-          }, 2000);
-        });
-      }
-    }
-    
-    if (isPlaying) {
+    if (!hasStartedPlayedRef.current && !isPlaying && loadingProgress === 100) {
+      // (10 segundos a partir de chegar em 100% se ainda não estiver tocando)
+      timer = setTimeout(() => {
+        // Só mostra se ainda não tocou
+        if (!hasStartedPlayedRef.current) {
+          setShowStuckButton(true);
+        }
+      }, 10000);
+    } else {
       setShowStuckButton(false);
     }
-    
     return () => clearTimeout(timer);
   }, [isPlaying, loadingProgress]);
 
@@ -577,222 +504,157 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       if (!videoToPlay) return;
 
       const lowerSrc = videoToPlay.toLowerCase();
+      let startLoadTimer: NodeJS.Timeout;
 
       // CAMINHO 1: PLAYER DE INÍCIO (FRESH)
       const initFreshMode = () => {
         console.log("Player Independente: FRESH MODE");
 
-        if (!isMounted || !video) return;
-        setLoadingProgress(30);
-        if (lowerSrc.includes('.m3u8')) {
-          if (Hls.isSupported()) {
-            const hls = new Hls({
-              enableWorker: true,
-              startPosition: -1,
-              // === FAST START: buffer minimo para comecar rapido ===
-              maxBufferLength: 10, // Buffer pequeno para inicio rapido
-              maxMaxBufferLength: 600,
-              maxBufferSize: 60 * 1000 * 1000,
-              lowLatencyMode: true, // Ativado para inicio mais rapido
-              backBufferLength: 15,
-              // === INICIO RAPIDO COM QUALIDADE BAIXA ===
-              maxLoadingDelay: 2, // Menor tolerancia para comecar rapido
-              minAutoBitrate: 0,
-              abrBandWidthFactor: 0.7, // Mais conservador para comecar rapido
-              abrBandWidthUpFactor: 0.5,
-              abrMaxWithRealBitrate: true,
-              startLevel: 0, // Comecar com qualidade MAIS BAIXA para primeiro frame rapido
-              capLevelToPlayerSize: true, // Nao carregar resolucao maior que a tela
-              autoStartLoad: true,
-              // === TIMEOUTS GENEROSOS PARA CDN LENTO ===
-              fragLoadingTimeOut: 20000,
-              manifestLoadingTimeOut: 15000,
-              levelLoadingTimeOut: 15000,
-              // === RETRIES ===
-              fragLoadingMaxRetry: 6,
-              manifestLoadingMaxRetry: 4,
-              levelLoadingMaxRetry: 4,
-              fragLoadingRetryDelay: 500, // Retry mais rapido
-              manifestLoadingRetryDelay: 500,
-              levelLoadingRetryDelay: 500,
-              progressive: true,
-              xhrSetup: (xhr) => { 
-                xhr.withCredentials = false;
-                xhr.timeout = 20000;
-              }
-            });
-            hls.loadSource(videoToPlay); // Carregar source ANTES de attachMedia para iniciar download do manifest imediatamente
-            hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-              let parsedLevels = data.levels.map((l, i) => ({ id: i, height: l.height, bitrate: l.bitrate })).sort((a, b) => b.height - a.height);
-              if (maxQualityHeight) {
-                parsedLevels = parsedLevels.filter(l => l.height <= maxQualityHeight);
-                if (parsedLevels.length > 0) hls.autoLevelCapping = parsedLevels[0].id;
-              }
-              setQualityLevels(parsedLevels);
-              setLoadingProgress(60);
-              console.log("[v0] HLS Manifest parsed, levels:", parsedLevels.length);
-              // Tentar play imediatamente apos manifest
-              video.play().catch(() => {});
-            });
-            hls.on(Hls.Events.FRAG_BUFFERED, () => {
-              setLoadingProgress(90);
-              console.log("[v0] Fragment buffered, attempting play...");
-              video.play().catch(e => { 
-                console.warn("[v0] Autoplay blocked", e); 
-                setShowStuckButton(true);
+        startLoadTimer = setTimeout(() => {
+          if (!isMounted || !video) return;
+          setLoadingProgress(25); // Progresso inicial maior para feedback
+          if (lowerSrc.includes('.m3u8')) {
+            if (Hls.isSupported()) {
+              const hls = new Hls({
+                enableWorker: true,
+                startPosition: -1,
+                maxBufferLength: 30, // Small buffer size reduces memory and bandwidth impact for quick start
+                maxMaxBufferLength: 600,
+                maxBufferSize: 30 * 1000 * 1000, // 30MB
+                lowLatencyMode: true,
+                xhrSetup: (xhr) => { 
+                  xhr.withCredentials = false;
+                }
               });
-            });
-            hls.on(Hls.Events.LEVEL_LOADED, () => {
-              setLoadingProgress(prev => Math.max(prev, 70));
-            });
-            // Apos primeiros segundos, subir buffer para estabilidade
-            let bufferUpgraded = false;
-            hls.on(Hls.Events.FRAG_BUFFERED, () => {
-              if (!bufferUpgraded && video.currentTime > 2) {
-                bufferUpgraded = true;
-                hls.config.maxBufferLength = 30;
-                hls.config.lowLatencyMode = false;
-                console.log("[v0] Buffer upgraded for stability");
-              }
-            });
-            hls.on(Hls.Events.ERROR, (event, data) => {
-              console.warn("HLS Error:", data);
-              if (data.fatal) {
-                 if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                   if (retryCountRef.current < 5) {
-                     retryCountRef.current++;
-                     hls.startLoad();
-                   } else {
-                     setError({ message: "Falha na conexão com o servidor. Tente outro player.", type: 'network' });
-                     setIsLoading(false);
+              hls.attachMedia(video);
+              hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.loadSource(videoToPlay));
+              hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+                let parsedLevels = data.levels.map((l, i) => ({ id: i, height: l.height, bitrate: l.bitrate })).sort((a, b) => b.height - a.height);
+                if (maxQualityHeight) {
+                  parsedLevels = parsedLevels.filter(l => l.height <= maxQualityHeight);
+                  if (parsedLevels.length > 0) hls.autoLevelCapping = parsedLevels[0].id;
+                }
+                setQualityLevels(parsedLevels);
+                setLoadingProgress(50);
+                video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
+              });
+              hls.on(Hls.Events.FRAG_BUFFERED, () => {
+                setLoadingProgress(prev => Math.min(prev + 5, 90));
+              });
+              hls.on(Hls.Events.ERROR, (event, data) => {
+                console.warn("HLS Error:", data);
+                if (data.fatal) {
+                   if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                     if (retryCountRef.current < 5) {
+                       retryCountRef.current++;
+                       setLoadingProgress(prev => Math.max(prev, 15));
+                       hls.startLoad();
+                     } else {
+                       setError({ message: "Falha na conexão com o servidor. Tente outro player.", type: 'network' });
+                       setIsLoading(false);
+                     }
                    }
-                 }
-                 else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
-                 else {
-                   setError({ message: "Erro fatal de carregamento. Verifique sua rede.", type: 'network' });
-                 }
-              }
-            });
-            hlsRef.current = hls;
-          } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                   else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+                   else {
+                     setError({ message: "Erro fatal de carregamento. Verifique sua rede.", type: 'network' });
+                   }
+                }
+              });
+              hlsRef.current = hls;
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+              // Safari Native HLS Fallback
+              video.src = videoToPlay;
+              video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
+            }
+          } else {
             video.src = videoToPlay;
-            video.play().catch(e => { console.warn("[v0] Safari autoplay blocked", e); setShowStuckButton(true); setShowControls(true); });
+            video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
           }
-        } else {
-          video.src = videoToPlay;
-          video.load();
-          video.play().catch(e => { console.warn("[v0] Direct video autoplay blocked", e); setShowStuckButton(true); setShowControls(true); });
-        }
+        }, 0);
       };
 
       // CAMINHO 2: PLAYER DE RETOMADA (RESUME)
       const initResumeMode = () => {
         console.log("Player Independente: RESUME MODE", initialTime);
 
-        if (!isMounted || !video) return;
-        setLoadingProgress(30);
-        if (lowerSrc.includes('.m3u8')) {
-          if (Hls.isSupported()) {
-            const hls = new Hls({
-              enableWorker: true,
-              startPosition: Math.max(0, initialTime - 2),
-              autoStartLoad: true,
-              // === FAST START para resume ===
-              maxBufferLength: 10,
-              maxMaxBufferLength: 600,
-              maxBufferSize: 60 * 1000 * 1000,
-              lowLatencyMode: true,
-              backBufferLength: 15,
-              maxLoadingDelay: 2,
-              minAutoBitrate: 0,
-              abrBandWidthFactor: 0.7,
-              abrBandWidthUpFactor: 0.5,
-              abrMaxWithRealBitrate: true,
-              startLevel: 0, // Qualidade baixa para comecar rapido
-              capLevelToPlayerSize: true,
-              fragLoadingTimeOut: 20000,
-              manifestLoadingTimeOut: 15000,
-              levelLoadingTimeOut: 15000,
-              fragLoadingMaxRetry: 6,
-              manifestLoadingMaxRetry: 4,
-              levelLoadingMaxRetry: 4,
-              fragLoadingRetryDelay: 500,
-              manifestLoadingRetryDelay: 500,
-              levelLoadingRetryDelay: 500,
-              progressive: true,
-              xhrSetup: (xhr) => { 
-                xhr.withCredentials = false;
-                xhr.timeout = 20000;
-              }
-            });
-            hls.loadSource(videoToPlay);
-            hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-              let parsedLevels = data.levels.map((l, i) => ({ id: i, height: l.height, bitrate: l.bitrate })).sort((a, b) => b.height - a.height);
-              if (maxQualityHeight) {
-                parsedLevels = parsedLevels.filter(l => l.height <= maxQualityHeight);
-                if (parsedLevels.length > 0) hls.autoLevelCapping = parsedLevels[0].id;
-              }
-              setQualityLevels(parsedLevels);
-              setLoadingProgress(60);
-              console.log("[v0] HLS Resume: Manifest parsed");
-              video.play().catch(() => {});
-            });
-            hls.on(Hls.Events.FRAG_BUFFERED, () => {
-              setLoadingProgress(90);
-              console.log("[v0] HLS Resume: Fragment buffered, attempting play...");
-              video.play().catch(e => { 
-                console.warn("[v0] Autoplay blocked", e); 
-                setShowStuckButton(true);
+        startLoadTimer = setTimeout(() => {
+          if (!isMounted || !video) return;
+          setLoadingProgress(25); // Progresso inicial imediato
+          if (lowerSrc.includes('.m3u8')) {
+            if (Hls.isSupported()) {
+              const hls = new Hls({
+                enableWorker: true,
+                startPosition: Math.max(0, initialTime - 2),
+                autoStartLoad: false, // Don't download first segment!
+                maxBufferLength: 30,
+                maxMaxBufferLength: 600,
+                maxBufferSize: 30 * 1000 * 1000,
+                lowLatencyMode: true,
+                xhrSetup: (xhr) => { 
+                  xhr.withCredentials = false;
+                }
               });
-            });
-            hls.on(Hls.Events.LEVEL_LOADED, () => {
-              setLoadingProgress(prev => Math.max(prev, 70));
-            });
-            // Upgrade buffer apos inicio
-            let bufferUpgraded = false;
-            hls.on(Hls.Events.FRAG_BUFFERED, () => {
-              if (!bufferUpgraded && video.currentTime > 2) {
-                bufferUpgraded = true;
-                hls.config.maxBufferLength = 30;
-                hls.config.lowLatencyMode = false;
-              }
-            });
-            hls.on(Hls.Events.ERROR, (event, data) => {
-              console.warn("HLS Error:", data);
-              if (data.fatal) {
-                 if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                    if (retryCountRef.current < 5) {
-                      retryCountRef.current++;
-                      hls.startLoad();
-                    } else {
-                      setError({ message: "Falha na conexão com o servidor. Tente outro player.", type: 'network' });
-                      setIsLoading(false);
-                    }
-                 }
-                 else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
-                 else {
-                    setError({ message: "Erro fatal de carregamento. Verifique sua rede.", type: 'network' });
-                 }
-              }
-            });
-            hlsRef.current = hls;
-          } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-              video.src = videoToPlay;
-              video.addEventListener('loadedmetadata', () => {
-                  video.currentTime = initialTime;
-                  video.play().catch(e => { console.warn("[v0] Safari resume autoplay blocked", e); setShowStuckButton(true); setShowControls(true); });
-              }, { once: true });
+              hls.attachMedia(video);
+              hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+                hls.loadSource(videoToPlay);
+              });
+              hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+                let parsedLevels = data.levels.map((l, i) => ({ id: i, height: l.height, bitrate: l.bitrate })).sort((a, b) => b.height - a.height);
+                if (maxQualityHeight) {
+                  parsedLevels = parsedLevels.filter(l => l.height <= maxQualityHeight);
+                  if (parsedLevels.length > 0) hls.autoLevelCapping = parsedLevels[0].id;
+                }
+                setQualityLevels(parsedLevels);
+                setLoadingProgress(50);
+                
+                if (initialTime > 0) {
+                  video.currentTime = Math.max(0, initialTime - 2);
+                  hls.startLoad(Math.max(0, initialTime - 2));
+                } else {
+                  hls.startLoad();
+                }
+                setTimeout(() => {
+                  if (video) video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); });
+                }, 100);
+              });
+              hls.on(Hls.Events.FRAG_BUFFERED, () => {
+                setLoadingProgress(prev => Math.min(prev + 5, 90));
+              });
+              hls.on(Hls.Events.ERROR, (event, data) => {
+                console.warn("HLS Error:", data);
+                if (data.fatal) {
+                   if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                      if (retryCountRef.current < 5) {
+                        retryCountRef.current++;
+                        setLoadingProgress(prev => Math.max(prev, 15));
+                        hls.startLoad();
+                      } else {
+                        setError({ message: "Falha na conexão com o servidor. Tente outro player.", type: 'network' });
+                        setIsLoading(false);
+                      }
+                   }
+                   else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+                   else {
+                      setError({ message: "Erro fatal de carregamento. Verifique sua rede.", type: 'network' });
+                   }
+                }
+              });
+              hlsRef.current = hls;
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = videoToPlay;
+                video.addEventListener('loadedmetadata', () => {
+                    video.currentTime = initialTime;
+                    video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); });
+                }, { once: true });
+            }
+          } else {
+            video.src = videoToPlay;
+            video.addEventListener('loadedmetadata', () => {
+                video.currentTime = initialTime;
+                video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
+            }, { once: true });
           }
-        } else {
-          video.src = videoToPlay;
-          video.load();
-          video.addEventListener('loadedmetadata', () => {
-              video.currentTime = initialTime;
-              video.play().catch(e => { console.warn("[v0] Direct resume autoplay blocked", e); setShowStuckButton(true); setShowControls(true); });
-          }, { once: true });
-        }
+        }, 0);
       };
 
       // EXECUÇÃO INDEPENDENTE
@@ -821,7 +683,13 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       const didSeek = Math.abs(time - lastTimeRef.current) > 2;
       lastTimeRef.current = time;
 
-      // Loading is handled by handlePlaying event - removed premature hiding
+      if (time > 0.1 && video.readyState >= 3 && !video.seeking) {
+        if (isLoading) {
+          setIsLoading(false);
+          setLoadingProgress(100);
+          setShowLogoOverlay(false);
+        }
+      }
 
       if (video.duration > 0) {
         const timeFromEnd = video.duration - time;
@@ -876,10 +744,8 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     };
 
     const handleCanPlay = () => {
-      console.log("[v0] Video can play, readyState:", videoRef.current?.readyState);
-      // Don't hide loading here - wait for actual playback in handlePlaying
-      setLoadingProgress(95);
-      setIsBuffering(false);
+      setIsLoading(false);
+      setLoadingProgress(100);
       
       // Handle "Continue Watching" seek - ONLY for non-HLS formats (HLS uses startPosition)
       if (initialTime > 0 && !hasSeekedRef.current && !hlsRef.current) {
@@ -930,18 +796,16 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     };
 
     const handleWaiting = () => {
-      // Evita mostrar loading se já houver buffer suficiente (reduzido para melhor responsividade)
+      // Evita mostrar loading se já houver buffer suficiente
       if (video.buffered.length > 0) {
         const bufferedEnd = video.buffered.end(video.buffered.length - 1);
-        if (bufferedEnd > video.currentTime + 0.5) return; // Reduced threshold for smoother playback
+        if (bufferedEnd > video.currentTime + 1.5) return;
       }
       setIsBuffering(true);
     };
 
     const handlePlaying = () => {
-      console.log("[v0] Video is now playing!");
       hasStartedPlayedRef.current = true;
-      // ONLY hide loading when video actually starts playing
       setIsLoading(false);
       setIsBuffering(false);
       setIsPlaying(true);
@@ -951,7 +815,6 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       setError(null);
       retryCountRef.current = 0;
       
-      // Forçar landscape quando começa a reproduzir
       lockOrientation();
 
       if (isHost && channelRef.current && roomId && video) {
@@ -961,6 +824,17 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
           payload: { type: 'play', sender_id: clientIdRef.current }
         }).catch(() => {});
       }
+      
+      const lock = async () => {
+        try {
+          if (screen.orientation && (screen.orientation as any).lock) {
+            await (screen.orientation as any).lock('landscape').catch(() => {});
+            setIsLandscape(true);
+          }
+          setMedianOrientation('landscape');
+        } catch (e) {}
+      };
+      lock();
     };
 
     const handleProgress = () => {
@@ -969,10 +843,16 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         const progress = Math.min(100, Math.round((bufferedEnd / video.duration) * 100));
         setBufferedPercentage(progress);
         
-        // Update loading progress but don't hide loading screen
-        // Let handlePlaying be the only place that hides loading
-        if (isLoading) {
-           setLoadingProgress(prev => Math.max(prev, Math.min(progress, 95)));
+        if (!isLoading) {
+           setLoadingProgress(100);
+        } else {
+           setLoadingProgress(prev => Math.max(prev, progress));
+        }
+        
+        // Se já temos qualquer buffer (0.3s), libera o player instantaneamente
+        if (bufferedEnd > (video.currentTime + 0.3) && isLoading) {
+           setIsLoading(false);
+           setShowLogoOverlay(false);
         }
       }
     };
@@ -1022,44 +902,31 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       setIsLoading(false);
     };
 
-video.addEventListener('timeupdate', handleTimeUpdate);
-  video.addEventListener('loadedmetadata', handleLoadedMetadata);
-  video.addEventListener('loadeddata', handleCanPlay); // Early trigger - data loaded
-  video.addEventListener('canplay', handleCanPlay);
-  video.addEventListener('canplaythrough', handleCanPlay); // Also listen for canplaythrough for instant start
-  video.addEventListener('seeked', () => setIsBuffering(false));
-  video.addEventListener('waiting', handleWaiting);
-  video.addEventListener('playing', handlePlaying);
-  video.addEventListener('pause', handlePause);
-  video.addEventListener('progress', handleProgress);
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('seeked', () => setIsBuffering(false));
+    video.addEventListener('waiting', handleWaiting);
+    video.addEventListener('playing', handlePlaying);
+    video.addEventListener('pause', handlePause);
+    video.addEventListener('progress', handleProgress);
     video.addEventListener('stalled', handleStalled);
     video.addEventListener('error', handleError);
 
-  let isMounted = true;
-  const cleanupInit = initPlayer();
-  
-  // Show "Stuck?" button after 15 seconds if video hasn't started
-  const stuckTimer = setTimeout(() => {
-    if (isMounted && !hasStartedPlayedRef.current) {
-      console.log("[v0] Video not playing after 15s, showing stuck button");
-      setShowStuckButton(true);
-    }
-  }, 15000);
-  
-  return () => {
-    isMounted = false;
-    clearTimeout(stuckTimer);
+    let isMounted = true;
+    const cleanupInit = initPlayer();
+
+    return () => {
+      isMounted = false;
       if (cleanupInit) cleanupInit();
-video.removeEventListener('timeupdate', handleTimeUpdate);
-  video.removeEventListener('loadedmetadata', handleLoadedMetadata);
-  video.removeEventListener('loadeddata', handleCanPlay);
-  video.removeEventListener('canplay', handleCanPlay);
-  video.removeEventListener('canplaythrough', handleCanPlay);
-  video.removeEventListener('seeked', () => setIsBuffering(false));
-  video.removeEventListener('waiting', handleWaiting);
-  video.removeEventListener('playing', handlePlaying);
-  video.removeEventListener('pause', handlePause);
-  video.removeEventListener('progress', handleProgress);
+      video.removeEventListener('timeupdate', handleTimeUpdate);
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('seeked', () => setIsBuffering(false));
+      video.removeEventListener('waiting', handleWaiting);
+      video.removeEventListener('playing', handlePlaying);
+      video.removeEventListener('pause', handlePause);
+      video.removeEventListener('progress', handleProgress);
       video.removeEventListener('stalled', handleStalled);
       video.removeEventListener('error', handleError);
       if (hlsRef.current) {
@@ -1070,68 +937,41 @@ video.removeEventListener('timeupdate', handleTimeUpdate);
   }, [activeSrc, sessionKey, movieId, playerMode]);
 
   const lockOrientation = useCallback(async () => {
+    if (!autoRotate) return;
     try {
-      // Lock para landscape (sem forcar fullscreen)
       if (screen.orientation && (screen.orientation as any).lock) {
-        try {
-          await (screen.orientation as any).lock('landscape');
-        } catch (e) {
-          try {
-            await (screen.orientation as any).lock('landscape-primary');
-          } catch (e2) {}
-        }
+        await (screen.orientation as any).lock('landscape').catch(() => {});
       }
-      setIsLandscape(true);
     } catch (e) {
-      // Orientation lock nao suportado - nao e erro critico
+      console.warn("Orientation lock not supported", e);
     }
-    
-    // Tentar Median/GoNative
     setMedianOrientation('landscape');
-  }, []);
+  }, [autoRotate]);
 
-  // Funcao para desbloquear orientacao ao sair
-  const unlockOrientation = useCallback(async () => {
-    try {
-      if (screen.orientation && screen.orientation.unlock) {
-        screen.orientation.unlock();
-      }
-      setIsLandscape(false);
-    } catch (e) {}
-    
-    // Median/GoNative
-    setMedianOrientation('portrait');
-  }, []);
-
-  // Monitorar fullscreen e rotacao
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     
-    // Tentar rotacao landscape apenas (sem fullscreen forcado)
-    if (autoRotate) {
-      lockOrientation();
-    }
+    // Auto-rotação para paisagem em dispositivos móveis
+    lockOrientation();
 
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      unlockOrientation();
     };
-  }, [autoRotate, lockOrientation, unlockOrientation]);
+  }, [autoRotate, lockOrientation]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isLoading && loadingProgress >= 20 && loadingProgress < 100) {
+    if (isLoading && loadingProgress >= 20 && loadingProgress < 90) {
       interval = setInterval(() => {
         setLoadingProgress(prev => {
-          if (prev < 70) return prev + 8; // Very fast initial progress
-          if (prev < 90) return prev + 5;
-          if (prev < 100) return prev + 2; // Keep going to 100
-          return 100;
+          if (prev < 40) return prev + 2;
+          if (prev < 80) return prev + 1;
+          return prev;
         });
-      }, 200) as any; // Much faster interval (200ms)
+      }, 800) as any;
     }
     return () => clearInterval(interval);
   }, [isLoading, loadingProgress]);
@@ -1140,20 +980,18 @@ video.removeEventListener('timeupdate', handleTimeUpdate);
     let safetyTimeout: NodeJS.Timeout;
 
     if (isLoading) {
-      // Force hide loading after 3 seconds regardless of play state
       safetyTimeout = setTimeout(() => {
-        if (isLoading) {
+        if (isLoading && isPlaying) {
           setIsLoading(false);
           setLoadingProgress(100);
-          setShowLogoOverlay(false);
         }
-      }, 3000); // 3s max loading time - instant feel
+      }, 12000);
     }
 
     return () => {
       if (safetyTimeout) clearTimeout(safetyTimeout);
     };
-  }, [isLoading]);
+  }, [isLoading, isPlaying]);
 
   useEffect(() => {
     if (!videoRef.current || !movieId) return;
@@ -1177,13 +1015,13 @@ video.removeEventListener('timeupdate', handleTimeUpdate);
   }, [movieId]);
 
   useEffect(() => {
-  let timer: any;
-  if (isLoading) {
-  timer = setTimeout(() => {
-  setShowStuckButton(true);
-  }, 5000); // 5s para mostrar botão de "Reparar" (ainda mais rápido)
-  }
-  return () => clearTimeout(timer);
+    let timer: any;
+    if (isLoading) {
+      timer = setTimeout(() => {
+        setShowStuckButton(true);
+      }, 15000); // 15s para mostrar botão de "Reparar"
+    }
+    return () => clearTimeout(timer);
   }, [isLoading]);
 
   const togglePlay = () => {
@@ -1640,7 +1478,6 @@ video.removeEventListener('timeupdate', handleTimeUpdate);
         className={`relative z-[10] w-full h-full transition-all duration-700 ${objectFit === 'cover' ? 'object-cover' : 'object-contain'} ${(showAutoNext || showRecsOverlay) ? 'scale-[0.7] -translate-x-[15%] origin-center' : ''}`}
         autoPlay
         playsInline
-        preload="auto"
         crossOrigin="anonymous"
         webkit-playsinline="true"
         x-webkit-airplay="allow"

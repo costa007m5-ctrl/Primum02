@@ -6,72 +6,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import tmdb, { requests, getMovieLogo } from '../services/tmdb';
 import VideoPlayer from './VideoPlayer';
 
-// Preconnect to video CDN domains for faster cold start
-const preconnectForVideo = (videoUrl: string) => {
-  if (!videoUrl) return;
-  
-  try {
-    // Extract all domains from the URL (handles nested URLs like KingX)
-    const domains = new Set<string>();
-    
-    // Add main domain
-    try {
-      domains.add(new URL(videoUrl).origin);
-    } catch {}
-    
-    // Extract nested video_url domain
-    if (videoUrl.includes('video_url=')) {
-      try {
-        const params = new URLSearchParams(videoUrl.split('#')[1] || videoUrl.split('?')[1] || '');
-        const nestedUrl = params.get('video_url');
-        if (nestedUrl) {
-          const decoded = decodeURIComponent(nestedUrl);
-          domains.add(new URL(decoded).origin);
-        }
-      } catch {}
-    }
-    
-    // Add common KingX/Terabox domains
-    domains.add('https://teradl.kingx.dev');
-    domains.add('https://player.kingx.dev');
-    
-    // Create preconnect links
-    domains.forEach(domain => {
-      if (document.querySelector(`link[href="${domain}"][rel="preconnect"]`)) return;
-      
-      const dns = document.createElement('link');
-      dns.rel = 'dns-prefetch';
-      dns.href = domain;
-      document.head.appendChild(dns);
-      
-      const preconnect = document.createElement('link');
-      preconnect.rel = 'preconnect';
-      preconnect.href = domain;
-      preconnect.crossOrigin = 'anonymous';
-      document.head.appendChild(preconnect);
-    });
-    
-    // Prefetch manifest for HLS
-    if (videoUrl.includes('.m3u8') || videoUrl.includes('video_url=')) {
-      let manifestUrl = videoUrl;
-      if (videoUrl.includes('video_url=')) {
-        try {
-          const params = new URLSearchParams(videoUrl.split('#')[1] || videoUrl.split('?')[1] || '');
-          manifestUrl = decodeURIComponent(params.get('video_url') || videoUrl);
-        } catch {}
-      }
-      
-      // Low-priority fetch to warm connection
-      fetch(manifestUrl, { 
-        method: 'HEAD', // Just check if accessible, don't download
-        mode: 'cors',
-        credentials: 'omit',
-        signal: AbortSignal.timeout(3000)
-      }).catch(() => {});
-    }
-  } catch {}
-};
-
 interface MovieDetailsModalProps {
   movie: Movie;
   similarMovies: Movie[];
@@ -296,12 +230,14 @@ const MovieDetailsModal = React.memo(({
       setSelectedSeason(seasons[0]);
     }
     
-    // COLD START OPTIMIZATION: Preconnect to video CDN immediately
-    // This warms up DNS, TCP, and TLS connections before user clicks play
-    if (movie.videoUrl) {
-      preconnectForVideo(movie.videoUrl);
-      setShowVideo(true);
-    }
+    // Delay video start minimal to allow smooth modal opening
+    const timer = setTimeout(() => {
+      if (movie.videoUrl) {
+        setShowVideo(true);
+      }
+    }, 50);
+    
+    return () => clearTimeout(timer);
   }, [movie]);
 
   const backgroundUrl = movie.backdrop_path?.startsWith('http') 

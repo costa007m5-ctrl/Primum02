@@ -313,83 +313,95 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
     };
   }, []);
 
-  // Detectar fonte e definir estilo automaticamente - instant detection
+  // Detectar fonte e definir estilo automaticamente
   useEffect(() => {
     const url = movie.videoUrl || '';
     const isDrive = url.includes('drive.google.com');
+    const isKingXUrl = url.includes('kingx.dev') || url.includes('teradl.kingx.dev');
+    const isTera = url.includes('terabox') || url.includes('teradl') || url.includes('kingx');
 
     if (isDrive) {
       setDrivePlayMethod('iframe');
-      setPlayerStyle('standard');
-    } else {
-      // Use Netflix Player for all other sources (KingX, Terabox, HLS, etc.)
-      // This provides instant playback with optimized HLS.js settings
+      setPlayerStyle('standard'); // Usar o fluxo padrão que renderiza o iframe no final
+      requestLandscape();
+    } else if (isKingXUrl) {
       setPlayerStyle('netflix');
+      requestLandscape();
+    } else if (isTera) {
+      setPlayerStyle('netflix');
+      requestLandscape();
+    } else {
+      // Outros links vão para o Netflix Player por padrão para melhor compatibilidade
+      setPlayerStyle('netflix');
+      requestLandscape();
     }
-    // Request landscape immediately after style is set
-    requestLandscape();
   }, [movie.videoUrl]);
-
-  const isMedianApp = () => {
-    if (typeof navigator === 'undefined') return false;
-    const ua = navigator.userAgent.toLowerCase();
-    return ua.includes('median') || ua.includes('gonative');
-  };
-
-  const setMedianOrientation = (orientation: 'landscape' | 'portrait' | 'unlocked') => {
-    try {
-      if (typeof window !== 'undefined' && isMedianApp()) {
-        if ((window as any).median) {
-          (window as any).median.screen.setOrientation({orientation});
-        } else if ((window as any).gonative) {
-          (window as any).gonative.screen.setOrientation({orientation});
-        } else {
-          window.location.href = `median://screen/setOrientation?orientation=${orientation}`;
-        }
-      }
-    } catch(e) {}
-  };
 
   const requestLandscape = async () => {
     try {
-      // Apenas lock de orientacao, sem forcar fullscreen
-      if (screen.orientation && (screen.orientation as any).lock) {
-        try {
-          await (screen.orientation as any).lock('landscape');
-        } catch (e) {
-          try {
-            await (screen.orientation as any).lock('landscape-primary');
-          } catch (e2) {}
+      const container = containerRef.current;
+      if (!container) return;
+
+      // Try to enter fullscreen first as it's often required for orientation lock
+      if (!document.fullscreenElement) {
+        if (screenfull.isEnabled) {
+          await screenfull.request(container).catch(() => {});
+        } else if ((container as any).webkitRequestFullscreen) {
+          await (container as any).webkitRequestFullscreen().catch(() => {});
+        } else if (container.requestFullscreen) {
+          await container.requestFullscreen().catch(() => {});
         }
       }
 
-      // Median/GoNative
-      setMedianOrientation('landscape');
+      // Lock orientation with multiple attempts and fallbacks
+      const lock = async () => {
+        if (screen.orientation && (screen.orientation as any).lock) {
+          try {
+            await (screen.orientation as any).lock('landscape');
+            return true;
+          } catch (e) {
+            try {
+              await (screen.orientation as any).lock('landscape-primary');
+              return true;
+            } catch (e2) {
+              return false;
+            }
+          }
+        }
+        return false;
+      };
+
+      // Try immediately
+      await lock();
+
+      // Small delay to ensure fullscreen transition is stable, then try again
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await lock();
+      
+      // One more try after 1.5s for slow devices
+      setTimeout(lock, 1500);
+
+      // iOS specific: force landscape via webkitEnterFullscreen on the video element if available
+      if (videoRef.current && (videoRef.current as any).webkitEnterFullscreen) {
+        try {
+          (videoRef.current as any).webkitEnterFullscreen();
+        } catch (e) {}
+      }
 
       setOrientationKey(prev => prev + 1);
     } catch (error) {
-      // Nao e erro critico
+      console.warn("Erro ao configurar modo paisagem:", error);
     }
-  };
-
-  const exitLandscape = async () => {
-    try {
-      if (screen.orientation && screen.orientation.unlock) {
-        screen.orientation.unlock();
-      }
-      // Sair do fullscreen se estiver
-      if (screenfull.isEnabled && screenfull.isFullscreen) {
-        await screenfull.exit().catch(() => {});
-      }
-      // Median/GoNative
-      setMedianOrientation('portrait');
-    } catch (e) {}
   };
 
   useEffect(() => {
     if (playerStyle !== null) {
-      // Immediate attempt without delay
+      // Immediate attempt
       requestLandscape();
+      
+      // Follow-up attempt after a short delay to catch any race conditions
+      const timer = setTimeout(requestLandscape, 1000);
+      return () => clearTimeout(timer);
     }
   }, [playerStyle]);
 
@@ -451,7 +463,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
           title={displayTitle}
           backdropUrl={movie.backdrop_path}
           logoUrl={movieLogo || undefined}
-          onClose={() => { exitLandscape(); onClose(); }}
+          onClose={onClose}
           initialTime={initialTime ?? movie.last_position ?? 0}
           hasNextEpisode={hasNextEpisode}
           recommendations={recommendations}
@@ -504,7 +516,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
       <div className="fixed inset-0 z-[200] bg-black">
         <div className="absolute top-6 left-6 z-[210] flex items-center gap-4">
           <button 
-            onClick={() => { exitLandscape(); onClose(); }}
+            onClick={onClose}
             className="p-3 bg-black/60 backdrop-blur-md rounded-full text-white hover:scale-110 transition-transform"
           >
             <X size={24} />
@@ -550,7 +562,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
         <div className="absolute top-0 left-0 right-0 p-4 md:p-6 flex items-center justify-between z-50 bg-gradient-to-b from-black/90 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300">
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => { exitLandscape(); onClose(); }}
+              onClick={onClose}
               className="text-white hover:scale-110 transition-transform p-2 bg-black/60 rounded-full backdrop-blur-md"
             >
               <X size={28} />

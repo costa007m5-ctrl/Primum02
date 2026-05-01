@@ -1,8 +1,0 @@
-[{
-  "relation": ["delegate_permission/common.handle_all_urls"],
-  "target": {
-    "namespace": "android_app",
-    "package_name": "app.vercel.primum02.twa",
-    "sha256_cert_fingerprints": ["38:23:B4:BF:47:A1:1E:77:B4:95:C3:7F:67:F0:9B:5D:56:2C:DA:EA:E9:71:4E:F5:42:28:F5:ED:C8:52:21:C7"]
-  }
-}]
