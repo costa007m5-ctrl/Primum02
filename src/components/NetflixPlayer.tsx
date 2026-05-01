@@ -520,21 +520,82 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   const recsTargetTimeRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
 
+  // Autoplay automatico quando o carregamento chega a 100%
   useEffect(() => {
     let timer: any;
-  if (!hasStartedPlayedRef.current && !isPlaying && loadingProgress === 100) {
-  // (4 segundos a partir de chegar em 100% se ainda não estiver tocando)
-  timer = setTimeout(() => {
-  // Só mostra se ainda não tocou
-  if (!hasStartedPlayedRef.current) {
-  setShowStuckButton(true);
-  }
-  }, 4000);
-    } else {
+    let retryTimer: any;
+    
+    // Funcao inline para rotacionar tela (evita dependencia circular)
+    const tryLockLandscape = async () => {
+      try {
+        if (containerRef.current && screenfull.isEnabled && !screenfull.isFullscreen) {
+          await screenfull.request(containerRef.current).catch(() => {});
+        }
+        if (screen.orientation && (screen.orientation as any).lock) {
+          await (screen.orientation as any).lock('landscape').catch(() => {});
+        }
+        setMedianOrientation('landscape');
+        setIsLandscape(true);
+      } catch (e) {}
+    };
+    
+    // Se chegou a 100% e ainda nao esta tocando, forcar play automaticamente
+    if (loadingProgress === 100 && !isPlaying && !hasStartedPlayedRef.current) {
+      const video = videoRef.current;
+      if (video && video.paused) {
+        // Garantir muted para permitir autoplay sem interacao
+        const attemptAutoplay = async () => {
+          try {
+            // Primeiro, tentar com som
+            await video.play();
+            tryLockLandscape(); // Forcar landscape quando comecar a tocar
+          } catch (e) {
+            console.warn("Autoplay blocked, trying muted:", e);
+            // Se falhar, tentar muted (browsers bloqueiam autoplay com som)
+            video.muted = true;
+            setIsMuted(true);
+            try {
+              await video.play();
+              tryLockLandscape();
+              // Tentar desmutar apos 500ms
+              setTimeout(() => {
+                if (videoRef.current && !isBackgroundMode) {
+                  videoRef.current.muted = false;
+                  setIsMuted(false);
+                }
+              }, 500);
+            } catch (e2) {
+              console.warn("Autoplay muted also blocked:", e2);
+              // Se mesmo muted falhar, mostrar botao
+              timer = setTimeout(() => {
+                if (!hasStartedPlayedRef.current) {
+                  setShowStuckButton(true);
+                }
+              }, 1000);
+            }
+          }
+        };
+        
+        attemptAutoplay();
+        
+        // Retry apos 500ms caso nao tenha comecado
+        retryTimer = setTimeout(() => {
+          if (!hasStartedPlayedRef.current && video.paused) {
+            attemptAutoplay();
+          }
+        }, 500);
+      }
+    }
+    
+    if (isPlaying) {
       setShowStuckButton(false);
     }
-    return () => clearTimeout(timer);
-  }, [isPlaying, loadingProgress]);
+    
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(retryTimer);
+    };
+  }, [isPlaying, loadingProgress, isBackgroundMode]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -949,6 +1010,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       setError(null);
       retryCountRef.current = 0;
       
+      // Forçar landscape quando começa a reproduzir
       lockOrientation();
 
       if (isHost && channelRef.current && roomId && video) {
@@ -958,17 +1020,6 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
           payload: { type: 'play', sender_id: clientIdRef.current }
         }).catch(() => {});
       }
-      
-      const lock = async () => {
-        try {
-          if (screen.orientation && (screen.orientation as any).lock) {
-            await (screen.orientation as any).lock('landscape').catch(() => {});
-            setIsLandscape(true);
-          }
-          setMedianOrientation('landscape');
-        } catch (e) {}
-      };
-      lock();
     };
 
     const handleProgress = () => {
@@ -1075,30 +1126,89 @@ video.removeEventListener('timeupdate', handleTimeUpdate);
   }, [activeSrc, sessionKey, movieId, playerMode]);
 
   const lockOrientation = useCallback(async () => {
-    if (!autoRotate) return;
     try {
-      if (screen.orientation && (screen.orientation as any).lock) {
-        await (screen.orientation as any).lock('landscape').catch(() => {});
+      // Tentar fullscreen primeiro (necessário para lock funcionar em muitos navegadores)
+      if (containerRef.current && screenfull.isEnabled && !screenfull.isFullscreen) {
+        try {
+          await screenfull.request(containerRef.current);
+        } catch (e) {}
       }
+      
+      // Lock para landscape
+      if (screen.orientation && (screen.orientation as any).lock) {
+        try {
+          await (screen.orientation as any).lock('landscape');
+        } catch (e) {
+          // Tentar landscape-primary como fallback
+          try {
+            await (screen.orientation as any).lock('landscape-primary');
+          } catch (e2) {}
+        }
+      }
+      
+      setIsLandscape(true);
     } catch (e) {
       console.warn("Orientation lock not supported", e);
     }
+    
+    // Sempre tentar Median/GoNative
     setMedianOrientation('landscape');
-  }, [autoRotate]);
+  }, []);
 
+  // Função para desbloquear orientação ao sair
+  const unlockOrientation = useCallback(async () => {
+    try {
+      if (screen.orientation && screen.orientation.unlock) {
+        screen.orientation.unlock();
+      }
+      // Voltar para portrait
+      if (screen.orientation && (screen.orientation as any).lock) {
+        try {
+          await (screen.orientation as any).lock('portrait');
+        } catch (e) {}
+      }
+      setIsLandscape(false);
+    } catch (e) {}
+    
+    // Sair do fullscreen
+    if (screenfull.isEnabled && screenfull.isFullscreen) {
+      try {
+        await screenfull.exit();
+      } catch (e) {}
+    }
+    
+    // Median/GoNative
+    setMedianOrientation('portrait');
+  }, []);
+
+  // Inicialização: forçar landscape e fullscreen ao abrir o player
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
+      // Se saiu do fullscreen, manter landscape travado
+      if (!document.fullscreenElement && isPlaying) {
+        lockOrientation();
+      }
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     
-    // Auto-rotação para paisagem em dispositivos móveis
-    lockOrientation();
+    // Auto-rotação IMEDIATA para paisagem
+    const initLandscape = async () => {
+      // Múltiplas tentativas para garantir que funcione
+      await lockOrientation();
+      // Retry após 100ms
+      setTimeout(() => lockOrientation(), 100);
+      // Retry após 500ms
+      setTimeout(() => lockOrientation(), 500);
+    };
+    initLandscape();
 
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      // Ao desmontar o player, voltar para portrait
+      unlockOrientation();
     };
-  }, [autoRotate, lockOrientation]);
+  }, [lockOrientation, unlockOrientation, isPlaying]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;

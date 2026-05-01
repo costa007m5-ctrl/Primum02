@@ -16,9 +16,29 @@ export default defineConfig(({mode}) => {
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
+    },
+    build: {
+      // Otimizacoes de build para performance
+      target: 'es2020',
+      minify: 'esbuild',
+      sourcemap: false,
+      rollupOptions: {
+        output: {
+          // Code splitting para carregamento mais rapido
+          manualChunks: {
+            'react-vendor': ['react', 'react-dom'],
+            'router': ['react-router-dom'],
+            'motion': ['motion'],
+            'hls': ['hls.js'],
+            'supabase': ['@supabase/supabase-js'],
+          },
+        },
+      },
+      // Comprimir CSS
+      cssMinify: true,
+      // Chunk size warning limite
+      chunkSizeWarningLimit: 1000,
     },
   };
 });

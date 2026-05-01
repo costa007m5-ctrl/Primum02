@@ -1,0 +1,19 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["TEAMID.com.netpremium.app"],
+        "components": [
+          {
+            "/": "/*",
+            "comment": "Matches all paths"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["TEAMID.com.netpremium.app"]
+  }
+}
