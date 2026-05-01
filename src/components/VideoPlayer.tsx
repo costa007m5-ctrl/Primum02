@@ -692,7 +692,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
                 autoPlay
                 className="w-full h-full outline-none"
                 controlsList="nodownload"
-                crossOrigin="anonymous"
                 onError={() => {
                   if (isDriveVideo) {
                     console.warn(`Falha ao carregar vídeo do Drive usando proxy. Tentando iframe...`);

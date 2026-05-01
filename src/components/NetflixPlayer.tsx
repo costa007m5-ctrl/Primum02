@@ -1409,7 +1409,6 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         className={`relative z-[10] w-full h-full transition-all duration-700 ${objectFit === 'cover' ? 'object-cover' : 'object-contain'} ${(showAutoNext || showRecsOverlay) ? 'scale-[0.7] -translate-x-[15%] origin-center' : ''}`}
         autoPlay
         playsInline
-        crossOrigin="anonymous"
         webkit-playsinline="true"
         x-webkit-airplay="allow"
         disablePictureInPicture={false}
@@ -1422,7 +1421,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
           else skip(10);
         }}
       >
-        {(subtitleUrl || activeSubtitleUrl) && (
+        {(subtitleUrl || activeSubtitleUrl) && !(subtitleUrl || activeSubtitleUrl || '').includes('.m3u8') && (
           <track 
             kind="subtitles" 
             src={subtitleUrl || activeSubtitleUrl} 
