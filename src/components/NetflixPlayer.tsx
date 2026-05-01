@@ -577,222 +577,222 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       if (!videoToPlay) return;
 
       const lowerSrc = videoToPlay.toLowerCase();
-      let startLoadTimer: NodeJS.Timeout;
 
       // CAMINHO 1: PLAYER DE INÍCIO (FRESH)
       const initFreshMode = () => {
         console.log("Player Independente: FRESH MODE");
 
-        startLoadTimer = setTimeout(() => {
-          if (!isMounted || !video) return;
-          setLoadingProgress(50); // Start at 50% for instant feedback
-          if (lowerSrc.includes('.m3u8')) {
-            if (Hls.isSupported()) {
-              const hls = new Hls({
-                enableWorker: true,
-                startPosition: -1,
-                // === BALANCED BUFFER FOR RELIABLE PLAYBACK ===
-                maxBufferLength: 30, // More buffer for stability
-                maxMaxBufferLength: 600,
-                maxBufferSize: 60 * 1000 * 1000, // 60MB for smoother playback
-                lowLatencyMode: false, // Disable for more stable playback
-                backBufferLength: 30,
-                // === BALANCED LOADING ===
-                maxLoadingDelay: 4, // More tolerant delay
-                minAutoBitrate: 0,
-                abrBandWidthFactor: 0.9,
-                abrBandWidthUpFactor: 0.7,
-                abrMaxWithRealBitrate: true,
-                startLevel: -1, // Auto select best quality
-                autoStartLoad: true,
-                // === GENEROUS TIMEOUTS FOR KINGX CDN ===
-                fragLoadingTimeOut: 30000, // 30s for slow CDN
-                manifestLoadingTimeOut: 20000, // 20s for manifest
-                levelLoadingTimeOut: 20000,
-                // === ROBUST RETRIES ===
-                fragLoadingMaxRetry: 8,
-                manifestLoadingMaxRetry: 6,
-                levelLoadingMaxRetry: 6,
-                fragLoadingRetryDelay: 1000,
-                manifestLoadingRetryDelay: 1000,
-                levelLoadingRetryDelay: 1000,
-                // Progressive loading
-                progressive: true,
-                // === XHR OPTIMIZATIONS ===
-                xhrSetup: (xhr) => { 
-                  xhr.withCredentials = false;
-                  xhr.timeout = 30000;
-                }
+        if (!isMounted || !video) return;
+        setLoadingProgress(30);
+        if (lowerSrc.includes('.m3u8')) {
+          if (Hls.isSupported()) {
+            const hls = new Hls({
+              enableWorker: true,
+              startPosition: -1,
+              // === FAST START: buffer minimo para comecar rapido ===
+              maxBufferLength: 10, // Buffer pequeno para inicio rapido
+              maxMaxBufferLength: 600,
+              maxBufferSize: 60 * 1000 * 1000,
+              lowLatencyMode: true, // Ativado para inicio mais rapido
+              backBufferLength: 15,
+              // === INICIO RAPIDO COM QUALIDADE BAIXA ===
+              maxLoadingDelay: 2, // Menor tolerancia para comecar rapido
+              minAutoBitrate: 0,
+              abrBandWidthFactor: 0.7, // Mais conservador para comecar rapido
+              abrBandWidthUpFactor: 0.5,
+              abrMaxWithRealBitrate: true,
+              startLevel: 0, // Comecar com qualidade MAIS BAIXA para primeiro frame rapido
+              capLevelToPlayerSize: true, // Nao carregar resolucao maior que a tela
+              autoStartLoad: true,
+              // === TIMEOUTS GENEROSOS PARA CDN LENTO ===
+              fragLoadingTimeOut: 20000,
+              manifestLoadingTimeOut: 15000,
+              levelLoadingTimeOut: 15000,
+              // === RETRIES ===
+              fragLoadingMaxRetry: 6,
+              manifestLoadingMaxRetry: 4,
+              levelLoadingMaxRetry: 4,
+              fragLoadingRetryDelay: 500, // Retry mais rapido
+              manifestLoadingRetryDelay: 500,
+              levelLoadingRetryDelay: 500,
+              progressive: true,
+              xhrSetup: (xhr) => { 
+                xhr.withCredentials = false;
+                xhr.timeout = 20000;
+              }
+            });
+            hls.loadSource(videoToPlay); // Carregar source ANTES de attachMedia para iniciar download do manifest imediatamente
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+              let parsedLevels = data.levels.map((l, i) => ({ id: i, height: l.height, bitrate: l.bitrate })).sort((a, b) => b.height - a.height);
+              if (maxQualityHeight) {
+                parsedLevels = parsedLevels.filter(l => l.height <= maxQualityHeight);
+                if (parsedLevels.length > 0) hls.autoLevelCapping = parsedLevels[0].id;
+              }
+              setQualityLevels(parsedLevels);
+              setLoadingProgress(60);
+              console.log("[v0] HLS Manifest parsed, levels:", parsedLevels.length);
+              // Tentar play imediatamente apos manifest
+              video.play().catch(() => {});
+            });
+            hls.on(Hls.Events.FRAG_BUFFERED, () => {
+              setLoadingProgress(90);
+              console.log("[v0] Fragment buffered, attempting play...");
+              video.play().catch(e => { 
+                console.warn("[v0] Autoplay blocked", e); 
+                setShowStuckButton(true);
               });
-              hls.attachMedia(video);
-              hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.loadSource(videoToPlay));
-              hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-                let parsedLevels = data.levels.map((l, i) => ({ id: i, height: l.height, bitrate: l.bitrate })).sort((a, b) => b.height - a.height);
-                if (maxQualityHeight) {
-                  parsedLevels = parsedLevels.filter(l => l.height <= maxQualityHeight);
-                  if (parsedLevels.length > 0) hls.autoLevelCapping = parsedLevels[0].id;
-                }
-                setQualityLevels(parsedLevels);
-                setLoadingProgress(40); // Manifest parsed, still loading fragments
-                console.log("[v0] HLS Manifest parsed, starting playback...");
-              });
-              // Track fragment loading progress
-              hls.on(Hls.Events.FRAG_LOADING, () => {
-                setLoadingProgress(prev => Math.min(prev + 10, 70));
-              });
-              hls.on(Hls.Events.FRAG_BUFFERED, () => {
-                // First fragment buffered - now try to play
-                setLoadingProgress(90);
-                console.log("[v0] First fragment buffered, attempting play...");
-                video.play().catch(e => { 
-                  console.warn("[v0] Autoplay blocked", e); 
-                  setShowStuckButton(true);
-                });
-              });
-              // Only hide loading when video actually starts playing
-              hls.on(Hls.Events.LEVEL_LOADED, () => {
-                setLoadingProgress(prev => Math.max(prev, 60));
-              });
-              hls.on(Hls.Events.ERROR, (event, data) => {
-                console.warn("HLS Error:", data);
-                if (data.fatal) {
-                   if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                     if (retryCountRef.current < 5) {
-                       retryCountRef.current++;
-                       setLoadingProgress(prev => Math.max(prev, 15));
-                       hls.startLoad();
-                     } else {
-                       setError({ message: "Falha na conexão com o servidor. Tente outro player.", type: 'network' });
-                       setIsLoading(false);
-                     }
+            });
+            hls.on(Hls.Events.LEVEL_LOADED, () => {
+              setLoadingProgress(prev => Math.max(prev, 70));
+            });
+            // Apos primeiros segundos, subir buffer para estabilidade
+            let bufferUpgraded = false;
+            hls.on(Hls.Events.FRAG_BUFFERED, () => {
+              if (!bufferUpgraded && video.currentTime > 2) {
+                bufferUpgraded = true;
+                hls.config.maxBufferLength = 30;
+                hls.config.lowLatencyMode = false;
+                console.log("[v0] Buffer upgraded for stability");
+              }
+            });
+            hls.on(Hls.Events.ERROR, (event, data) => {
+              console.warn("HLS Error:", data);
+              if (data.fatal) {
+                 if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                   if (retryCountRef.current < 5) {
+                     retryCountRef.current++;
+                     hls.startLoad();
+                   } else {
+                     setError({ message: "Falha na conexão com o servidor. Tente outro player.", type: 'network' });
+                     setIsLoading(false);
                    }
-                   else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
-                   else {
-                     setError({ message: "Erro fatal de carregamento. Verifique sua rede.", type: 'network' });
-                   }
-                }
-              });
-              hlsRef.current = hls;
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-              // Safari Native HLS Fallback
-              video.src = videoToPlay;
-              video.play().catch(e => { console.warn("[v0] Safari autoplay blocked", e); setShowStuckButton(true); setShowControls(true); });
-            }
-          } else {
+                 }
+                 else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+                 else {
+                   setError({ message: "Erro fatal de carregamento. Verifique sua rede.", type: 'network' });
+                 }
+              }
+            });
+            hlsRef.current = hls;
+          } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
             video.src = videoToPlay;
-            video.play().catch(e => { console.warn("[v0] Direct video autoplay blocked", e); setShowStuckButton(true); setShowControls(true); });
+            video.play().catch(e => { console.warn("[v0] Safari autoplay blocked", e); setShowStuckButton(true); setShowControls(true); });
           }
-        }, 0);
+        } else {
+          video.src = videoToPlay;
+          video.load();
+          video.play().catch(e => { console.warn("[v0] Direct video autoplay blocked", e); setShowStuckButton(true); setShowControls(true); });
+        }
       };
 
       // CAMINHO 2: PLAYER DE RETOMADA (RESUME)
       const initResumeMode = () => {
         console.log("Player Independente: RESUME MODE", initialTime);
 
-        startLoadTimer = setTimeout(() => {
-          if (!isMounted || !video) return;
-          setLoadingProgress(50); // Start at 50% for instant feedback
-          if (lowerSrc.includes('.m3u8')) {
-            if (Hls.isSupported()) {
-              const hls = new Hls({
-                enableWorker: true,
-                startPosition: Math.max(0, initialTime - 2),
-                autoStartLoad: true,
-                // === BALANCED BUFFER FOR RELIABLE PLAYBACK ===
-                maxBufferLength: 30,
-                maxMaxBufferLength: 600,
-                maxBufferSize: 60 * 1000 * 1000, // 60MB
-                lowLatencyMode: false,
-                backBufferLength: 30,
-                // === BALANCED LOADING ===
-                maxLoadingDelay: 4,
-                minAutoBitrate: 0,
-                abrBandWidthFactor: 0.9,
-                abrBandWidthUpFactor: 0.7,
-                abrMaxWithRealBitrate: true,
-                startLevel: -1, // Auto select
-                // === GENEROUS TIMEOUTS FOR KINGX CDN ===
-                fragLoadingTimeOut: 30000,
-                manifestLoadingTimeOut: 20000,
-                levelLoadingTimeOut: 20000,
-                // === ROBUST RETRIES ===
-                fragLoadingMaxRetry: 8,
-                manifestLoadingMaxRetry: 6,
-                levelLoadingMaxRetry: 6,
-                fragLoadingRetryDelay: 1000,
-                manifestLoadingRetryDelay: 1000,
-                levelLoadingRetryDelay: 1000,
-                progressive: true,
-                xhrSetup: (xhr) => { 
-                  xhr.withCredentials = false;
-                  xhr.timeout = 30000;
-                }
+        if (!isMounted || !video) return;
+        setLoadingProgress(30);
+        if (lowerSrc.includes('.m3u8')) {
+          if (Hls.isSupported()) {
+            const hls = new Hls({
+              enableWorker: true,
+              startPosition: Math.max(0, initialTime - 2),
+              autoStartLoad: true,
+              // === FAST START para resume ===
+              maxBufferLength: 10,
+              maxMaxBufferLength: 600,
+              maxBufferSize: 60 * 1000 * 1000,
+              lowLatencyMode: true,
+              backBufferLength: 15,
+              maxLoadingDelay: 2,
+              minAutoBitrate: 0,
+              abrBandWidthFactor: 0.7,
+              abrBandWidthUpFactor: 0.5,
+              abrMaxWithRealBitrate: true,
+              startLevel: 0, // Qualidade baixa para comecar rapido
+              capLevelToPlayerSize: true,
+              fragLoadingTimeOut: 20000,
+              manifestLoadingTimeOut: 15000,
+              levelLoadingTimeOut: 15000,
+              fragLoadingMaxRetry: 6,
+              manifestLoadingMaxRetry: 4,
+              levelLoadingMaxRetry: 4,
+              fragLoadingRetryDelay: 500,
+              manifestLoadingRetryDelay: 500,
+              levelLoadingRetryDelay: 500,
+              progressive: true,
+              xhrSetup: (xhr) => { 
+                xhr.withCredentials = false;
+                xhr.timeout = 20000;
+              }
+            });
+            hls.loadSource(videoToPlay);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+              let parsedLevels = data.levels.map((l, i) => ({ id: i, height: l.height, bitrate: l.bitrate })).sort((a, b) => b.height - a.height);
+              if (maxQualityHeight) {
+                parsedLevels = parsedLevels.filter(l => l.height <= maxQualityHeight);
+                if (parsedLevels.length > 0) hls.autoLevelCapping = parsedLevels[0].id;
+              }
+              setQualityLevels(parsedLevels);
+              setLoadingProgress(60);
+              console.log("[v0] HLS Resume: Manifest parsed");
+              video.play().catch(() => {});
+            });
+            hls.on(Hls.Events.FRAG_BUFFERED, () => {
+              setLoadingProgress(90);
+              console.log("[v0] HLS Resume: Fragment buffered, attempting play...");
+              video.play().catch(e => { 
+                console.warn("[v0] Autoplay blocked", e); 
+                setShowStuckButton(true);
               });
-              hls.attachMedia(video);
-              hls.on(Hls.Events.MEDIA_ATTACHED, () => {
-                hls.loadSource(videoToPlay);
-              });
-              hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-                let parsedLevels = data.levels.map((l, i) => ({ id: i, height: l.height, bitrate: l.bitrate })).sort((a, b) => b.height - a.height);
-                if (maxQualityHeight) {
-                  parsedLevels = parsedLevels.filter(l => l.height <= maxQualityHeight);
-                  if (parsedLevels.length > 0) hls.autoLevelCapping = parsedLevels[0].id;
-                }
-                setQualityLevels(parsedLevels);
-                setLoadingProgress(40);
-                console.log("[v0] HLS Resume: Manifest parsed");
-              });
-              // Track fragment loading progress
-              hls.on(Hls.Events.FRAG_LOADING, () => {
-                setLoadingProgress(prev => Math.min(prev + 10, 70));
-              });
-              hls.on(Hls.Events.FRAG_BUFFERED, () => {
-                setLoadingProgress(90);
-                console.log("[v0] HLS Resume: Fragment buffered, attempting play...");
-                video.play().catch(e => { 
-                  console.warn("[v0] Autoplay blocked", e); 
-                  setShowStuckButton(true);
-                });
-              });
-              // Only hide loading when video actually starts playing
-              hls.on(Hls.Events.LEVEL_LOADED, () => {
-                setLoadingProgress(prev => Math.max(prev, 60));
-              });
-              hls.on(Hls.Events.ERROR, (event, data) => {
-                console.warn("HLS Error:", data);
-                if (data.fatal) {
-                   if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                      if (retryCountRef.current < 5) {
-                        retryCountRef.current++;
-                        setLoadingProgress(prev => Math.max(prev, 15));
-                        hls.startLoad();
-                      } else {
-                        setError({ message: "Falha na conexão com o servidor. Tente outro player.", type: 'network' });
-                        setIsLoading(false);
-                      }
-                   }
-                   else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
-                   else {
-                      setError({ message: "Erro fatal de carregamento. Verifique sua rede.", type: 'network' });
-                   }
-                }
-              });
-              hlsRef.current = hls;
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = videoToPlay;
-                video.addEventListener('loadedmetadata', () => {
-                    video.currentTime = initialTime;
-                    video.play().catch(e => { console.warn("[v0] Safari resume autoplay blocked", e); setShowStuckButton(true); setShowControls(true); });
-                }, { once: true });
-            }
-          } else {
-            video.src = videoToPlay;
-            video.addEventListener('loadedmetadata', () => {
-                video.currentTime = initialTime;
-                video.play().catch(e => { console.warn("[v0] Direct resume autoplay blocked", e); setShowStuckButton(true); setShowControls(true); });
-            }, { once: true });
+            });
+            hls.on(Hls.Events.LEVEL_LOADED, () => {
+              setLoadingProgress(prev => Math.max(prev, 70));
+            });
+            // Upgrade buffer apos inicio
+            let bufferUpgraded = false;
+            hls.on(Hls.Events.FRAG_BUFFERED, () => {
+              if (!bufferUpgraded && video.currentTime > 2) {
+                bufferUpgraded = true;
+                hls.config.maxBufferLength = 30;
+                hls.config.lowLatencyMode = false;
+              }
+            });
+            hls.on(Hls.Events.ERROR, (event, data) => {
+              console.warn("HLS Error:", data);
+              if (data.fatal) {
+                 if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                    if (retryCountRef.current < 5) {
+                      retryCountRef.current++;
+                      hls.startLoad();
+                    } else {
+                      setError({ message: "Falha na conexão com o servidor. Tente outro player.", type: 'network' });
+                      setIsLoading(false);
+                    }
+                 }
+                 else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+                 else {
+                    setError({ message: "Erro fatal de carregamento. Verifique sua rede.", type: 'network' });
+                 }
+              }
+            });
+            hlsRef.current = hls;
+          } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+              video.src = videoToPlay;
+              video.addEventListener('loadedmetadata', () => {
+                  video.currentTime = initialTime;
+                  video.play().catch(e => { console.warn("[v0] Safari resume autoplay blocked", e); setShowStuckButton(true); setShowControls(true); });
+              }, { once: true });
           }
-        }, 0);
+        } else {
+          video.src = videoToPlay;
+          video.load();
+          video.addEventListener('loadedmetadata', () => {
+              video.currentTime = initialTime;
+              video.play().catch(e => { console.warn("[v0] Direct resume autoplay blocked", e); setShowStuckButton(true); setShowControls(true); });
+          }, { once: true });
+        }
       };
 
       // EXECUÇÃO INDEPENDENTE
