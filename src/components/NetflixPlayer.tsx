@@ -523,67 +523,21 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   // Autoplay automatico quando o carregamento chega a 100%
   useEffect(() => {
     let timer: any;
-    let retryTimer: any;
-    
-    // Funcao inline para rotacionar tela (evita dependencia circular)
-    const tryLockLandscape = async () => {
-      try {
-        if (containerRef.current && screenfull.isEnabled && !screenfull.isFullscreen) {
-          await screenfull.request(containerRef.current).catch(() => {});
-        }
-        if (screen.orientation && (screen.orientation as any).lock) {
-          await (screen.orientation as any).lock('landscape').catch(() => {});
-        }
-        setMedianOrientation('landscape');
-        setIsLandscape(true);
-      } catch (e) {}
-    };
     
     // Se chegou a 100% e ainda nao esta tocando, forcar play automaticamente
     if (loadingProgress === 100 && !isPlaying && !hasStartedPlayedRef.current) {
       const video = videoRef.current;
       if (video && video.paused) {
-        // Garantir muted para permitir autoplay sem interacao
-        const attemptAutoplay = async () => {
-          try {
-            // Primeiro, tentar com som
-            await video.play();
-            tryLockLandscape(); // Forcar landscape quando comecar a tocar
-          } catch (e) {
-            console.warn("Autoplay blocked, trying muted:", e);
-            // Se falhar, tentar muted (browsers bloqueiam autoplay com som)
-            video.muted = true;
-            setIsMuted(true);
-            try {
-              await video.play();
-              tryLockLandscape();
-              // Tentar desmutar apos 500ms
-              setTimeout(() => {
-                if (videoRef.current && !isBackgroundMode) {
-                  videoRef.current.muted = false;
-                  setIsMuted(false);
-                }
-              }, 500);
-            } catch (e2) {
-              console.warn("Autoplay muted also blocked:", e2);
-              // Se mesmo muted falhar, mostrar botao
-              timer = setTimeout(() => {
-                if (!hasStartedPlayedRef.current) {
-                  setShowStuckButton(true);
-                }
-              }, 1000);
+        // Tentar play automaticamente (sem mutar)
+        video.play().catch(e => {
+          console.warn("Autoplay blocked:", e);
+          // Se falhar, mostrar botao apos 2s
+          timer = setTimeout(() => {
+            if (!hasStartedPlayedRef.current) {
+              setShowStuckButton(true);
             }
-          }
-        };
-        
-        attemptAutoplay();
-        
-        // Retry apos 500ms caso nao tenha comecado
-        retryTimer = setTimeout(() => {
-          if (!hasStartedPlayedRef.current && video.paused) {
-            attemptAutoplay();
-          }
-        }, 500);
+          }, 2000);
+        });
       }
     }
     
@@ -591,11 +545,8 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       setShowStuckButton(false);
     }
     
-    return () => {
-      clearTimeout(timer);
-      clearTimeout(retryTimer);
-    };
-  }, [isPlaying, loadingProgress, isBackgroundMode]);
+    return () => clearTimeout(timer);
+  }, [isPlaying, loadingProgress]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -1127,88 +1078,55 @@ video.removeEventListener('timeupdate', handleTimeUpdate);
 
   const lockOrientation = useCallback(async () => {
     try {
-      // Tentar fullscreen primeiro (necessário para lock funcionar em muitos navegadores)
-      if (containerRef.current && screenfull.isEnabled && !screenfull.isFullscreen) {
-        try {
-          await screenfull.request(containerRef.current);
-        } catch (e) {}
-      }
-      
-      // Lock para landscape
+      // Lock para landscape (sem forcar fullscreen)
       if (screen.orientation && (screen.orientation as any).lock) {
         try {
           await (screen.orientation as any).lock('landscape');
         } catch (e) {
-          // Tentar landscape-primary como fallback
           try {
             await (screen.orientation as any).lock('landscape-primary');
           } catch (e2) {}
         }
       }
-      
       setIsLandscape(true);
     } catch (e) {
-      console.warn("Orientation lock not supported", e);
+      // Orientation lock nao suportado - nao e erro critico
     }
     
-    // Sempre tentar Median/GoNative
+    // Tentar Median/GoNative
     setMedianOrientation('landscape');
   }, []);
 
-  // Função para desbloquear orientação ao sair
+  // Funcao para desbloquear orientacao ao sair
   const unlockOrientation = useCallback(async () => {
     try {
       if (screen.orientation && screen.orientation.unlock) {
         screen.orientation.unlock();
       }
-      // Voltar para portrait
-      if (screen.orientation && (screen.orientation as any).lock) {
-        try {
-          await (screen.orientation as any).lock('portrait');
-        } catch (e) {}
-      }
       setIsLandscape(false);
     } catch (e) {}
-    
-    // Sair do fullscreen
-    if (screenfull.isEnabled && screenfull.isFullscreen) {
-      try {
-        await screenfull.exit();
-      } catch (e) {}
-    }
     
     // Median/GoNative
     setMedianOrientation('portrait');
   }, []);
 
-  // Inicialização: forçar landscape e fullscreen ao abrir o player
+  // Monitorar fullscreen e rotacao
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
-      // Se saiu do fullscreen, manter landscape travado
-      if (!document.fullscreenElement && isPlaying) {
-        lockOrientation();
-      }
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     
-    // Auto-rotação IMEDIATA para paisagem
-    const initLandscape = async () => {
-      // Múltiplas tentativas para garantir que funcione
-      await lockOrientation();
-      // Retry após 100ms
-      setTimeout(() => lockOrientation(), 100);
-      // Retry após 500ms
-      setTimeout(() => lockOrientation(), 500);
-    };
-    initLandscape();
+    // Tentar rotacao landscape apenas (sem fullscreen forcado)
+    if (autoRotate) {
+      lockOrientation();
+    }
 
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      // Ao desmontar o player, voltar para portrait
       unlockOrientation();
     };
-  }, [lockOrientation, unlockOrientation, isPlaying]);
+  }, [autoRotate, lockOrientation, unlockOrientation]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
