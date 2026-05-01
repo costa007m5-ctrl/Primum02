@@ -230,14 +230,10 @@ const MovieDetailsModal = React.memo(({
       setSelectedSeason(seasons[0]);
     }
     
-    // Delay video start minimal to allow smooth modal opening
-    const timer = setTimeout(() => {
-      if (movie.videoUrl) {
-        setShowVideo(true);
-      }
-    }, 50);
-    
-    return () => clearTimeout(timer);
+    // Start video immediately - no delay
+    if (movie.videoUrl) {
+      setShowVideo(true);
+    }
   }, [movie]);
 
   const backgroundUrl = movie.backdrop_path?.startsWith('http') 

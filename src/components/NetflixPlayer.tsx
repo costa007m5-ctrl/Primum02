@@ -512,16 +512,36 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
 
         startLoadTimer = setTimeout(() => {
           if (!isMounted || !video) return;
-          setLoadingProgress(25); // Progresso inicial maior para feedback
+          setLoadingProgress(40); // Higher initial progress for instant feedback
           if (lowerSrc.includes('.m3u8')) {
             if (Hls.isSupported()) {
               const hls = new Hls({
                 enableWorker: true,
                 startPosition: -1,
-                maxBufferLength: 30, // Small buffer size reduces memory and bandwidth impact for quick start
-                maxMaxBufferLength: 600,
-                maxBufferSize: 30 * 1000 * 1000, // 30MB
+                // Ultra-fast start config for instant playback
+                maxBufferLength: 10, // Reduced for faster initial playback
+                maxMaxBufferLength: 300,
+                maxBufferSize: 15 * 1000 * 1000, // 15MB - smaller for faster start
                 lowLatencyMode: true,
+                backBufferLength: 30, // Keep some back buffer for seeking
+                // Aggressive loading settings for instant start
+                maxLoadingDelay: 2, // Max delay before loading next segment
+                minAutoBitrate: 0, // Start with lowest quality for instant start
+                abrBandWidthFactor: 0.8, // Conservative bandwidth estimation
+                abrBandWidthUpFactor: 0.5, // Slower quality increase
+                abrMaxWithRealBitrate: true,
+                startLevel: 0, // Always start with lowest quality for instant playback
+                autoStartLoad: true,
+                // Fragment loading optimization
+                fragLoadingTimeOut: 10000, // 10s timeout for fragments
+                manifestLoadingTimeOut: 8000, // 8s timeout for manifest
+                levelLoadingTimeOut: 8000, // 8s timeout for level
+                fragLoadingMaxRetry: 4,
+                manifestLoadingMaxRetry: 3,
+                levelLoadingMaxRetry: 3,
+                // Progressive loading
+                progressive: true,
+                // XHR setup
                 xhrSetup: (xhr) => { 
                   xhr.withCredentials = false;
                 }
@@ -535,11 +555,15 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                   if (parsedLevels.length > 0) hls.autoLevelCapping = parsedLevels[0].id;
                 }
                 setQualityLevels(parsedLevels);
-                setLoadingProgress(50);
+                setLoadingProgress(70); // Higher progress on manifest parse
+                // Instant play - no delay
                 video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
               });
               hls.on(Hls.Events.FRAG_BUFFERED, () => {
-                setLoadingProgress(prev => Math.min(prev + 5, 90));
+                // First fragment buffered = instant playback ready
+                setLoadingProgress(100);
+                setIsLoading(false);
+                setShowLogoOverlay(false);
               });
               hls.on(Hls.Events.ERROR, (event, data) => {
                 console.warn("HLS Error:", data);
@@ -579,17 +603,34 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
 
         startLoadTimer = setTimeout(() => {
           if (!isMounted || !video) return;
-          setLoadingProgress(25); // Progresso inicial imediato
+          setLoadingProgress(40); // Higher initial progress for instant feedback
           if (lowerSrc.includes('.m3u8')) {
             if (Hls.isSupported()) {
               const hls = new Hls({
                 enableWorker: true,
                 startPosition: Math.max(0, initialTime - 2),
-                autoStartLoad: false, // Don't download first segment!
-                maxBufferLength: 30,
-                maxMaxBufferLength: 600,
-                maxBufferSize: 30 * 1000 * 1000,
+                autoStartLoad: true, // Auto start for instant playback
+                // Ultra-fast start config for instant playback
+                maxBufferLength: 10,
+                maxMaxBufferLength: 300,
+                maxBufferSize: 15 * 1000 * 1000, // 15MB
                 lowLatencyMode: true,
+                backBufferLength: 30,
+                // Aggressive loading settings
+                maxLoadingDelay: 2,
+                minAutoBitrate: 0,
+                abrBandWidthFactor: 0.8,
+                abrBandWidthUpFactor: 0.5,
+                abrMaxWithRealBitrate: true,
+                startLevel: 0, // Start with lowest quality for instant playback
+                // Fragment loading optimization
+                fragLoadingTimeOut: 10000,
+                manifestLoadingTimeOut: 8000,
+                levelLoadingTimeOut: 8000,
+                fragLoadingMaxRetry: 4,
+                manifestLoadingMaxRetry: 3,
+                levelLoadingMaxRetry: 3,
+                progressive: true,
                 xhrSetup: (xhr) => { 
                   xhr.withCredentials = false;
                 }
@@ -604,21 +645,17 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                   parsedLevels = parsedLevels.filter(l => l.height <= maxQualityHeight);
                   if (parsedLevels.length > 0) hls.autoLevelCapping = parsedLevels[0].id;
                 }
-                setQualityLevels(parsedLevels);
-                setLoadingProgress(50);
-                
-                if (initialTime > 0) {
-                  video.currentTime = Math.max(0, initialTime - 2);
-                  hls.startLoad(Math.max(0, initialTime - 2));
-                } else {
-                  hls.startLoad();
-                }
-                setTimeout(() => {
-                  if (video) video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); });
-                }, 100);
+  setQualityLevels(parsedLevels);
+  setLoadingProgress(70); // Higher progress on manifest parse
+  
+  // Play immediately without delay for instant start
+                video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); });
               });
               hls.on(Hls.Events.FRAG_BUFFERED, () => {
-                setLoadingProgress(prev => Math.min(prev + 5, 90));
+                // First fragment buffered = instant playback ready
+                setLoadingProgress(100);
+                setIsLoading(false);
+                setShowLogoOverlay(false);
               });
               hls.on(Hls.Events.ERROR, (event, data) => {
                 console.warn("HLS Error:", data);
@@ -683,7 +720,8 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       const didSeek = Math.abs(time - lastTimeRef.current) > 2;
       lastTimeRef.current = time;
 
-      if (time > 0.1 && video.readyState >= 3 && !video.seeking) {
+      // Instantly hide loading once video starts playing (any time > 0)
+      if (time > 0 && video.readyState >= 2 && !video.seeking) {
         if (isLoading) {
           setIsLoading(false);
           setLoadingProgress(100);
@@ -796,10 +834,10 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     };
 
     const handleWaiting = () => {
-      // Evita mostrar loading se já houver buffer suficiente
+      // Evita mostrar loading se já houver buffer suficiente (reduzido para melhor responsividade)
       if (video.buffered.length > 0) {
         const bufferedEnd = video.buffered.end(video.buffered.length - 1);
-        if (bufferedEnd > video.currentTime + 1.5) return;
+        if (bufferedEnd > video.currentTime + 0.5) return; // Reduced threshold for smoother playback
       }
       setIsBuffering(true);
     };
@@ -849,8 +887,8 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
            setLoadingProgress(prev => Math.max(prev, progress));
         }
         
-        // Se já temos qualquer buffer (0.3s), libera o player instantaneamente
-        if (bufferedEnd > (video.currentTime + 0.3) && isLoading) {
+        // Libera o player instantaneamente assim que tiver qualquer buffer
+        if (bufferedEnd > video.currentTime && isLoading) {
            setIsLoading(false);
            setShowLogoOverlay(false);
         }
@@ -902,14 +940,15 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       setIsLoading(false);
     };
 
-    video.addEventListener('timeupdate', handleTimeUpdate);
-    video.addEventListener('loadedmetadata', handleLoadedMetadata);
-    video.addEventListener('canplay', handleCanPlay);
-    video.addEventListener('seeked', () => setIsBuffering(false));
-    video.addEventListener('waiting', handleWaiting);
-    video.addEventListener('playing', handlePlaying);
-    video.addEventListener('pause', handlePause);
-    video.addEventListener('progress', handleProgress);
+video.addEventListener('timeupdate', handleTimeUpdate);
+  video.addEventListener('loadedmetadata', handleLoadedMetadata);
+  video.addEventListener('canplay', handleCanPlay);
+  video.addEventListener('canplaythrough', handleCanPlay); // Also listen for canplaythrough for instant start
+  video.addEventListener('seeked', () => setIsBuffering(false));
+  video.addEventListener('waiting', handleWaiting);
+  video.addEventListener('playing', handlePlaying);
+  video.addEventListener('pause', handlePause);
+  video.addEventListener('progress', handleProgress);
     video.addEventListener('stalled', handleStalled);
     video.addEventListener('error', handleError);
 
@@ -919,14 +958,15 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     return () => {
       isMounted = false;
       if (cleanupInit) cleanupInit();
-      video.removeEventListener('timeupdate', handleTimeUpdate);
-      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      video.removeEventListener('canplay', handleCanPlay);
-      video.removeEventListener('seeked', () => setIsBuffering(false));
-      video.removeEventListener('waiting', handleWaiting);
-      video.removeEventListener('playing', handlePlaying);
-      video.removeEventListener('pause', handlePause);
-      video.removeEventListener('progress', handleProgress);
+video.removeEventListener('timeupdate', handleTimeUpdate);
+  video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+  video.removeEventListener('canplay', handleCanPlay);
+  video.removeEventListener('canplaythrough', handleCanPlay);
+  video.removeEventListener('seeked', () => setIsBuffering(false));
+  video.removeEventListener('waiting', handleWaiting);
+  video.removeEventListener('playing', handlePlaying);
+  video.removeEventListener('pause', handlePause);
+  video.removeEventListener('progress', handleProgress);
       video.removeEventListener('stalled', handleStalled);
       video.removeEventListener('error', handleError);
       if (hlsRef.current) {
@@ -964,14 +1004,15 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isLoading && loadingProgress >= 20 && loadingProgress < 90) {
+    if (isLoading && loadingProgress >= 20 && loadingProgress < 95) {
       interval = setInterval(() => {
         setLoadingProgress(prev => {
-          if (prev < 40) return prev + 2;
-          if (prev < 80) return prev + 1;
+          if (prev < 60) return prev + 5; // Faster initial progress
+          if (prev < 85) return prev + 3;
+          if (prev < 95) return prev + 1;
           return prev;
         });
-      }, 800) as any;
+      }, 400) as any; // Faster interval for smoother progress
     }
     return () => clearInterval(interval);
   }, [isLoading, loadingProgress]);
@@ -985,7 +1026,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
           setIsLoading(false);
           setLoadingProgress(100);
         }
-      }, 12000);
+      }, 5000); // Reduced safety timeout for faster fallback
     }
 
     return () => {
@@ -1019,7 +1060,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     if (isLoading) {
       timer = setTimeout(() => {
         setShowStuckButton(true);
-      }, 15000); // 15s para mostrar botão de "Reparar"
+      }, 8000); // 8s para mostrar botão de "Reparar" (mais rápido)
     }
     return () => clearTimeout(timer);
   }, [isLoading]);
@@ -1478,6 +1519,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         className={`relative z-[10] w-full h-full transition-all duration-700 ${objectFit === 'cover' ? 'object-cover' : 'object-contain'} ${(showAutoNext || showRecsOverlay) ? 'scale-[0.7] -translate-x-[15%] origin-center' : ''}`}
         autoPlay
         playsInline
+        preload="auto"
         crossOrigin="anonymous"
         webkit-playsinline="true"
         x-webkit-airplay="allow"
