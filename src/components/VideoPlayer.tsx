@@ -352,21 +352,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
 
   const requestLandscape = async () => {
     try {
-      const container = containerRef.current;
-      if (!container) return;
-
-      // Fullscreen primeiro (necessario para lock funcionar)
-      if (!document.fullscreenElement) {
-        if (screenfull.isEnabled) {
-          await screenfull.request(container).catch(() => {});
-        } else if ((container as any).webkitRequestFullscreen) {
-          await (container as any).webkitRequestFullscreen().catch(() => {});
-        } else if (container.requestFullscreen) {
-          await container.requestFullscreen().catch(() => {});
-        }
-      }
-
-      // Lock para landscape
+      // Apenas lock de orientacao, sem forcar fullscreen
       if (screen.orientation && (screen.orientation as any).lock) {
         try {
           await (screen.orientation as any).lock('landscape');
@@ -377,35 +363,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
         }
       }
 
-      // iOS specific
-      if (videoRef.current && (videoRef.current as any).webkitEnterFullscreen) {
-        try {
-          (videoRef.current as any).webkitEnterFullscreen();
-        } catch (e) {}
-      }
-
       // Median/GoNative
       setMedianOrientation('landscape');
 
       setOrientationKey(prev => prev + 1);
     } catch (error) {
-      console.warn("Erro ao configurar modo paisagem:", error);
+      // Nao e erro critico
     }
   };
 
   const exitLandscape = async () => {
     try {
-      // Unlock orientation
       if (screen.orientation && screen.orientation.unlock) {
         screen.orientation.unlock();
       }
-      // Tentar voltar para portrait
-      if (screen.orientation && (screen.orientation as any).lock) {
-        try {
-          await (screen.orientation as any).lock('portrait');
-        } catch (e) {}
-      }
-      // Sair do fullscreen
+      // Sair do fullscreen se estiver
       if (screenfull.isEnabled && screenfull.isFullscreen) {
         await screenfull.exit().catch(() => {});
       }
