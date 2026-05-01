@@ -535,8 +535,9 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
             } else if (Hls.isSupported()) {
               const hls = new Hls({
-                enableWorker: false,
-                startPosition: -1,
+                enableWorker: true,
+                startPosition: startPoint > 0 ? startPoint : -1,
+                maxBufferLength: 30,
               });
               hls.attachMedia(video);
               hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.loadSource(videoToPlay));
@@ -546,26 +547,13 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 setLoadingProgress(50);
                 
                 if (video) {
-                   video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); });
+                   video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
                 }
               });
               hls.on(Hls.Events.FRAG_BUFFERED, () => {
                 setLoadingProgress(prev => Math.min(prev + 5, 90));
               });
 
-              video.addEventListener('loadedmetadata', () => {
-                let safeStartPoint = startPoint;
-                if (safeStartPoint > 0) {
-                  const duration = video.duration || 0;
-                  const threshold = isMovie ? 450 : 30;
-                  // Se o vídeo estiver muito perto do fim, recomeça
-                  if (duration > 0 && safeStartPoint >= duration - threshold) {
-                     safeStartPoint = 0;
-                  }
-                  video.currentTime = safeStartPoint;
-                }
-                video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
-              }, { once: true });
               hls.on(Hls.Events.ERROR, (event, data) => {
                 console.warn("HLS Error:", data);
                 if (data.fatal) {

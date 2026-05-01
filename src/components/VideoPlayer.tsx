@@ -89,8 +89,26 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
         const isMovie = movie.type !== 'series';
         const isFinished = finalDuration > 0 && (isMovie ? (finalDuration - finalTime <= 450) : (finalDuration - finalTime <= 30));
         
-        if (isFinished) {
+        if (isFinished && isMovie) {
            supabase.from('watch_history').delete().match({ profile_id: profileId, movie_id: movie.id }).then(() => {});
+        } else if (isFinished && !isMovie) {
+           const currentIndex = movie.episodes ? movie.episodes.findIndex(ep => ep.videoUrl === movie.videoUrl || ep.videoUrl2 === movie.videoUrl) : -1;
+           const isLastEpisode = movie.episodes && currentIndex !== -1 && currentIndex === movie.episodes.length - 1;
+           
+           if (isLastEpisode) {
+              supabase.from('watch_history').delete().match({ profile_id: profileId, movie_id: movie.id }).then(() => {});
+           } else {
+              const nextEp = movie.episodes && currentIndex !== -1 ? movie.episodes[currentIndex + 1] : null;
+              if (nextEp) {
+                 localStorage.setItem(`netplay_progress_url_${movie.id}`, nextEp.videoUrl || nextEp.videoUrl2 || '');
+              }
+              supabase.from('watch_history').upsert({
+                profile_id: profileId,
+                movie_id: movie.id,
+                last_position: 0,
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'profile_id,movie_id' }).then(() => {});
+           }
         } else {
            supabase.from('watch_history').upsert({
              profile_id: profileId,
@@ -509,8 +527,26 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
               const isMovie = movie.type !== 'series';
               const isFinished = finalDuration > 0 && (isMovie ? (finalDuration - time <= 450) : (finalDuration - time <= 30));
 
-              if (isFinished) {
+              if (isFinished && isMovie) {
                   await supabase.from('watch_history').delete().match({ profile_id: profileId, movie_id: movie.id });
+              } else if (isFinished && !isMovie) {
+                  const currentIndex = movie.episodes ? movie.episodes.findIndex(ep => ep.videoUrl === movie.videoUrl || ep.videoUrl2 === movie.videoUrl) : -1;
+                  const isLastEpisode = movie.episodes && currentIndex !== -1 && currentIndex === movie.episodes.length - 1;
+                  
+                  if (isLastEpisode) {
+                     await supabase.from('watch_history').delete().match({ profile_id: profileId, movie_id: movie.id });
+                  } else {
+                     const nextEp = movie.episodes && currentIndex !== -1 ? movie.episodes[currentIndex + 1] : null;
+                     if (nextEp) {
+                        localStorage.setItem(`netplay_progress_url_${movie.id}`, nextEp.videoUrl || nextEp.videoUrl2 || '');
+                     }
+                     await supabase.from('watch_history').upsert({
+                       profile_id: profileId,
+                       movie_id: movie.id,
+                       last_position: 0,
+                       updated_at: new Date().toISOString()
+                     }, { onConflict: 'profile_id,movie_id' });
+                  }
               } else {
                   await supabase.from('watch_history').upsert({
                     profile_id: profileId,

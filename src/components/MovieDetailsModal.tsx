@@ -226,7 +226,9 @@ const MovieDetailsModal = React.memo(({
     setActiveInfoTab('details');
     setCurrentProvider(getProvider(movie));
     
-    if (seasons.length > 0) {
+    if (savedEpisodeSeason) {
+      setSelectedSeason(savedEpisodeSeason);
+    } else if (seasons.length > 0) {
       setSelectedSeason(seasons[0]);
     }
     
@@ -238,7 +240,7 @@ const MovieDetailsModal = React.memo(({
     }, 50);
     
     return () => clearTimeout(timer);
-  }, [movie]);
+  }, [movie, savedEpisodeSeason]);
 
   const backgroundUrl = movie.backdrop_path?.startsWith('http') 
     ? movie.backdrop_path 
@@ -257,6 +259,15 @@ const MovieDetailsModal = React.memo(({
   const savedUrl = useMemo(() => {
     return localStorage.getItem(`netplay_progress_url_${movie.id}`);
   }, [movie.id]);
+
+  const savedEpisodeSeason = useMemo(() => {
+    if (movie.type !== 'series' || !movie.episodes || !savedUrl) return null;
+    const ep = movie.episodes.find(e => e.videoUrl === savedUrl || e.videoUrl2 === savedUrl);
+    if (ep) {
+       return ep.season;
+    }
+    return null;
+  }, [movie, savedUrl]);
 
   const savedEpisodeInfo = useMemo(() => {
     if (movie.type !== 'series' || !movie.episodes || !savedUrl) return null;
