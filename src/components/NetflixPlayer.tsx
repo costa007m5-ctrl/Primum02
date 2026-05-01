@@ -456,6 +456,8 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
 
   const hasStartedPlayedRef = useRef(false);
   const recsDismissedRef = useRef(false);
+  const recsTargetTimeRef = useRef<number | null>(null);
+  const lastTimeRef = useRef<number>(0);
 
   useEffect(() => {
     let timer: any;
@@ -678,6 +680,9 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         }
       }
 
+      const didSeek = Math.abs(time - lastTimeRef.current) > 2;
+      lastTimeRef.current = time;
+
       if (time > 0.1 && video.readyState >= 3 && !video.seeking) {
         if (isLoading) {
           setIsLoading(false);
@@ -689,9 +694,12 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       if (video.duration > 0) {
         const timeFromEnd = video.duration - time;
         if (hasNextEpisode) {
-          if (timeFromEnd <= 60 && timeFromEnd > 0) {
+          if (timeFromEnd <= 300 && timeFromEnd > 0) {
             setShowAutoNext(true);
-            const nextCounter = Math.max(0, Math.ceil(timeFromEnd - 45));
+            if (recsTargetTimeRef.current === null || didSeek) {
+               recsTargetTimeRef.current = time + 15;
+            }
+            const nextCounter = Math.max(0, Math.ceil(recsTargetTimeRef.current - time));
             setAutoNextCounter(nextCounter);
             // Automatic switch to next episode at 0
             if (nextCounter === 0 && onNextEpisode) {
@@ -699,14 +707,18 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
             }
           } else {
             setShowAutoNext(false);
+            recsTargetTimeRef.current = null;
           }
         }
 
         if (!hasNextEpisode) {
-          if (timeFromEnd <= 180 && timeFromEnd > 0) {
+          if (timeFromEnd <= 300 && timeFromEnd > 0) {
             if (!recsDismissedRef.current) {
               setShowRecsOverlay(true);
-              const nextCounter = Math.max(0, Math.ceil(timeFromEnd - 165)); // starts at 15
+              if (recsTargetTimeRef.current === null || didSeek) {
+                 recsTargetTimeRef.current = time + 15;
+              }
+              const nextCounter = Math.max(0, Math.ceil(recsTargetTimeRef.current - time));
               setAutoNextCounter(nextCounter);
               // Automatic switch to first recommendation at 0
               if (nextCounter === 0 && onSelectRecommendation && recommendations && recommendations.length > 0) {
@@ -714,9 +726,10 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               }
             }
           } else {
-            if (timeFromEnd > 180) {
+            if (timeFromEnd > 300) {
               setShowRecsOverlay(false);
               recsDismissedRef.current = false;
+              recsTargetTimeRef.current = null;
             }
           }
         }
