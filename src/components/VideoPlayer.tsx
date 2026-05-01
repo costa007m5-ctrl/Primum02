@@ -330,45 +330,88 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
     requestLandscape();
   }, [movie.videoUrl]);
 
+  const isMedianApp = () => {
+    if (typeof navigator === 'undefined') return false;
+    const ua = navigator.userAgent.toLowerCase();
+    return ua.includes('median') || ua.includes('gonative');
+  };
+
+  const setMedianOrientation = (orientation: 'landscape' | 'portrait' | 'unlocked') => {
+    try {
+      if (typeof window !== 'undefined' && isMedianApp()) {
+        if ((window as any).median) {
+          (window as any).median.screen.setOrientation({orientation});
+        } else if ((window as any).gonative) {
+          (window as any).gonative.screen.setOrientation({orientation});
+        } else {
+          window.location.href = `median://screen/setOrientation?orientation=${orientation}`;
+        }
+      }
+    } catch(e) {}
+  };
+
   const requestLandscape = async () => {
     try {
       const container = containerRef.current;
       if (!container) return;
 
-      // Lock orientation immediately (non-blocking)
-      const lock = () => {
-        if (screen.orientation && (screen.orientation as any).lock) {
-          (screen.orientation as any).lock('landscape').catch(() => {
-            (screen.orientation as any).lock('landscape-primary').catch(() => {});
-          });
-        }
-      };
-
-      // Try fullscreen (non-blocking, don't wait)
+      // Fullscreen primeiro (necessario para lock funcionar)
       if (!document.fullscreenElement) {
         if (screenfull.isEnabled) {
-          screenfull.request(container).catch(() => {});
+          await screenfull.request(container).catch(() => {});
         } else if ((container as any).webkitRequestFullscreen) {
-          (container as any).webkitRequestFullscreen().catch(() => {});
+          await (container as any).webkitRequestFullscreen().catch(() => {});
         } else if (container.requestFullscreen) {
-          container.requestFullscreen().catch(() => {});
+          await container.requestFullscreen().catch(() => {});
         }
       }
 
-      // Try orientation lock immediately
-      lock();
+      // Lock para landscape
+      if (screen.orientation && (screen.orientation as any).lock) {
+        try {
+          await (screen.orientation as any).lock('landscape');
+        } catch (e) {
+          try {
+            await (screen.orientation as any).lock('landscape-primary');
+          } catch (e2) {}
+        }
+      }
 
-      // iOS specific: force landscape via webkitEnterFullscreen on the video element if available
+      // iOS specific
       if (videoRef.current && (videoRef.current as any).webkitEnterFullscreen) {
         try {
           (videoRef.current as any).webkitEnterFullscreen();
         } catch (e) {}
       }
 
+      // Median/GoNative
+      setMedianOrientation('landscape');
+
       setOrientationKey(prev => prev + 1);
     } catch (error) {
       console.warn("Erro ao configurar modo paisagem:", error);
     }
+  };
+
+  const exitLandscape = async () => {
+    try {
+      // Unlock orientation
+      if (screen.orientation && screen.orientation.unlock) {
+        screen.orientation.unlock();
+      }
+      // Tentar voltar para portrait
+      if (screen.orientation && (screen.orientation as any).lock) {
+        try {
+          await (screen.orientation as any).lock('portrait');
+        } catch (e) {}
+      }
+      // Sair do fullscreen
+      if (screenfull.isEnabled && screenfull.isFullscreen) {
+        await screenfull.exit().catch(() => {});
+      }
+      // Median/GoNative
+      setMedianOrientation('portrait');
+    } catch (e) {}
   };
 
   useEffect(() => {
@@ -436,7 +479,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
           title={displayTitle}
           backdropUrl={movie.backdrop_path}
           logoUrl={movieLogo || undefined}
-          onClose={onClose}
+          onClose={() => { exitLandscape(); onClose(); }}
           initialTime={initialTime ?? movie.last_position ?? 0}
           hasNextEpisode={hasNextEpisode}
           recommendations={recommendations}
@@ -489,7 +532,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
       <div className="fixed inset-0 z-[200] bg-black">
         <div className="absolute top-6 left-6 z-[210] flex items-center gap-4">
           <button 
-            onClick={onClose}
+            onClick={() => { exitLandscape(); onClose(); }}
             className="p-3 bg-black/60 backdrop-blur-md rounded-full text-white hover:scale-110 transition-transform"
           >
             <X size={24} />
@@ -535,7 +578,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
         <div className="absolute top-0 left-0 right-0 p-4 md:p-6 flex items-center justify-between z-50 bg-gradient-to-b from-black/90 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300">
           <div className="flex items-center gap-4">
             <button 
-              onClick={onClose}
+              onClick={() => { exitLandscape(); onClose(); }}
               className="text-white hover:scale-110 transition-transform p-2 bg-black/60 rounded-full backdrop-blur-md"
             >
               <X size={28} />
