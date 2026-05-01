@@ -179,7 +179,6 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   const [showLogoOverlay, setShowLogoOverlay] = useState(false);
   const [showAutoNext, setShowAutoNext] = useState(false);
   const showSkipIntro = hasNextEpisode !== undefined && currentTime >= 10 && currentTime <= 180;
-  const [showRestartButton, setShowRestartButton] = useState(false);
   const [autoNextCounter, setAutoNextCounter] = useState(10);
   const [isLandscape, setIsLandscape] = useState(false);
   const [qualityLevels, setQualityLevels] = useState<{ id: number; height: number; bitrate: number }[]>([]);
@@ -488,14 +487,6 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     setIsLoading(true);
     setLoadingProgress(0);
     retryCountRef.current = 0;
-    
-    // Show restart button if resuming from non-zero
-    if (initialTime > 30) {
-      setShowRestartButton(true);
-      const timer = setTimeout(() => setShowRestartButton(false), 8000);
-      return () => clearTimeout(timer);
-    }
-    
     const initPlayer = () => {
       if (!video) return;
 
@@ -507,6 +498,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
 
       try {
         video.pause();
+        video.currentTime = 0;
         video.removeAttribute('src');
         video.load();
       } catch (e) {}
@@ -527,17 +519,8 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
           if (lowerSrc.includes('.m3u8')) {
             if (Hls.isSupported()) {
               const hls = new Hls({
-                enableWorker: true,
-                startPosition: startPoint,
-                maxBufferLength: 30,
-                maxMaxBufferLength: 60,
-                maxBufferSize: 60 * 1000 * 1000,
-                nudgeOffset: 0.1,
-                nudgeMaxRetry: 5,
-                fetchSetup: (context, init) => {
-                  init.cache = 'no-cache';
-                  return new Request(context.url, init);
-                }
+                enableWorker: false,
+                startPosition: -1,
               });
               hls.attachMedia(video);
               hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.loadSource(videoToPlay));
@@ -576,15 +559,13 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                        setLoadingProgress(prev => Math.max(prev, 15));
                        hls.startLoad();
                      } else {
-                       setError({ message: "Conexão instável. Tente reparar ou use outro player.", type: 'network' });
+                       setError({ message: "Falha na conexão com o servidor. Tente outro player.", type: 'network' });
                        setIsLoading(false);
                      }
                    }
-                   else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-                     hls.recoverMediaError();
-                   }
+                   else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
                    else {
-                     setError({ message: "Ocorreu um erro ao processar o vídeo.", type: 'network' });
+                     setError({ message: "Erro fatal de carregamento. Verifique sua rede.", type: 'network' });
                    }
                 }
               });
@@ -1004,20 +985,6 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
             payload: { type: 'pause', sender_id: clientIdRef.current }
           }).catch(() => {});
         }
-      }
-    }
-  };
-
-  const handleRestart = () => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = 0;
-      setShowRestartButton(false);
-      if (isHost && channelRef.current && roomId) {
-        channelRef.current.send({
-          type: 'broadcast',
-          event: 'room_event',
-          payload: { type: 'seek', time: 0, sender_id: clientIdRef.current }
-        }).catch(() => {});
       }
     }
   };
@@ -1506,7 +1473,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                   animate={{ opacity: 1, scale: 1 }}
                   className="px-4 py-1.5 bg-black/60 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl"
                 >
-                  <span className="text-[9px] md:text-[11px] font-black text-white uppercase tracking-widest italic whitespace-nowrap">
+                  <span className="text-[9px] md:text-[11px] font-black text-white uppercase tracking-[0.2em] italic whitespace-nowrap">
                     {emote.profileName}
                   </span>
                 </motion.div>
@@ -1551,7 +1518,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                   </div>
                   <div className="text-left">
                      <h2 className="text-lg md:text-3xl font-black text-white uppercase tracking-tighter italic leading-none">Net<span className="text-red-600">play</span></h2>
-                     <p className="text-[6px] md:text-[8px] text-gray-500 font-bold uppercase tracking-0.2em">Original App</p>
+                     <p className="text-[6px] md:text-[8px] text-gray-500 font-bold uppercase tracking-[0.2em]">Original App</p>
                   </div>
                </div>
 
