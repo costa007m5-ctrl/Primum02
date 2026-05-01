@@ -461,14 +461,14 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
 
   useEffect(() => {
     let timer: any;
-    if (!hasStartedPlayedRef.current && !isPlaying && loadingProgress === 100) {
-      // (10 segundos a partir de chegar em 100% se ainda não estiver tocando)
-      timer = setTimeout(() => {
-        // Só mostra se ainda não tocou
-        if (!hasStartedPlayedRef.current) {
-          setShowStuckButton(true);
-        }
-      }, 10000);
+  if (!hasStartedPlayedRef.current && !isPlaying && loadingProgress === 100) {
+  // (4 segundos a partir de chegar em 100% se ainda não estiver tocando)
+  timer = setTimeout(() => {
+  // Só mostra se ainda não tocou
+  if (!hasStartedPlayedRef.current) {
+  setShowStuckButton(true);
+  }
+  }, 4000);
     } else {
       setShowStuckButton(false);
     }
@@ -512,7 +512,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
 
         startLoadTimer = setTimeout(() => {
           if (!isMounted || !video) return;
-          setLoadingProgress(40); // Higher initial progress for instant feedback
+          setLoadingProgress(50); // Start at 50% for instant feedback
           if (lowerSrc.includes('.m3u8')) {
             if (Hls.isSupported()) {
               const hls = new Hls({
@@ -555,12 +555,22 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                   if (parsedLevels.length > 0) hls.autoLevelCapping = parsedLevels[0].id;
                 }
                 setQualityLevels(parsedLevels);
-                setLoadingProgress(70); // Higher progress on manifest parse
+                setLoadingProgress(85); // Near complete on manifest parse
                 // Instant play - no delay
                 video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
               });
+              // Hide loading as soon as first fragment starts loading
+              hls.on(Hls.Events.FRAG_LOADING, () => {
+                setLoadingProgress(95);
+              });
               hls.on(Hls.Events.FRAG_BUFFERED, () => {
                 // First fragment buffered = instant playback ready
+                setLoadingProgress(100);
+                setIsLoading(false);
+                setShowLogoOverlay(false);
+              });
+              // Also hide loading on LEVEL_LOADED for faster response
+              hls.on(Hls.Events.LEVEL_LOADED, () => {
                 setLoadingProgress(100);
                 setIsLoading(false);
                 setShowLogoOverlay(false);
@@ -603,7 +613,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
 
         startLoadTimer = setTimeout(() => {
           if (!isMounted || !video) return;
-          setLoadingProgress(40); // Higher initial progress for instant feedback
+          setLoadingProgress(50); // Start at 50% for instant feedback
           if (lowerSrc.includes('.m3u8')) {
             if (Hls.isSupported()) {
               const hls = new Hls({
@@ -646,13 +656,23 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                   if (parsedLevels.length > 0) hls.autoLevelCapping = parsedLevels[0].id;
                 }
   setQualityLevels(parsedLevels);
-  setLoadingProgress(70); // Higher progress on manifest parse
+  setLoadingProgress(85); // Near complete on manifest parse
   
   // Play immediately without delay for instant start
                 video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); });
               });
+              // Hide loading as soon as first fragment starts loading
+              hls.on(Hls.Events.FRAG_LOADING, () => {
+                setLoadingProgress(95);
+              });
               hls.on(Hls.Events.FRAG_BUFFERED, () => {
                 // First fragment buffered = instant playback ready
+                setLoadingProgress(100);
+                setIsLoading(false);
+                setShowLogoOverlay(false);
+              });
+              // Also hide loading on LEVEL_LOADED for faster response
+              hls.on(Hls.Events.LEVEL_LOADED, () => {
                 setLoadingProgress(100);
                 setIsLoading(false);
                 setShowLogoOverlay(false);
@@ -782,8 +802,11 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     };
 
     const handleCanPlay = () => {
+      // Instantly hide loading and show video
       setIsLoading(false);
       setLoadingProgress(100);
+      setShowLogoOverlay(false);
+      setIsBuffering(false);
       
       // Handle "Continue Watching" seek - ONLY for non-HLS formats (HLS uses startPosition)
       if (initialTime > 0 && !hasSeekedRef.current && !hlsRef.current) {
@@ -942,6 +965,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
 
 video.addEventListener('timeupdate', handleTimeUpdate);
   video.addEventListener('loadedmetadata', handleLoadedMetadata);
+  video.addEventListener('loadeddata', handleCanPlay); // Early trigger - data loaded
   video.addEventListener('canplay', handleCanPlay);
   video.addEventListener('canplaythrough', handleCanPlay); // Also listen for canplaythrough for instant start
   video.addEventListener('seeked', () => setIsBuffering(false));
@@ -960,6 +984,7 @@ video.addEventListener('timeupdate', handleTimeUpdate);
       if (cleanupInit) cleanupInit();
 video.removeEventListener('timeupdate', handleTimeUpdate);
   video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+  video.removeEventListener('loadeddata', handleCanPlay);
   video.removeEventListener('canplay', handleCanPlay);
   video.removeEventListener('canplaythrough', handleCanPlay);
   video.removeEventListener('seeked', () => setIsBuffering(false));
@@ -1004,15 +1029,15 @@ video.removeEventListener('timeupdate', handleTimeUpdate);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isLoading && loadingProgress >= 20 && loadingProgress < 95) {
+    if (isLoading && loadingProgress >= 20 && loadingProgress < 100) {
       interval = setInterval(() => {
         setLoadingProgress(prev => {
-          if (prev < 60) return prev + 5; // Faster initial progress
-          if (prev < 85) return prev + 3;
-          if (prev < 95) return prev + 1;
-          return prev;
+          if (prev < 70) return prev + 8; // Very fast initial progress
+          if (prev < 90) return prev + 5;
+          if (prev < 100) return prev + 2; // Keep going to 100
+          return 100;
         });
-      }, 400) as any; // Faster interval for smoother progress
+      }, 200) as any; // Much faster interval (200ms)
     }
     return () => clearInterval(interval);
   }, [isLoading, loadingProgress]);
@@ -1021,18 +1046,20 @@ video.removeEventListener('timeupdate', handleTimeUpdate);
     let safetyTimeout: NodeJS.Timeout;
 
     if (isLoading) {
+      // Force hide loading after 3 seconds regardless of play state
       safetyTimeout = setTimeout(() => {
-        if (isLoading && isPlaying) {
+        if (isLoading) {
           setIsLoading(false);
           setLoadingProgress(100);
+          setShowLogoOverlay(false);
         }
-      }, 5000); // Reduced safety timeout for faster fallback
+      }, 3000); // 3s max loading time - instant feel
     }
 
     return () => {
       if (safetyTimeout) clearTimeout(safetyTimeout);
     };
-  }, [isLoading, isPlaying]);
+  }, [isLoading]);
 
   useEffect(() => {
     if (!videoRef.current || !movieId) return;
@@ -1056,13 +1083,13 @@ video.removeEventListener('timeupdate', handleTimeUpdate);
   }, [movieId]);
 
   useEffect(() => {
-    let timer: any;
-    if (isLoading) {
-      timer = setTimeout(() => {
-        setShowStuckButton(true);
-      }, 8000); // 8s para mostrar botão de "Reparar" (mais rápido)
-    }
-    return () => clearTimeout(timer);
+  let timer: any;
+  if (isLoading) {
+  timer = setTimeout(() => {
+  setShowStuckButton(true);
+  }, 5000); // 5s para mostrar botão de "Reparar" (ainda mais rápido)
+  }
+  return () => clearTimeout(timer);
   }, [isLoading]);
 
   const togglePlay = () => {
