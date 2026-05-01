@@ -210,6 +210,19 @@ const MovieDetailsModal = React.memo(({
     fetchWatchProviders();
   }, [movie.id, movie.type, movie.first_air_date]);
 
+  const savedUrl = useMemo(() => {
+    return localStorage.getItem(`netplay_progress_url_${movie.id}`);
+  }, [movie.id]);
+
+  const savedEpisodeSeason = useMemo(() => {
+    if (movie.type !== 'series' || !movie.episodes || !savedUrl) return null;
+    const ep = movie.episodes.find(e => e.videoUrl === savedUrl || e.videoUrl2 === savedUrl);
+    if (ep) {
+       return ep.season;
+    }
+    return null;
+  }, [movie, savedUrl]);
+
   // Organizar episódios por temporada
   const episodesBySeason = movie.episodes?.reduce((acc, ep) => {
     const s = ep.season || 1;
@@ -255,19 +268,6 @@ const MovieDetailsModal = React.memo(({
     if (movie.last_position && movie.last_position > 5) return movie.last_position;
     return 0;
   }, [movie.id, movie.last_position, userResetProgress]);
-
-  const savedUrl = useMemo(() => {
-    return localStorage.getItem(`netplay_progress_url_${movie.id}`);
-  }, [movie.id]);
-
-  const savedEpisodeSeason = useMemo(() => {
-    if (movie.type !== 'series' || !movie.episodes || !savedUrl) return null;
-    const ep = movie.episodes.find(e => e.videoUrl === savedUrl || e.videoUrl2 === savedUrl);
-    if (ep) {
-       return ep.season;
-    }
-    return null;
-  }, [movie, savedUrl]);
 
   const savedEpisodeInfo = useMemo(() => {
     if (movie.type !== 'series' || !movie.episodes || !savedUrl) return null;
