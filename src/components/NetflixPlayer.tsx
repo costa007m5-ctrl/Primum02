@@ -510,89 +510,96 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       let startLoadTimer: NodeJS.Timeout;
 
       const initUnifiedMode = () => {
-        startLoadTimer = setTimeout(() => {
-          if (!isMounted || !video) return;
-          setLoadingProgress(25);
+        if (!isMounted || !video) return;
+        setLoadingProgress(25);
+        
+        const startPoint = initialTime > 0 ? Math.max(0, initialTime - 2) : -1;
+        
+        if (lowerSrc.includes('.m3u8')) {
+          const canPlayNative = video.canPlayType('application/vnd.apple.mpegurl');
+          const isMobileOrSafari = /iP(hone|od|ad)|Android|Mac OS|Safari/i.test(navigator.userAgent) && !/Chrome/i.test(navigator.userAgent) || /Android/i.test(navigator.userAgent);
           
-          const startPoint = initialTime > 0 ? Math.max(0, initialTime - 2) : -1;
-          
-          if (lowerSrc.includes('.m3u8')) {
-            const canPlayNative = video.canPlayType('application/vnd.apple.mpegurl');
-            const isMobileOrSafari = /iP(hone|od|ad)|Android|Mac OS|Safari/i.test(navigator.userAgent) && !/Chrome/i.test(navigator.userAgent) || /Android/i.test(navigator.userAgent);
-            
-            if (canPlayNative && (isMobileOrSafari || !Hls.isSupported())) {
-              video.src = videoToPlay;
-              video.load();
-              video.addEventListener('loadedmetadata', () => {
-                let safeStartPoint = startPoint;
-                if (safeStartPoint > 0) {
-                  const duration = video.duration || 0;
-                  const threshold = isMovie ? 450 : 30;
-                  if (duration > 0 && safeStartPoint >= duration - threshold) { safeStartPoint = 0; }
-                  video.currentTime = safeStartPoint;
-                }
-              }, { once: true });
-              video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
-            } else if (Hls.isSupported()) {
-              const hls = new Hls({
-                enableWorker: true,
-                startPosition: startPoint > 0 ? startPoint : -1,
-                maxBufferLength: 30,
-              });
-              hls.attachMedia(video);
-              hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.loadSource(videoToPlay));
-              hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-                let parsedLevels = data.levels.map((l, i) => ({ id: i, height: l.height, bitrate: l.bitrate })).sort((a, b) => b.height - a.height);
-                setQualityLevels(parsedLevels);
-                setLoadingProgress(50);
-                
-                if (video) {
-                   video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
-                }
-              });
-              hls.on(Hls.Events.FRAG_BUFFERED, () => {
-                setLoadingProgress(prev => Math.min(prev + 5, 90));
-              });
-
-              hls.on(Hls.Events.ERROR, (event, data) => {
-                console.warn("HLS Error:", data);
-                if (data.fatal) {
-                   if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                     if (retryCountRef.current < 5) {
-                       retryCountRef.current++;
-                       setLoadingProgress(prev => Math.max(prev, 15));
-                       hls.startLoad();
-                     } else {
-                       setError({ message: "Falha na conexão com o servidor. Tente outro player.", type: 'network' });
-                       setIsLoading(false);
-                     }
-                   }
-                   else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
-                   else {
-                     setError({ message: "Erro fatal de carregamento. Verifique sua rede.", type: 'network' });
-                   }
-                }
-              });
-              hlsRef.current = hls;
-            }
-          } else {
+          if (canPlayNative && (isMobileOrSafari || !Hls.isSupported())) {
             video.src = videoToPlay;
             video.load();
             video.addEventListener('loadedmetadata', () => {
-                 let safeStartPoint = startPoint;
-                 if (safeStartPoint > 0) {
-                   const duration = video.duration || 0;
-                   const threshold = isMovie ? 450 : 30;
-                   if (duration > 0 && safeStartPoint >= duration - threshold) { safeStartPoint = 0; }
-                   video.currentTime = safeStartPoint;
-                 }
+              let safeStartPoint = startPoint;
+              if (safeStartPoint > 0) {
+                const duration = video.duration || 0;
+                const threshold = isMovie ? 450 : 30;
+                if (duration > 0 && safeStartPoint >= duration - threshold) { safeStartPoint = 0; }
+                video.currentTime = safeStartPoint;
+              }
             }, { once: true });
             video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
+          } else if (Hls.isSupported()) {
+            const hls = new Hls({
+              enableWorker: true,
+              lowLatencyMode: true,
+              startPosition: startPoint > 0 ? startPoint : -1,
+              maxBufferLength: 60,
+              maxMaxBufferLength: 120,
+              manifestLoadingMaxRetry: 20,
+              levelLoadingMaxRetry: 20,
+              fragLoadingMaxRetry: 20,
+              manifestLoadingRetryDelay: 500,
+              levelLoadingRetryDelay: 500,
+              fragLoadingRetryDelay: 500,
+            });
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.loadSource(videoToPlay));
+            hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+              let parsedLevels = data.levels.map((l, i) => ({ id: i, height: l.height, bitrate: l.bitrate })).sort((a, b) => b.height - a.height);
+              setQualityLevels(parsedLevels);
+              setLoadingProgress(50);
+              
+              if (video) {
+                 video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
+              }
+            });
+            hls.on(Hls.Events.FRAG_BUFFERED, () => {
+              setLoadingProgress(prev => Math.min(prev + 5, 90));
+            });
+
+            hls.on(Hls.Events.ERROR, (event, data) => {
+              console.warn("HLS Error:", data);
+              if (data.fatal) {
+                 if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                   if (retryCountRef.current < 20) { // High retry count for robust handling
+                     retryCountRef.current++;
+                     setLoadingProgress(prev => Math.max(prev, 15));
+                     setTimeout(() => hls.startLoad(), 500); // 500ms delay to retry smoothly
+                   } else {
+                     setError({ message: "Falha contínua na conexão. O servidor pode estar offline ou bloqueado.", type: 'network' });
+                     setIsLoading(false);
+                   }
+                 }
+                 else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+                 else {
+                   // We ignore other fatal errors to allow auto-recovery without blocking the user
+                   console.error("Ignored fatal error for seamless playback attempt", data);
+                 }
+              }
+            });
+            hlsRef.current = hls;
           }
-        }, 0);
+        } else {
+          video.src = videoToPlay;
+          video.load();
+          video.addEventListener('loadedmetadata', () => {
+               let safeStartPoint = startPoint;
+               if (safeStartPoint > 0) {
+                 const duration = video.duration || 0;
+                 const threshold = isMovie ? 450 : 30;
+                 if (duration > 0 && safeStartPoint >= duration - threshold) { safeStartPoint = 0; }
+                 video.currentTime = safeStartPoint;
+               }
+          }, { once: true });
+          video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setLoadingProgress(100); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
+        }
       };
 
-      // EXECUÇÃO INDEPENDENTE
+      // EXECUÇÃO IMEDIATA
       initUnifiedMode();
 
       return () => {
@@ -882,17 +889,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   }, [autoRotate, lockOrientation]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isLoading && loadingProgress >= 20 && loadingProgress < 90) {
-      interval = setInterval(() => {
-        setLoadingProgress(prev => {
-          if (prev < 40) return prev + 2;
-          if (prev < 80) return prev + 1;
-          return prev;
-        });
-      }, 800) as any;
-    }
-    return () => clearInterval(interval);
+    // Artificial interval removed in favor of native buffering tracking
   }, [isLoading, loadingProgress]);
 
   useEffect(() => {
@@ -910,7 +907,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
              videoRef.current.play().catch(e => console.warn("Safety timeout autoplay blocked", e));
           }
         }
-      }, 10000); // 10 seconds timeout for initial load
+      }, 30000); // 30 seconds for long buffering / network delays
     }
 
     return () => {
@@ -949,7 +946,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     if (isLoading) {
       timer = setTimeout(() => {
         setShowStuckButton(true);
-      }, 15000); // 15s para mostrar botão de "Reparar"
+      }, 30000); // 30s para mostrar botão de "Reparar" em casos de grande lentidão
     }
     return () => clearTimeout(timer);
   }, [isLoading]);
