@@ -1231,7 +1231,7 @@ const PlayerRouteWrapper = ({ myMovies, profile, closePlayer, handleSelectMovie,
     const genres = [movie.genre, ...(movie.genres || [])].filter(Boolean);
     const similar = myMovies.filter((m: any) => 
       m.id?.toString() !== movie.id?.toString() && 
-      (genres.includes(m.genre) || (m.genres && m.genres.some((g: string) => genres.includes(g))))
+      (genres.includes(m.genre) || (Array.isArray(m.genres) && m.genres.some((g: string) => genres.includes(g))))
     );
     
     const shuffledSimilar = similar.sort(() => 0.5 - Math.random());
