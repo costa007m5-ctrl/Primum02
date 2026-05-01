@@ -159,15 +159,6 @@ const MovieDetailsModal = React.memo(({
       if (screen.orientation && (screen.orientation as any).lock) {
         (screen.orientation as any).lock('landscape').catch(() => {});
       }
-    } else {
-      if (screen.orientation && screen.orientation.unlock) {
-        screen.orientation.unlock();
-        try {
-          if ((screen.orientation as any).lock) {
-             (screen.orientation as any).lock('portrait').catch(() => {});
-          }
-        } catch (e) {}
-      }
     }
   }, [isPlayingFullscreen]);
 

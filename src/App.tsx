@@ -1225,6 +1225,26 @@ const PlayerRouteWrapper = ({ myMovies, profile, closePlayer, handleSelectMovie,
     return progress ? parseFloat(progress) : 0;
   }, [movieId]);
 
+  const recommendations = useMemo(() => {
+    if (!movie || !myMovies) return [];
+    
+    const genres = [movie.genre, ...(movie.genres || [])].filter(Boolean);
+    const similar = myMovies.filter((m: any) => 
+      m.id?.toString() !== movie.id?.toString() && 
+      (genres.includes(m.genre) || (m.genres && m.genres.some((g: string) => genres.includes(g))))
+    );
+    
+    const shuffledSimilar = similar.sort(() => 0.5 - Math.random());
+    
+    if (shuffledSimilar.length < 10) {
+      const others = myMovies
+        .filter((m: any) => m.id?.toString() !== movie.id?.toString() && !similar.find((s: any) => s.id === m.id))
+        .sort(() => 0.5 - Math.random());
+      return [...shuffledSimilar, ...others].slice(0, 10);
+    }
+    return shuffledSimilar.slice(0, 10);
+  }, [movie, myMovies]);
+
   if (!movie) {
     return (
       <div className="fixed inset-0 z-[300] bg-black flex flex-col items-center justify-center p-4">
@@ -1242,7 +1262,7 @@ const PlayerRouteWrapper = ({ myMovies, profile, closePlayer, handleSelectMovie,
       onClose={closePlayer}
       profileId={profile?.id}
       profile={profile}
-      recommendations={myMovies.slice(0, 10)}
+      recommendations={recommendations}
       onProgress={onProgress}
       onPlayNext={(m, url) => {
          if (handlePlayMovie) handlePlayMovie(m, url, 0);
@@ -3640,9 +3660,23 @@ export default function App() {
     try {
       if (document.documentElement.requestFullscreen) {
         document.documentElement.requestFullscreen().catch(() => {});
+      } else if ((document.documentElement as any).webkitRequestFullscreen) {
+        (document.documentElement as any).webkitRequestFullscreen().catch(() => {});
       }
       if (screen.orientation && (screen.orientation as any).lock) {
         (screen.orientation as any).lock('landscape').catch(() => {});
+      }
+      if (typeof window !== 'undefined') {
+        const ua = navigator.userAgent.toLowerCase();
+        if (ua.includes('median') || ua.includes('gonative')) {
+          if ((window as any).median) {
+            (window as any).median.screen.setOrientation({orientation: 'landscape'});
+          } else if ((window as any).gonative) {
+            (window as any).gonative.screen.setOrientation({orientation: 'landscape'});
+          } else {
+            window.location.href = `median://screen/setOrientation?orientation=landscape`;
+          }
+        }
       }
     } catch(e) {}
     

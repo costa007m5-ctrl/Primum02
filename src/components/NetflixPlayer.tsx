@@ -534,7 +534,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 }
                 setQualityLevels(parsedLevels);
                 setLoadingProgress(50);
-                video.play().catch(() => {});
+                video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
               });
               hls.on(Hls.Events.FRAG_BUFFERED, () => {
                 setLoadingProgress(prev => Math.min(prev + 5, 90));
@@ -543,8 +543,14 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 console.warn("HLS Error:", data);
                 if (data.fatal) {
                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                     setLoadingProgress(prev => Math.max(prev, 15));
-                     hls.startLoad();
+                     if (retryCountRef.current < 5) {
+                       retryCountRef.current++;
+                       setLoadingProgress(prev => Math.max(prev, 15));
+                       hls.startLoad();
+                     } else {
+                       setError({ message: "Falha na conexão com o servidor. Tente outro player.", type: 'network' });
+                       setIsLoading(false);
+                     }
                    }
                    else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
                    else {
@@ -556,11 +562,11 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
               // Safari Native HLS Fallback
               video.src = videoToPlay;
-              video.play().catch(() => {});
+              video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
             }
           } else {
             video.src = videoToPlay;
-            video.play().catch(() => {});
+            video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
           }
         }, 0);
       };
@@ -606,7 +612,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                   hls.startLoad();
                 }
                 setTimeout(() => {
-                  if (video) video.play().catch(() => {});
+                  if (video) video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setShowLogoOverlay(false); setShowControls(true); });
                 }, 100);
               });
               hls.on(Hls.Events.FRAG_BUFFERED, () => {
@@ -616,8 +622,14 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 console.warn("HLS Error:", data);
                 if (data.fatal) {
                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                      setLoadingProgress(prev => Math.max(prev, 15));
-                      hls.startLoad();
+                      if (retryCountRef.current < 5) {
+                        retryCountRef.current++;
+                        setLoadingProgress(prev => Math.max(prev, 15));
+                        hls.startLoad();
+                      } else {
+                        setError({ message: "Falha na conexão com o servidor. Tente outro player.", type: 'network' });
+                        setIsLoading(false);
+                      }
                    }
                    else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
                    else {
@@ -630,14 +642,14 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                 video.src = videoToPlay;
                 video.addEventListener('loadedmetadata', () => {
                     video.currentTime = initialTime;
-                    video.play().catch(() => {});
+                    video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setShowLogoOverlay(false); setShowControls(true); });
                 }, { once: true });
             }
           } else {
             video.src = videoToPlay;
             video.addEventListener('loadedmetadata', () => {
                 video.currentTime = initialTime;
-                video.play().catch(() => {});
+                video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
             }, { once: true });
           }
         }, 0);
@@ -750,6 +762,8 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
           video.play().catch(err => {
             console.warn("Autoplay blocked:", err);
             setIsLoading(false);
+            setShowLogoOverlay(false);
+            setShowControls(true);
             setIsPlaying(false);
           });
         }
@@ -830,7 +844,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
 
     const handleStalled = () => {
       if (video.paused && isPlaying) {
-        video.play().catch(() => {});
+        video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
       }
     };
 
@@ -849,7 +863,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         setTimeout(() => {
           if (video) {
             video.load();
-            video.play().catch(() => {});
+            video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
           }
         }, 2000);
         return;
@@ -1000,7 +1014,7 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     if (video) {
       if (video.paused) {
         // Allow guest to initiate playback to bypass browser autoplay blocks
-        video.play().catch(() => {});
+        video.play().catch(e => { console.warn("Autoplay block", e); setIsLoading(false); setShowLogoOverlay(false); setShowControls(true); setIsPlaying(false); });
         if (isHost && channelRef.current && roomId) {
           channelRef.current.send({
             type: 'broadcast',
@@ -1632,6 +1646,14 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
                     setIsLoading(false);
                     setLoadingProgress(100);
                     setShowLogoOverlay(false);
+                    try {
+                      if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen().catch(() => {});
+                      }
+                      if (screen.orientation && (screen.orientation as any).lock) {
+                        (screen.orientation as any).lock('landscape').catch(() => {});
+                      }
+                    } catch(e) {}
                     if (videoRef.current) videoRef.current.play().catch(() => {});
                     // play() will trigger handlePlaying which locks orientation.
                   }}

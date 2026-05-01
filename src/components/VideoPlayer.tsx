@@ -26,13 +26,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
   const [playerStyle, setPlayerStyle] = useState<'netflix' | 'standard' | 'special' | null>('netflix');
   const [drivePlayMethod, setDrivePlayMethod] = useState<'api' | 'uc' | 'iframe'>('api');
   const getInitialExtracted = (type: 'video' | 'subtitle') => {
-    const url = movie.videoUrl || '';
+    let url = movie.videoUrl || '';
     const isKing = url.includes('player.kingx.dev') || url.includes('teradl.kingx.dev');
     if (isKing) {
       try {
-        const hash = url.split('#')[1];
-        if (hash) {
-          const params = new URLSearchParams(hash);
+        let searchString = '';
+        if (url.includes('#')) {
+          searchString = url.split('#')[1];
+        } else if (url.includes('?')) {
+          searchString = url.split('?')[1];
+        }
+        
+        if (searchString) {
+          const params = new URLSearchParams(searchString);
           return params.get(`${type}_url`);
         }
       } catch (e) {}
@@ -341,12 +347,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
       if (!container) return;
 
       // Try to enter fullscreen first as it's often required for orientation lock
-      if (screenfull.isEnabled) {
-        await screenfull.request(container).catch(() => {});
-      } else if ((container as any).webkitRequestFullscreen) {
-        await (container as any).webkitRequestFullscreen().catch(() => {});
-      } else if (container.requestFullscreen) {
-        await container.requestFullscreen().catch(() => {});
+      if (!document.fullscreenElement) {
+        if (screenfull.isEnabled) {
+          await screenfull.request(container).catch(() => {});
+        } else if ((container as any).webkitRequestFullscreen) {
+          await (container as any).webkitRequestFullscreen().catch(() => {});
+        } else if (container.requestFullscreen) {
+          await container.requestFullscreen().catch(() => {});
+        }
       }
 
       // Lock orientation with multiple attempts and fallbacks
@@ -399,14 +407,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
       const timer = setTimeout(requestLandscape, 1000);
       return () => clearTimeout(timer);
     }
-
-    return () => {
-      if (screenfull.isEnabled && screenfull.isFullscreen) {
-        screenfull.exit().catch(() => {});
-      } else if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-      }
-    };
   }, [playerStyle]);
 
   const toggleFullscreen = async () => {
