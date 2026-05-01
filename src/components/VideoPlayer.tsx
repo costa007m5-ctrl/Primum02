@@ -313,28 +313,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
     };
   }, []);
 
-  // Detectar fonte e definir estilo automaticamente
+  // Detectar fonte e definir estilo automaticamente - instant detection
   useEffect(() => {
     const url = movie.videoUrl || '';
     const isDrive = url.includes('drive.google.com');
-    const isKingXUrl = url.includes('kingx.dev') || url.includes('teradl.kingx.dev');
-    const isTera = url.includes('terabox') || url.includes('teradl') || url.includes('kingx');
 
     if (isDrive) {
       setDrivePlayMethod('iframe');
-      setPlayerStyle('standard'); // Usar o fluxo padrão que renderiza o iframe no final
-      requestLandscape();
-    } else if (isKingXUrl) {
-      setPlayerStyle('netflix');
-      requestLandscape();
-    } else if (isTera) {
-      setPlayerStyle('netflix');
-      requestLandscape();
+      setPlayerStyle('standard');
     } else {
-      // Outros links vão para o Netflix Player por padrão para melhor compatibilidade
+      // Use Netflix Player for all other sources (KingX, Terabox, HLS, etc.)
+      // This provides instant playback with optimized HLS.js settings
       setPlayerStyle('netflix');
-      requestLandscape();
     }
+    // Request landscape immediately after style is set
+    requestLandscape();
   }, [movie.videoUrl]);
 
   const requestLandscape = async () => {
@@ -342,44 +335,28 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
       const container = containerRef.current;
       if (!container) return;
 
-      // Try to enter fullscreen first as it's often required for orientation lock
+      // Lock orientation immediately (non-blocking)
+      const lock = () => {
+        if (screen.orientation && (screen.orientation as any).lock) {
+          (screen.orientation as any).lock('landscape').catch(() => {
+            (screen.orientation as any).lock('landscape-primary').catch(() => {});
+          });
+        }
+      };
+
+      // Try fullscreen (non-blocking, don't wait)
       if (!document.fullscreenElement) {
         if (screenfull.isEnabled) {
-          await screenfull.request(container).catch(() => {});
+          screenfull.request(container).catch(() => {});
         } else if ((container as any).webkitRequestFullscreen) {
-          await (container as any).webkitRequestFullscreen().catch(() => {});
+          (container as any).webkitRequestFullscreen().catch(() => {});
         } else if (container.requestFullscreen) {
-          await container.requestFullscreen().catch(() => {});
+          container.requestFullscreen().catch(() => {});
         }
       }
 
-      // Lock orientation with multiple attempts and fallbacks
-      const lock = async () => {
-        if (screen.orientation && (screen.orientation as any).lock) {
-          try {
-            await (screen.orientation as any).lock('landscape');
-            return true;
-          } catch (e) {
-            try {
-              await (screen.orientation as any).lock('landscape-primary');
-              return true;
-            } catch (e2) {
-              return false;
-            }
-          }
-        }
-        return false;
-      };
-
-      // Try immediately
-      await lock();
-
-      // Small delay to ensure fullscreen transition is stable, then try again
-      await new Promise(resolve => setTimeout(resolve, 500));
-      await lock();
-      
-      // One more try after 1.5s for slow devices
-      setTimeout(lock, 1500);
+      // Try orientation lock immediately
+      lock();
 
       // iOS specific: force landscape via webkitEnterFullscreen on the video element if available
       if (videoRef.current && (videoRef.current as any).webkitEnterFullscreen) {
@@ -396,12 +373,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
 
   useEffect(() => {
     if (playerStyle !== null) {
-      // Immediate attempt
+      // Immediate attempt without delay
       requestLandscape();
-      
-      // Follow-up attempt after a short delay to catch any race conditions
-      const timer = setTimeout(requestLandscape, 1000);
-      return () => clearTimeout(timer);
     }
   }, [playerStyle]);
 
