@@ -1451,6 +1451,28 @@ end $$;
                               </button>
                             </div>
                           </div>
+                          
+                          <div className="flex items-center justify-end gap-2 mb-2 p-2 bg-[#1c1c1c] rounded-lg border border-gray-800">
+                            <span className="text-[10px] text-gray-500 font-bold uppercase">Auto-Next (Fim):</span>
+                            <input 
+                              type="number" 
+                              placeholder="Segs (ex: 30)"
+                              className="w-20 bg-black border border-gray-800 text-xs text-center text-white p-1 rounded outline-none h-6"
+                              id="bulkCreditsTimeAdmin"
+                            />
+                            <button 
+                              onClick={() => {
+                                const val = (document.getElementById('bulkCreditsTimeAdmin') as HTMLInputElement).value;
+                                if (val !== '') {
+                                  setEditForm({...editForm, episodes: editForm.episodes.map(ep => ({...ep, credits_time: Number(val)}))});
+                                }
+                              }}
+                              className="text-[10px] bg-red-600/20 text-red-500 border border-red-500/30 px-3 py-1 rounded hover:bg-red-600 hover:text-white transition-all h-6 flex items-center font-bold"
+                            >
+                              Aplicar a Todos
+                            </button>
+                          </div>
+
                           <div className="space-y-2">
                             {editForm.episodes.map((ep, idx) => (
                               <div key={ep.id} className="bg-[#1c1c1c] rounded-xl border border-gray-800 overflow-hidden">
@@ -1501,7 +1523,19 @@ end $$;
                                       newEps[idx].videoUrl = e.target.value;
                                       setEditForm({...editForm, episodes: newEps});
                                     }}
-                                    className="flex-1 bg-transparent border-b border-gray-800 text-xs text-white p-1 outline-none focus:border-blue-600"
+                                    className="flex-[2] bg-transparent border-b border-gray-800 text-xs text-white p-1 outline-none focus:border-blue-600"
+                                  />
+                                  <input 
+                                    type="number" 
+                                    placeholder="Auto-Next (s)"
+                                    title="Segundos antes do final para pular o episódio/créditos"
+                                    value={ep.credits_time !== undefined ? ep.credits_time : ''}
+                                    onChange={(e) => {
+                                      const newEps = [...editForm.episodes];
+                                      newEps[idx].credits_time = e.target.value ? Number(e.target.value) : undefined;
+                                      setEditForm({...editForm, episodes: newEps});
+                                    }}
+                                    className="w-24 bg-transparent border-b border-gray-800 text-xs text-white p-1 outline-none focus:border-blue-600"
                                   />
                                   <button 
                                     onClick={() => setEditForm({...editForm, episodes: editForm.episodes.filter((_, i) => i !== idx)})}

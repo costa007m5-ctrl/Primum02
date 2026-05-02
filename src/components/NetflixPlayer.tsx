@@ -30,6 +30,7 @@ interface NetflixPlayerProps {
   maxQualityHeight?: number;
   isBackgroundMode?: boolean;
   onClickBackground?: () => void;
+  autoNextOffset?: number;
 }
 
 const NetflixPlayer: React.FC<NetflixPlayerProps> = ({ 
@@ -55,7 +56,8 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
   profile,
   maxQualityHeight,
   isBackgroundMode = false,
-  onClickBackground
+  onClickBackground,
+  autoNextOffset
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -632,10 +634,12 @@ const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
       if (video.duration > 0) {
         const timeFromEnd = video.duration - time;
         if (hasNextEpisode) {
-          if (timeFromEnd <= 120 && timeFromEnd > 0) {
+          const triggerTime = autoNextOffset !== undefined ? autoNextOffset : 120;
+          if (timeFromEnd <= triggerTime && timeFromEnd > 0) {
             setShowAutoNext(true);
+            const countdownSeconds = Math.min(15, triggerTime);
             if (recsTargetTimeRef.current === null || didSeek) {
-               recsTargetTimeRef.current = time + 15;
+               recsTargetTimeRef.current = time + countdownSeconds;
             }
             const nextCounter = Math.max(0, Math.ceil(recsTargetTimeRef.current - time));
             setAutoNextCounter(nextCounter);

@@ -3050,13 +3050,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           </div>
                           <p className="text-[9px] text-gray-500 italic">Isso extrairá o link de vídeo real do player KingX.</p>
                         </div>
+                        
+                        <div className="flex items-center justify-end gap-2 bg-white/5 border border-white/10 rounded-xl p-3">
+                          <span className="text-[10px] text-gray-500 font-black uppercase">Auto-Next Global (s):</span>
+                          <input 
+                            id="bulkNewMovieCredits"
+                            type="number"
+                            placeholder="Ex: 30"
+                            className="w-20 bg-black/40 border border-white/5 rounded-lg py-1 px-2 text-xs font-mono text-center"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const val = (document.getElementById('bulkNewMovieCredits') as HTMLInputElement).value;
+                              if (val !== '') {
+                                setNewMovie({
+                                  ...newMovie, 
+                                  episodes: newMovie.episodes?.map(ep => ({ ...ep, credits_time: Number(val) }))
+                                });
+                              }
+                            }}
+                            className="bg-red-600/20 text-red-500 border border-red-500/30 hover:bg-red-600 hover:text-white transition-colors px-3 py-1 rounded-lg text-[10px] font-bold uppercase"
+                          >
+                            Aplicar Tudo
+                          </button>
+                        </div>
 
                         <div className="space-y-4 max-h-[400px] overflow-y-auto no-scrollbar">
                            {(newMovie.episodes || []).map((ep: any, idx: number) => (
                              <div key={ep.id} className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3 relative group">
                                 <button 
                                   onClick={() => removeEpisode(newMovie, setNewMovie, ep.id)}
-                                  className="absolute top-2 right-2 text-gray-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                  className="absolute top-2 right-2 text-gray-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all z-10"
                                 >
                                   <X size={14} />
                                 </button>
@@ -3089,15 +3114,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                     />
                                   </div>
                                 </div>
-                                <div>
-                                  <label className="block text-[8px] font-black text-gray-500 uppercase mb-1">Link Vídeo</label>
-                                  <input 
-                                    type="text"
-                                    value={ep.videoUrl}
-                                    onChange={(e) => updateEpisode(newMovie, setNewMovie, ep.id, 'videoUrl', e.target.value)}
-                                    className="w-full bg-black/40 border border-white/5 rounded-lg py-1.5 px-3 text-xs font-mono text-blue-400"
-                                    placeholder="Ex: Teradl / M3U8"
-                                  />
+                                <div className="grid grid-cols-3 gap-2">
+                                  <div className="col-span-2">
+                                    <label className="block text-[8px] font-black text-gray-500 uppercase mb-1">Link Vídeo</label>
+                                    <input 
+                                      type="text"
+                                      value={ep.videoUrl}
+                                      onChange={(e) => updateEpisode(newMovie, setNewMovie, ep.id, 'videoUrl', e.target.value)}
+                                      className="w-full bg-black/40 border border-white/5 rounded-lg py-1.5 px-3 text-xs font-mono text-blue-400"
+                                      placeholder="Ex: Teradl / M3U8"
+                                    />
+                                  </div>
+                                  <div className="col-span-1">
+                                    <label className="block text-[8px] font-black text-gray-500 uppercase mb-1 text-center whitespace-nowrap">Auto-Next(s)</label>
+                                    <input 
+                                      type="number"
+                                      value={ep.credits_time !== undefined ? ep.credits_time : ''}
+                                      onChange={(e) => updateEpisode(newMovie, setNewMovie, ep.id, 'credits_time', e.target.value !== '' ? Number(e.target.value) : undefined)}
+                                      className="w-full bg-black/40 border border-white/5 rounded-lg py-1.5 px-3 text-xs font-mono text-center"
+                                      placeholder="Ex: 30"
+                                    />
+                                  </div>
                                 </div>
                              </div>
                            ))}
@@ -3444,6 +3481,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         </div>
                       </div>
 
+                      <div className="flex items-center justify-end gap-2 bg-white/5 border border-white/10 rounded-xl p-3 mb-4 mt-2">
+                        <span className="text-[10px] text-gray-500 font-black uppercase">Auto-Next Global (s):</span>
+                        <input 
+                          id="bulkEditingMovieCreditsAdmin"
+                          type="number"
+                          placeholder="Ex: 30"
+                          className="w-20 bg-black/40 border border-white/5 rounded-lg py-1 px-2 text-xs font-mono text-center"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const val = (document.getElementById('bulkEditingMovieCreditsAdmin') as HTMLInputElement).value;
+                            if (val !== '') {
+                              setEditingMovie(prev => prev ? {
+                                ...prev, 
+                                episodes: prev.episodes?.map((ep: any) => ({ ...ep, credits_time: Number(val) }))
+                              } : null);
+                            }
+                          }}
+                          className="bg-red-600/20 text-red-500 border border-red-500/30 hover:bg-red-600 hover:text-white transition-colors px-3 py-1 rounded-lg text-[10px] font-bold uppercase"
+                        >
+                          Aplicar Tudo
+                        </button>
+                      </div>
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto no-scrollbar pr-2">
                          {(editingMovie.episodes || []).map((ep: any) => (
                            <div key={ep.id} className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3 relative group">
@@ -3484,15 +3546,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                   />
                                 </div>
                               </div>
-                              <div>
-                                <label className="block text-[8px] font-black text-gray-500 uppercase mb-1">Link Vídeo</label>
-                                <input 
-                                  type="text"
-                                  value={ep.videoUrl}
-                                  onChange={(e) => updateEpisode(editingMovie, setEditingMovie, ep.id, 'videoUrl', e.target.value)}
-                                  className="w-full bg-black/40 border border-white/5 rounded-lg py-1.5 px-3 text-[10px] font-mono text-blue-400"
-                                  placeholder="Link do vídeo..."
-                                />
+                              <div className="grid grid-cols-3 gap-2">
+                                <div className="col-span-2">
+                                  <label className="block text-[8px] font-black text-gray-500 uppercase mb-1">Link Vídeo</label>
+                                  <input 
+                                    type="text"
+                                    value={ep.videoUrl}
+                                    onChange={(e) => updateEpisode(editingMovie, setEditingMovie, ep.id, 'videoUrl', e.target.value)}
+                                    className="w-full bg-black/40 border border-white/5 rounded-lg py-1.5 px-3 text-[10px] font-mono text-blue-400"
+                                    placeholder="Link do vídeo..."
+                                  />
+                                </div>
+                                <div className="col-span-1">
+                                  <label className="block text-[8px] font-black text-gray-500 uppercase mb-1 text-center whitespace-nowrap">Auto-Next(s)</label>
+                                  <input 
+                                    type="number"
+                                    value={ep.credits_time !== undefined ? ep.credits_time : ''}
+                                    onChange={(e) => updateEpisode(editingMovie, setEditingMovie, ep.id, 'credits_time', e.target.value !== '' ? Number(e.target.value) : undefined)}
+                                    className="w-full bg-black/40 border border-white/5 rounded-lg py-1.5 px-3 text-xs font-mono text-center"
+                                    placeholder="Ex: 30"
+                                  />
+                                </div>
                               </div>
                               <div className="bg-blue-600/10 rounded-lg p-2 flex gap-2 items-center">
                                 <LinkIcon size={12} className="text-blue-500" />

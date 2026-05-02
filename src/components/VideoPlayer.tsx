@@ -524,6 +524,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
               setPlayerStyle('standard');
             }
           }}
+          autoNextOffset={
+            movie.type === 'series' && currentIndex !== -1 
+              ? movie.episodes?.[currentIndex]?.credits_time 
+              : undefined
+          }
           onProgress={async (time, duration) => {
             currentTimeRef.current = time;
             if (duration !== undefined) durationRef.current = duration;
@@ -532,7 +537,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, profileId, pr
             if (profileId && movie.id && appSettings?.subscription_plan !== 'hub') {
               const finalDuration = duration !== undefined ? duration : durationRef.current;
               const isMovie = movie.type !== 'series';
-              const isFinished = finalDuration > 0 && (isMovie ? (finalDuration - time <= 450) : (finalDuration - time <= 30));
+              const seriesCreditsTime = currentIndex !== -1 && movie.episodes?.[currentIndex]?.credits_time !== undefined 
+                  ? movie.episodes[currentIndex].credits_time 
+                  : 30; // default 30 se não definido
+              const isFinished = finalDuration > 0 && (isMovie ? (finalDuration - time <= 450) : (finalDuration - time <= seriesCreditsTime!));
 
               if (isFinished && isMovie) {
                   await supabase.from('watch_history').delete().match({ profile_id: profileId, movie_id: movie.id });

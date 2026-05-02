@@ -10,6 +10,7 @@ export interface Episode {
   release_date?: string;
   rating?: number;
   runtime?: number;
+  credits_time?: number; // Segundos antes do fim para o Próximo Episódio
 }
 
 export interface Movie {
