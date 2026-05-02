@@ -91,29 +91,44 @@ export const fetchSeasonDetailsWithFallback = async (tvId: number, seasonNumber:
   const res = await tmdb.get(requests.tvSeasonDetails(tvId, seasonNumber), { params: { language: 'pt-BR' } });
   let episodes = res.data.episodes || [];
   
-  const hasEmptyOverviews = episodes.some((ep: any) => !ep.overview || ep.overview === '');
-  if (hasEmptyOverviews) {
-    try {
-      const enRes = await tmdb.get(requests.tvSeasonDetails(tvId, seasonNumber), { params: { language: 'en-US' } });
-      const enEpisodes = enRes.data.episodes || [];
-      const { translateToPortuguese } = await import('./ai');
+  try {
+    const enRes = await tmdb.get(requests.tvSeasonDetails(tvId, seasonNumber), { params: { language: 'en-US' } });
+    const enEpisodes = enRes.data.episodes || [];
+    const { translateToPortuguese } = await import('./ai');
+    
+    episodes = await Promise.all(episodes.map(async (ep: any, idx: number) => {
+      let finalOverview = ep.overview;
+      let finalName = ep.name;
       
-      episodes = await Promise.all(episodes.map(async (ep: any, idx: number) => {
-        let finalOverview = ep.overview;
-        if (!finalOverview || finalOverview === '') {
-           const fallbackEn = enEpisodes[idx]?.overview || '';
-           if (fallbackEn) {
-             finalOverview = await translateToPortuguese(fallbackEn);
-           }
-        }
-        return {
-          ...ep,
-          overview: finalOverview
-        };
-      }));
-    } catch (e) {
-      console.warn("Failed to fetch/translate fallback English overviews for season", seasonNumber);
-    }
+      const fallbackEnOverview = enEpisodes[idx]?.overview || '';
+      const fallbackEnTitle = enEpisodes[idx]?.name || '';
+      
+      // If pt-BR overview is empty, OR if pt-BR overview identically matches the en-US overview (meaning TMDB fell back to English), let's translate it!
+      if (!finalOverview || finalOverview === '' || (finalOverview === fallbackEnOverview && fallbackEnOverview !== '')) {
+         if (fallbackEnOverview) {
+           finalOverview = await translateToPortuguese(fallbackEnOverview);
+         }
+      }
+      
+      // Same logic for the tile
+      if (!finalName || finalName.startsWith('Episódio') || finalName === `Episode ${ep.episode_number}` || (finalName === fallbackEnTitle && fallbackEnTitle !== '')) {
+          if (fallbackEnTitle && !fallbackEnTitle.startsWith('Episode ') && !fallbackEnTitle.startsWith('Episódio')) {
+              try {
+                finalName = await translateToPortuguese(fallbackEnTitle);
+              } catch (e) {
+                finalName = fallbackEnTitle;
+              }
+          }
+      }
+      
+      return {
+        ...ep,
+        overview: finalOverview,
+        name: finalName
+      };
+    }));
+  } catch (e) {
+    console.warn("Failed to fetch/translate fallback English overviews for season", seasonNumber);
   }
   
   return { ...res, data: { ...res.data, episodes } };
