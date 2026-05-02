@@ -607,7 +607,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`Tem certeza que deseja deletar ${selectedIds.size} itens?`)) return;
+    if (!window.confirm(`Tem certeza que deseja deletar ${selectedIds.size} itens?`)) return;
     
     setIsBulkActionLoading(true);
     try {
@@ -2121,7 +2121,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           <Edit3 size={14} />
                         </button>
                         <button 
-                          onClick={() => onDeleteStreamingProvider(provider.id)}
+                          onClick={() => {
+                            if (window.confirm(`Tem certeza que deseja deletar "${provider.name}"?`)) {
+                              onDeleteStreamingProvider(provider.id);
+                            }
+                          }}
                           className="p-1.5 md:p-2 hover:bg-red-600/10 rounded-lg text-gray-500 hover:text-red-600 transition-all"
                         >
                           <Trash2 size={14} />
@@ -2576,7 +2580,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               <Edit3 size={14} />
                             </button>
                             <button 
-                              onClick={() => onDeleteMovies([movie.id])}
+                              onClick={() => {
+                                if (window.confirm(`Tem certeza que deseja deletar "${movie.title}"?`)) {
+                                  onDeleteMovies([movie.id]);
+                                }
+                              }}
                               className="p-1.5 md:p-2 bg-red-600/5 hover:bg-red-600 text-red-600 hover:text-white rounded-lg transition-all"
                             >
                               <Trash2 size={14} />
@@ -2643,7 +2651,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           {movie.is_hidden ? 'Mostrar' : 'Ocultar'}
                         </button>
                         <button 
-                          onClick={() => onDeleteMovies([movie.id])}
+                          onClick={() => {
+                            if (window.confirm(`Tem certeza que deseja deletar "${movie.title}"?`)) {
+                              onDeleteMovies([movie.id]);
+                            }
+                          }}
                           className="w-full py-2 bg-red-600/20 text-red-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all border border-red-600/20"
                         >
                           Deletar
