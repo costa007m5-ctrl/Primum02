@@ -1000,33 +1000,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       
       for (const s of uniqueSeasons) {
         try {
-          const res = await tmdb.get(requests.tvSeasonDetails(result.id, s), { params: { language: 'pt-BR' } });
+          const { fetchSeasonDetailsWithFallback } = await import('../services/tmdb');
+          const res = await fetchSeasonDetailsWithFallback(result.id, s);
           let eps = res.data.episodes;
-          
-          const hasEmptyOverviews = eps.some((ep: any) => !ep.overview || ep.overview === '');
-          if (hasEmptyOverviews) {
-            try {
-              const enRes = await tmdb.get(requests.tvSeasonDetails(result.id, s), { params: { language: 'en-US' } });
-              const enEpisodes = enRes.data.episodes;
-              
-              // Import the translation service inline if needed or at the top of the file
-              const { translateToPortuguese } = await import('../services/ai');
-              
-              eps = await Promise.all(eps.map(async (ep: any, idx: number) => {
-                let finalOverview = ep.overview;
-                if (!finalOverview || finalOverview === '') {
-                   const fallbackEn = enEpisodes[idx]?.overview || '';
-                   if (fallbackEn) {
-                     finalOverview = await translateToPortuguese(fallbackEn);
-                   }
-                }
-                return {
-                  ...ep,
-                  overview: finalOverview
-                };
-              }));
-            } catch (enErr) {}
-          }
           seasonDetails[s] = eps;
         } catch (e) {
           console.error(`Erro ao buscar temporada ${s}:`, e);

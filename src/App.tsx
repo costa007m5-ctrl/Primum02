@@ -2145,7 +2145,8 @@ export default function App() {
         
         for (const s of uniqueSeasons) {
           try {
-            const res = await tmdb.get(requests.tvSeasonDetails(result.id, s));
+            const { fetchSeasonDetailsWithFallback } = await import('./services/tmdb');
+            const res = await fetchSeasonDetailsWithFallback(result.id, s);
             let episodes = res.data.episodes;
             
             seasonDetails[s] = episodes;
@@ -2457,7 +2458,8 @@ export default function App() {
             
             for (const s of uniqueSeasons) {
               try {
-                const res = await tmdb.get(requests.tvSeasonDetails(result.id, s));
+                const { fetchSeasonDetailsWithFallback } = await import('./services/tmdb');
+                const res = await fetchSeasonDetailsWithFallback(result.id, s);
                 let episodes = res.data.episodes;
 
                 seasonDetails[s] = episodes;

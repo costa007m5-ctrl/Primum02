@@ -87,4 +87,36 @@ export const getMovieLogo = async (id: number, type: 'movie' | 'tv' = 'movie'): 
   }
 };
 
+export const fetchSeasonDetailsWithFallback = async (tvId: number, seasonNumber: number) => {
+  const res = await tmdb.get(requests.tvSeasonDetails(tvId, seasonNumber), { params: { language: 'pt-BR' } });
+  let episodes = res.data.episodes || [];
+  
+  const hasEmptyOverviews = episodes.some((ep: any) => !ep.overview || ep.overview === '');
+  if (hasEmptyOverviews) {
+    try {
+      const enRes = await tmdb.get(requests.tvSeasonDetails(tvId, seasonNumber), { params: { language: 'en-US' } });
+      const enEpisodes = enRes.data.episodes || [];
+      const { translateToPortuguese } = await import('./ai');
+      
+      episodes = await Promise.all(episodes.map(async (ep: any, idx: number) => {
+        let finalOverview = ep.overview;
+        if (!finalOverview || finalOverview === '') {
+           const fallbackEn = enEpisodes[idx]?.overview || '';
+           if (fallbackEn) {
+             finalOverview = await translateToPortuguese(fallbackEn);
+           }
+        }
+        return {
+          ...ep,
+          overview: finalOverview
+        };
+      }));
+    } catch (e) {
+      console.warn("Failed to fetch/translate fallback English overviews for season", seasonNumber);
+    }
+  }
+  
+  return { ...res, data: { ...res.data, episodes } };
+};
+
 export default tmdb;
